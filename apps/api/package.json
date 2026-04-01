@@ -1,0 +1,29 @@
+{
+  "name": "@myapp/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./routers": {
+      "types": "./src/routers/index.ts"
+    }
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env.local src/server.ts",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@trpc/server": "^11.0.0",
+    "@supabase/supabase-js": "^2.49.0",
+    "@myapp/types": "workspace:*",
+    "@myapp/utils": "workspace:*",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0"
+  }
+}
