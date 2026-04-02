@@ -42,7 +42,7 @@ function HeroPage() {
         </div>
 
         {/* Right side - Navy background with branding */}
-        <div className="lg:w-[400px] bg-hanover-deepblue flex items-center justify-center py-16 lg:py-24 px-8">
+        <div className="lg:w-100 bg-hanover-deepblue flex items-center justify-center py-16 lg:py-24 px-8">
           <div className="text-center">
             <p className="text-gray-400 text-2xl font-light">The Hanover</p>
             <p className="text-gray-400 text-2xl font-light">Insurance Group</p>
