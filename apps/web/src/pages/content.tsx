@@ -9,7 +9,7 @@ function ContentFormPage() {
                         <form className="space-y-6">
                             <TextInput label="Content Name" type="text" />
                             <TextInput label="Owner" type="text" />
-                            <TextInput label="Job Position" type="email" />
+                            <TextInput label="Job Position" type="text" />
                             <TextInput label="Last modified date" type="date" />
                             <TextInput label="Expiration date" type="date" />
 
