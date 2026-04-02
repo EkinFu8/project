@@ -2,7 +2,7 @@ import { TopNav } from "@myapp/ui/components/top-nav";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import HeroPage from "./pages/hero";
 import UnderwriterPage from "./pages/underwriter";
-import BusinessAnalyst from "@/pages/businessAnalyst.tsx";
+import BusinessAnalyst from "@/pages/business-analyst.tsx";
 
 const navItems = [
   { label: "Hero", to: "/hero" },

@@ -11,7 +11,7 @@ function TopNav({ items }: { items: NavItem[] }) {
     <nav className="w-full border-b border-border bg-background shadow-sm">
       <div className="flex items-center gap-8 px-8 py-4">
         <span className="text-lg font-bold tracking-tight">myapp</span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-6">
           {items.map((item) => (
             <NavLink
               key={item.to}
