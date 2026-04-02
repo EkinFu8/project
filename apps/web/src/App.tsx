@@ -2,10 +2,12 @@ import { TopNav } from "@myapp/ui/components/top-nav";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import HeroPage from "./pages/hero";
 import UnderwriterPage from "./pages/underwriter";
+import BusinessAnalyst from "@/pages/businessAnalyst.tsx";
 
 const navItems = [
   { label: "Hero", to: "/hero" },
   { label: "Underwriter", to: "/underwriter" },
+  { label: "Business Analyst", to: "/businessAnalyst" },
 ];
 
 function App() {
@@ -17,6 +19,7 @@ function App() {
           <Route path="/" element={<Navigate to="/hero" replace />} />
           <Route path="/hero" element={<HeroPage />} />
           <Route path="/underwriter" element={<UnderwriterPage />} />
+          <Route path="/businessAnalyst" element={<BusinessAnalyst/>} />
         </Routes>
       </div>
     </BrowserRouter>
