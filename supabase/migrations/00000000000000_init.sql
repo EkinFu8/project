@@ -52,3 +52,26 @@ $$ language plpgsql;
 create trigger users_updated_at
   before update on public.users
   for each row execute function public.update_updated_at();
+
+-- employee table
+
+CREATE TABLE employee (
+    employeeID CHAR(10) PRIMARY KEY,
+    employee_name VARCHAR(50),
+    job_desc VARCHAR(200)
+);
+
+-- content management table
+
+CREATE TABLE content_management (
+    fileID CHAR(64) PRIMARY KEY,
+    filename VARCHAR(100),
+    url VARCHAR(100),
+    content_owner VARCHAR(50),
+    job_position VARCHAR(20),
+    last_modified DATE,
+    expiration_date DATE,
+    content_type VARCHAR(20),
+    document_status VARCHAR(20),
+    FOREIGN KEY (content_owner) REFERENCES employee(employeeID)
+);
