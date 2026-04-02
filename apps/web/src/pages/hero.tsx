@@ -9,7 +9,7 @@ function HeroPage() {
         {/* Left side - White background with content */}
         <div className="flex-1 bg-white px-8 lg:px-16 py-16 lg:py-24">
           <h1 className="text-4xl sm:text-5xl font-bold text-hanover-deepblue mb-4">
-            Welcome to iBank
+            Welcome to Hanover
           </h1>
           <p className="text-gray-600 text-lg mb-8">
             Your internal knowledge management portal
