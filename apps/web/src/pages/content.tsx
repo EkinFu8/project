@@ -7,7 +7,7 @@ function ContentFormPage() {
                 <div className="mx-auto max-w-[640px] px-4">
                     <div className="rounded bg-white p-8 shadow-md">
                         <form className="space-y-6">
-                            <TextInput label="Content Name" type="text" />
+                            <TextInput label="File" type="file" />
                             <TextInput label="Owner" type="text" />
                             <TextInput label="Job Position" type="text" />
                             <TextInput label="Last modified date" type="date" />
