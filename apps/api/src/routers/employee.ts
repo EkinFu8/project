@@ -76,6 +76,8 @@ export const employeeRouter = router({
       distinct: ["department"],
       orderBy: { department: "asc" },
     });
-    return results.map((r) => r.department).filter(Boolean) as string[];
+    return results
+      .map((r: { department: string | null }) => r.department)
+      .filter(Boolean) as string[];
   }),
 });

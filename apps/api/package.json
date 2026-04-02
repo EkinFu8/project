@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "tsx watch --env-file=../../.env.local src/server.ts",
-    "build": "tsc --noEmit",
+    "build": "prisma generate && tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
