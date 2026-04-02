@@ -1,13 +1,13 @@
 import { TopNav } from "@myapp/ui/components/top-nav";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
-import HeroPage from "./pages/hero";
-import UnderwriterPage from "./pages/underwriter";
 import BusinessAnalyst from "@/pages/business-analyst";
+import ContentFormPage from "@/pages/content-form";
+import ContentListPage from "@/pages/content-list";
+import DashboardPage from "@/pages/dashboard";
 import EmployeesPage from "@/pages/employees";
 import EmployeesFormPage from "@/pages/employees-form";
-import ContentListPage from "@/pages/content-list";
-import ContentFormPage from "@/pages/content-form";
-import DashboardPage from "@/pages/dashboard";
+import HeroPage from "./pages/hero";
+import UnderwriterPage from "./pages/underwriter";
 
 const navItems = [
   { label: "Hero", to: "/hero" },

@@ -1,7 +1,7 @@
 import { TextInput } from "@myapp/ui/components/text-input";
-import { Loader2, ArrowLeft } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import { trpc } from "@/lib/trpc";
 
 function EmployeesFormPage() {
@@ -9,10 +9,7 @@ function EmployeesFormPage() {
   const navigate = useNavigate();
   const isEditing = Boolean(id) && id !== "new";
 
-  const existing = trpc.employee.getById.useQuery(
-    { id: id! },
-    { enabled: isEditing },
-  );
+  const existing = trpc.employee.getById.useQuery({ id: id! }, { enabled: isEditing });
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -30,9 +27,7 @@ function EmployeesFormPage() {
       setDepartment(existing.data.department ?? "");
       setPhone(existing.data.phone ?? "");
       setHiredAt(
-        existing.data.hired_at
-          ? new Date(existing.data.hired_at).toISOString().split("T")[0]
-          : "",
+        existing.data.hired_at ? new Date(existing.data.hired_at).toISOString().split("T")[0] : "",
       );
     }
   }, [existing.data]);

@@ -1,4 +1,4 @@
-import { Users, Plus, Search, Loader2 } from "lucide-react";
+import { Loader2, Plus, Search, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/lib/trpc";
@@ -21,9 +21,7 @@ function EmployeesPage() {
                 <Users className="h-8 w-8 text-hanover-green" />
                 Employees
               </h1>
-              <p className="mt-1 text-muted-foreground">
-                Manage your team directory
-              </p>
+              <p className="mt-1 text-muted-foreground">Manage your team directory</p>
             </div>
             <Link
               to="/employees/new"
@@ -72,9 +70,7 @@ function EmployeesPage() {
                 Failed to load employees. Is the API running?
               </div>
             ) : employees.data?.length === 0 ? (
-              <div className="py-16 text-center text-muted-foreground">
-                No employees found.
-              </div>
+              <div className="py-16 text-center text-muted-foreground">No employees found.</div>
             ) : (
               <table className="w-full text-sm">
                 <thead>
@@ -82,45 +78,16 @@ function EmployeesPage() {
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Email</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Title</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Department</th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">
+                      Department
+                    </th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Content</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Hired</th>
                   </tr>
                 </thead>
                 <tbody>
                   {employees.data?.map((emp) => (
-                    <tr
-                      key={emp.id}
-                      className="border-b border-border transition-colors hover:bg-[#F9FAFB]"
-                    >
-                      <td className="px-4 py-3 font-medium text-foreground">
-                        <Link
-                          to={`/employees/${emp.id}`}
-                          className="text-hanover-green hover:underline"
-                        >
-                          {emp.name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{emp.email}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{emp.title ?? "—"}</td>
-                      <td className="px-4 py-3">
-                        {emp.department ? (
-                          <span className="rounded bg-hanover-green/10 px-2 py-0.5 text-xs font-medium text-hanover-green">
-                            {emp.department}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {emp._count.contents} item{emp._count.contents !== 1 ? "s" : ""}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {emp.hired_at
-                          ? new Date(emp.hired_at).toLocaleDateString()
-                          : "—"}
-                      </td>
-                    </tr>
+                    <EmployeeRow key={emp.id} emp={emp} />
                   ))}
                 </tbody>
               </table>
@@ -129,6 +96,47 @@ function EmployeesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+interface EmployeeRowProps {
+  emp: {
+    id: string;
+    name: string;
+    email: string;
+    title: string | null;
+    department: string | null;
+    hired_at: string | null;
+    _count: { contents: number };
+  };
+}
+
+function EmployeeRow({ emp }: EmployeeRowProps) {
+  return (
+    <tr className="border-b border-border transition-colors hover:bg-[#F9FAFB]">
+      <td className="px-4 py-3 font-medium text-foreground">
+        <Link to={`/employees/${emp.id}`} className="text-hanover-green hover:underline">
+          {emp.name}
+        </Link>
+      </td>
+      <td className="px-4 py-3 text-muted-foreground">{emp.email}</td>
+      <td className="px-4 py-3 text-muted-foreground">{emp.title ?? "—"}</td>
+      <td className="px-4 py-3">
+        {emp.department ? (
+          <span className="rounded bg-hanover-green/10 px-2 py-0.5 text-xs font-medium text-hanover-green">
+            {emp.department}
+          </span>
+        ) : (
+          "—"
+        )}
+      </td>
+      <td className="px-4 py-3 text-muted-foreground">
+        {emp._count.contents} item{emp._count.contents !== 1 ? "s" : ""}
+      </td>
+      <td className="px-4 py-3 text-muted-foreground">
+        {emp.hired_at ? new Date(emp.hired_at).toLocaleDateString() : "—"}
+      </td>
+    </tr>
   );
 }
 

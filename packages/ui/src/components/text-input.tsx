@@ -10,10 +10,7 @@ function TextInput({ label, className, id, ...props }: TextInputProps) {
 
   return (
     <div>
-      <label
-        htmlFor={inputId}
-        className="mb-2 block text-sm font-semibold text-foreground"
-      >
+      <label htmlFor={inputId} className="mb-2 block text-sm font-semibold text-foreground">
         {label}
       </label>
       <input
@@ -28,5 +25,5 @@ function TextInput({ label, className, id, ...props }: TextInputProps) {
   );
 }
 
-export { TextInput };
 export type { TextInputProps };
+export { TextInput };

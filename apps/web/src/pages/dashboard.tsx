@@ -46,9 +46,7 @@ function DashboardPage() {
               <LayoutGrid className="h-8 w-8 text-hanover-green" />
               Dashboard
             </h1>
-            <p className="mt-1 text-muted-foreground">
-              Overview of employees and content
-            </p>
+            <p className="mt-1 text-muted-foreground">Overview of employees and content</p>
           </div>
 
           {isLoading ? (
@@ -101,9 +99,7 @@ function DashboardPage() {
 
                 {/* Recent Content Table */}
                 <div className="overflow-x-auto rounded bg-white p-6 shadow-sm">
-                  <h2 className="mb-4 text-lg font-semibold text-foreground">
-                    Recent Content
-                  </h2>
+                  <h2 className="mb-4 text-lg font-semibold text-foreground">Recent Content</h2>
                   {(allContent.data?.length ?? 0) === 0 ? (
                     <p className="py-8 text-center text-sm text-muted-foreground">
                       No content yet.

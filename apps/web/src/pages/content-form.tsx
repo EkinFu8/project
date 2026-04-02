@@ -1,7 +1,7 @@
 import { TextInput } from "@myapp/ui/components/text-input";
-import { Loader2, ArrowLeft } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import { trpc } from "@/lib/trpc";
 
 function ContentFormPage() {
@@ -9,10 +9,7 @@ function ContentFormPage() {
   const navigate = useNavigate();
   const isEditing = Boolean(id) && id !== "new";
 
-  const existing = trpc.content.getById.useQuery(
-    { id: id! },
-    { enabled: isEditing },
-  );
+  const existing = trpc.content.getById.useQuery({ id: id! }, { enabled: isEditing });
 
   const employees = trpc.employee.list.useQuery({});
 
@@ -104,10 +101,7 @@ function ContentFormPage() {
 
               {/* Body — textarea, not a text input */}
               <div>
-                <label
-                  htmlFor="body"
-                  className="mb-2 block text-sm font-semibold text-foreground"
-                >
+                <label htmlFor="body" className="mb-2 block text-sm font-semibold text-foreground">
                   Body
                 </label>
                 <textarea
@@ -137,7 +131,8 @@ function ContentFormPage() {
                   <option value="">Unassigned</option>
                   {employees.data?.map((emp) => (
                     <option key={emp.id} value={emp.id}>
-                      {emp.name}{emp.department ? ` — ${emp.department}` : ""}
+                      {emp.name}
+                      {emp.department ? ` — ${emp.department}` : ""}
                     </option>
                   ))}
                 </select>

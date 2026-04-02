@@ -1,4 +1,4 @@
-import { FileText, Users, LayoutGrid } from "lucide-react";
+import { FileText, LayoutGrid, Users } from "lucide-react";
 import { Link } from "react-router";
 
 function HeroPage() {
@@ -11,9 +11,7 @@ function HeroPage() {
           <h1 className="text-4xl sm:text-5xl font-bold text-hanover-deepblue mb-4">
             Welcome to Hanover
           </h1>
-          <p className="text-gray-600 text-lg mb-8">
-            Your internal knowledge management portal
-          </p>
+          <p className="text-gray-600 text-lg mb-8">Your internal knowledge management portal</p>
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-4">
@@ -61,29 +59,29 @@ function HeroPage() {
               </h3>
               <ul className="space-y-3">
                 <li>
-                  <a href="#" className="text-hanover-green hover:underline">
+                  <span className="cursor-pointer text-hanover-green hover:underline">
                     Underwriting Guidelines Portal
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a href="#" className="text-hanover-green hover:underline">
+                  <span className="cursor-pointer text-hanover-green hover:underline">
                     Claims Status Dashboard
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a href="#" className="text-hanover-green hover:underline">
+                  <span className="cursor-pointer text-hanover-green hover:underline">
                     Policy Document Repository
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a href="#" className="text-hanover-green hover:underline">
+                  <span className="cursor-pointer text-hanover-green hover:underline">
                     Training Resources Hub
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a href="#" className="text-hanover-green hover:underline">
+                  <span className="cursor-pointer text-hanover-green hover:underline">
                     IT Support Ticketing System
-                  </a>
+                  </span>
                 </li>
               </ul>
             </div>
@@ -95,29 +93,29 @@ function HeroPage() {
               </h3>
               <ul className="space-y-3">
                 <li>
-                  <a href="#" className="text-hanover-green hover:underline">
+                  <span className="cursor-pointer text-hanover-green hover:underline">
                     Commercial Lines Rating Tool
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a href="#" className="text-hanover-green hover:underline">
+                  <span className="cursor-pointer text-hanover-green hover:underline">
                     Risk Assessment Calculator
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a href="#" className="text-hanover-green hover:underline">
+                  <span className="cursor-pointer text-hanover-green hover:underline">
                     Agent Performance Reports
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a href="#" className="text-hanover-green hover:underline">
+                  <span className="cursor-pointer text-hanover-green hover:underline">
                     Compliance Checklist
-                  </a>
+                  </span>
                 </li>
                 <li>
-                  <a href="#" className="text-hanover-green hover:underline">
+                  <span className="cursor-pointer text-hanover-green hover:underline">
                     Product Knowledge Base
-                  </a>
+                  </span>
                 </li>
               </ul>
             </div>

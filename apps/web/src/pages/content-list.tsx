@@ -1,4 +1,4 @@
-import { FileText, Plus, Search, Loader2 } from "lucide-react";
+import { FileText, Loader2, Plus, Search } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/lib/trpc";
@@ -81,9 +81,7 @@ function ContentListPage() {
               Failed to load content. Is the API running?
             </div>
           ) : contents.data?.length === 0 ? (
-            <div className="py-16 text-center text-muted-foreground">
-              No content found.
-            </div>
+            <div className="py-16 text-center text-muted-foreground">No content found.</div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {contents.data?.map((item) => (
@@ -102,13 +100,9 @@ function ContentListPage() {
                       {item.status}
                     </span>
                   </div>
-                  <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">
-                    {item.body}
-                  </p>
+                  <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">{item.body}</p>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      {item.employee ? item.employee.name : "Unassigned"}
-                    </span>
+                    <span>{item.employee ? item.employee.name : "Unassigned"}</span>
                     <span>{new Date(item.created_at).toLocaleDateString()}</span>
                   </div>
                 </Link>
