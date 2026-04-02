@@ -140,6 +140,9 @@ importers:
       '@trpc/react-query':
         specifier: ^11.0.0
         version: 11.16.0(@tanstack/react-query@5.96.1(react@19.2.4))(@trpc/client@11.16.0(@trpc/server@11.16.0(typescript@5.8.3))(typescript@5.8.3))(@trpc/server@11.16.0(typescript@5.8.3))(react@19.2.4)(typescript@5.8.3)
+      lucide-react:
+        specifier: ^0.500.0
+        version: 0.500.0(react@19.2.4)
       react:
         specifier: ^19.2.4
         version: 19.2.4
