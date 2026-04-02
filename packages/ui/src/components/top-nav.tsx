@@ -8,12 +8,12 @@ interface NavItem {
 
 function TopNav({ items }: { items: NavItem[] }) {
   return (
-      <nav className="w-full border-b border-border bg-hanover-deepblue">
-        <div className="flex items-center justify-between px-8 h-20">
+      <nav className="w-full bg-hanover-deepblue py-2">
+        <div className="flex items-center justify-between px-8 h-24 w-full">
         <span className="text-lg font-bold tracking-tight text-white">
           The Hanover iBank
         </span>
-          <div className="flex items-center gap-1 h-full">
+          <div className="flex items-center gap-1 h-full ml-auto">
             {items.map((item) => (
                 <NavLink
                     key={item.to}
