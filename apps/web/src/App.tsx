@@ -5,6 +5,7 @@ import UnderwriterPage from "./pages/underwriter";
 import BusinessAnalyst from "@/pages/business-analyst.tsx";
 import EmployeesFormPage from "@/pages/employees-form.tsx";
 import DashboardPage from "@/pages/dashboard.tsx";
+import ContentPage from "@/pages/content.tsx";
 
 const navItems = [
   { label: "Hero", to: "/hero" },
@@ -12,6 +13,7 @@ const navItems = [
   { label: "Business Analyst", to: "/businessAnalyst" },
   { label: "Employees", to: "/employees" },
   { label: "Dashboard", to: "/dashboard" },
+  { label: "Content", to: "/content" },
 ];
 
 function App() {
@@ -25,6 +27,7 @@ function App() {
           <Route path="/underwriter" element={<UnderwriterPage />} />
           <Route path="/businessAnalyst" element={<BusinessAnalyst/>} />
           <Route path="/employees" element={<EmployeesFormPage />} />
+          <Route path="/content" element={<ContentPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
         </Routes>
       </div>
