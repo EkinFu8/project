@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      react-router:
-        specifier: ^7.13.2
-        version: 7.13.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.0.0
