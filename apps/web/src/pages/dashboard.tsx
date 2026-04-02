@@ -122,7 +122,7 @@ function DashboardPage() {
                       <td className="py-3 px-2 text-muted-foreground">{row.expiration}</td>
                       <td className="py-3 px-2">
                         <span
-                          className={`rounded px-2 py-1 text-xs font-semibold ${getStatusBadgeClasses(row.status)}`}
+                          className={`whitespace-nowrap rounded px-2 py-1 text-xs font-semibold ${getStatusBadgeClasses(row.status)}`}
                         >
                           {row.status}
                         </span>
