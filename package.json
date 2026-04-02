@@ -21,6 +21,13 @@
     "db:migration:up": "supabase migration up",
     "db:gen-types": "supabase gen types typescript --local > packages/types/src/database.ts"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "prisma",
+      "esbuild"
+    ]
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
     "turbo": "^2.5.0",

@@ -1,0 +1,36 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Employee {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  email      String   @unique
+  department String?
+  title      String?
+  phone      String?
+  hired_at   DateTime? @db.Date
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime  @updatedAt @db.Timestamptz(6)
+
+  contents Content[]
+
+  @@map("employees")
+}
+
+model Content {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  body        String
+  status      String   @default("draft")
+  employee_id String?  @db.Uuid
+  employee    Employee? @relation(fields: [employee_id], references: [id], onDelete: SetNull)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@map("contents")
+}
