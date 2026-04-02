@@ -3,11 +3,13 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import HeroPage from "./pages/hero";
 import UnderwriterPage from "./pages/underwriter";
 import BusinessAnalyst from "@/pages/business-analyst.tsx";
+import EmployeesFormPage from "@/pages/employees-form.tsx";
 
 const navItems = [
   { label: "Hero", to: "/hero" },
   { label: "Underwriter", to: "/underwriter" },
   { label: "Business Analyst", to: "/businessAnalyst" },
+  { label: "Employees", to: "/employees" },
 ];
 
 function App() {
@@ -20,6 +22,7 @@ function App() {
           <Route path="/hero" element={<HeroPage />} />
           <Route path="/underwriter" element={<UnderwriterPage />} />
           <Route path="/businessAnalyst" element={<BusinessAnalyst/>} />
+          <Route path="/employees" element={<EmployeesFormPage />} />
         </Routes>
       </div>
     </BrowserRouter>
