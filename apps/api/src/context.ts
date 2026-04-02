@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import type { CreateHTTPContextOptions } from "@trpc/server/adapters/standalone";
+import { prisma } from "./lib/prisma";
 
 /**
  * Inner context builder — adapter-agnostic. Takes an auth token directly.
@@ -17,7 +18,7 @@ async function createContextInner(authToken: string | null) {
     user = supabaseUser;
   }
 
-  return { supabase, user };
+  return { supabase, prisma, user };
 }
 
 /**
