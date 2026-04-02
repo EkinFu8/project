@@ -8,18 +8,20 @@ interface NavItem {
 
 function TopNav({ items }: { items: NavItem[] }) {
   return (
-    <nav className="border-b border-border bg-background px-6 py-3">
-      <div className="mx-auto flex max-w-4xl items-center gap-6">
+    <nav className="w-full border-b border-border bg-background shadow-sm">
+      <div className="flex items-center gap-8 px-8 py-4">
         <span className="text-lg font-bold tracking-tight">myapp</span>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-1">
           {items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "text-sm font-medium transition-colors hover:text-foreground",
-                  isActive ? "text-foreground" : "text-muted-foreground",
+                  "rounded-md px-4 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )
               }
             >
