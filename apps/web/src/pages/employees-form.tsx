@@ -1,3 +1,5 @@
+import { TextInput } from "@myapp/ui/components/text-input";
+
 function EmployeesFormPage() {
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
@@ -5,94 +7,32 @@ function EmployeesFormPage() {
         <div className="mx-auto max-w-[640px] px-4">
           <div className="rounded bg-white p-8 shadow-md">
             <form className="space-y-6">
-              {/* First Name */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-foreground">
-                  First Name
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
+              <TextInput label="First Name" type="text" />
+              <TextInput label="Last Name" type="text" />
+              <TextInput label="Email Address" type="email" />
+              <TextInput label="Job Title" type="text" />
+              <TextInput label="Department" type="text" />
 
-              {/* Last Name */}
+              {/* Role — select element, not a text input */}
               <div>
-                <label className="mb-2 block text-sm font-semibold text-foreground">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-
-              {/* Email Address */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-foreground">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-
-              {/* Job Title */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-foreground">
-                  Job Title
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-
-              {/* Department */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-foreground">
-                  Department
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-
-              {/* Role */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-foreground">
+                <label
+                  htmlFor="role"
+                  className="mb-2 block text-sm font-semibold text-foreground"
+                >
                   Role
                 </label>
-                <select className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+                <select
+                  id="role"
+                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                >
                   <option value="Underwriter">Underwriter</option>
                   <option value="Business Analyst">Business Analyst</option>
                   <option value="Admin">Admin</option>
                 </select>
               </div>
 
-              {/* Employee ID */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-foreground">
-                  Employee ID
-                </label>
-                <input
-                  type="text"
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-
-              {/* Start Date */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-foreground">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
+              <TextInput label="Employee ID" type="text" />
+              <TextInput label="Start Date" type="date" />
 
               {/* Submit Button */}
               <button
