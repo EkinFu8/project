@@ -2,37 +2,31 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { createFetchContext } from "../context";
 import { appRouter } from "../routers";
 
-export const config = {
-  runtime: "nodejs",
-};
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-export default async function handler(req: Request): Promise<Response> {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
-  }
+// Use { fetch } object export so Vercel's launcher bridges to Web API Request/Response.
+// A bare `export default function` receives Node.js IncomingMessage instead.
+export default {
+  async fetch(request: Request): Promise<Response> {
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
 
-  // Vercel passes relative URLs — tRPC needs absolute
-  const url = new URL(req.url, `https://${req.headers.get("host") || "localhost"}`);
-  const absoluteReq = new Request(url.toString(), req);
+    const response = await fetchRequestHandler({
+      endpoint: "/api/trpc",
+      req: request,
+      router: appRouter,
+      createContext: createFetchContext,
+    });
 
-  const response = await fetchRequestHandler({
-    endpoint: "/api/trpc",
-    req: absoluteReq,
-    router: appRouter,
-    createContext: createFetchContext,
-  });
+    for (const [key, value] of Object.entries(corsHeaders)) {
+      response.headers.set(key, value);
+    }
 
-  // Add CORS headers to every response
-  for (const [key, value] of Object.entries(corsHeaders)) {
-    response.headers.set(key, value);
-  }
-
-  return response;
-}
+    return response;
+  },
+};
