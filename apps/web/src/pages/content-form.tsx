@@ -13,18 +13,22 @@ function ContentFormPage() {
 
   const employees = trpc.employee.list.useQuery({});
 
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [status, setStatus] = useState<"draft" | "published">("draft");
-  const [employeeId, setEmployeeId] = useState("");
+  const [owner, setOwner] = useState("");
+  const [jobPosition, setJobPosition] = useState("");
+  const [lastModifiedDate, setLastModifiedDate] = useState("");
+  const [expirationDate, setExpirationDate] = useState("");
+  const [contentType, setContentType] = useState("Reference");
+  const [status, setStatus] = useState("Created");
 
   // Populate form when editing
   useEffect(() => {
     if (existing.data) {
-      setTitle(existing.data.title);
-      setBody(existing.data.body);
-      setStatus(existing.data.status as "draft" | "published");
-      setEmployeeId(existing.data.employee_id ?? "");
+      setOwner(existing.data.owner ?? "");
+      setJobPosition(existing.data.job_position ?? "");
+      setLastModifiedDate(existing.data.last_modified_date ?? "");
+      setExpirationDate(existing.data.expiration_date ?? "");
+      setContentType(existing.data.content_type ?? "Reference");
+      setStatus(existing.data.status ?? "Created");
     }
   }, [existing.data]);
 
@@ -51,10 +55,12 @@ function ContentFormPage() {
     e.preventDefault();
 
     const data = {
-      title,
-      body,
+      owner,
+      job_position: jobPosition,
+      last_modified_date: lastModifiedDate,
+      expiration_date: expirationDate,
+      content_type: contentType,
       status,
-      employee_id: employeeId || null,
     };
 
     if (isEditing) {
@@ -91,54 +97,56 @@ function ContentFormPage() {
 
           <div className="rounded bg-white p-8 shadow-md">
             <form className="space-y-6" onSubmit={handleSubmit}>
+              <TextInput label="File" type="file" />
+
               <TextInput
-                label="Title"
+                label="Owner"
                 type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                value={owner}
+                onChange={(e) => setOwner(e.target.value)}
               />
 
-              {/* Body — textarea, not a text input */}
-              <div>
-                <label htmlFor="body" className="mb-2 block text-sm font-semibold text-foreground">
-                  Body
-                </label>
-                <textarea
-                  id="body"
-                  required
-                  rows={6}
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-hanover-green"
-                />
-              </div>
+              <TextInput
+                label="Job Position"
+                type="text"
+                value={jobPosition}
+                onChange={(e) => setJobPosition(e.target.value)}
+              />
 
-              {/* Author */}
+              <TextInput
+                label="Last modified date"
+                type="date"
+                value={lastModifiedDate}
+                onChange={(e) => setLastModifiedDate(e.target.value)}
+              />
+
+              <TextInput
+                label="Expiration date"
+                type="date"
+                value={expirationDate}
+                onChange={(e) => setExpirationDate(e.target.value)}
+              />
+
+              {/* Content type — select element, not a text input */}
               <div>
                 <label
-                  htmlFor="employee"
+                  htmlFor="content-type"
                   className="mb-2 block text-sm font-semibold text-foreground"
                 >
-                  Author
+                  Content Type
                 </label>
                 <select
-                  id="employee"
-                  value={employeeId}
-                  onChange={(e) => setEmployeeId(e.target.value)}
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-hanover-green"
+                  id="content-type"
+                  value={contentType}
+                  onChange={(e) => setContentType(e.target.value)}
+                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 >
-                  <option value="">Unassigned</option>
-                  {employees.data?.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name}
-                      {emp.department ? ` — ${emp.department}` : ""}
-                    </option>
-                  ))}
+                  <option value="Reference">Reference</option>
+                  <option value="Workflow">Workflow</option>
                 </select>
               </div>
 
-              {/* Status */}
+              {/* Status — select element, not a text input */}
               <div>
                 <label
                   htmlFor="status"
@@ -149,11 +157,13 @@ function ContentFormPage() {
                 <select
                   id="status"
                   value={status}
-                  onChange={(e) => setStatus(e.target.value as "draft" | "published")}
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-hanover-green"
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
+                  <option value="Created">Created</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="Finalized">Finalized</option>
+                  <option value="Archived">Archived</option>
                 </select>
               </div>
 
@@ -164,10 +174,11 @@ function ContentFormPage() {
                 </div>
               )}
 
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isSaving}
-                className="flex w-full items-center justify-center gap-2 rounded bg-hanover-green py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded bg-[#4a6741] py-3 font-semibold text-white transition-colors hover:bg-[#3b5433] disabled:opacity-60"
               >
                 {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
                 {isEditing ? "Update Content" : "Save Content"}
