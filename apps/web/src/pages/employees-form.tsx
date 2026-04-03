@@ -9,26 +9,17 @@ function EmployeesFormPage() {
   const navigate = useNavigate();
   const isEditing = Boolean(id) && id !== "new";
 
-  const existing = trpc.employee.getById.useQuery({ id: id! }, { enabled: isEditing });
+  const existing = trpc.employee.getById.useQuery({ employeeID: id! }, { enabled: isEditing });
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [title, setTitle] = useState("");
-  const [department, setDepartment] = useState("");
-  const [phone, setPhone] = useState("");
-  const [hiredAt, setHiredAt] = useState("");
+  const [employeeID, setEmployeeID] = useState("");
+  const [employeeName, setEmployeeName] = useState("");
+  const [jobDesc, setJobDesc] = useState("");
 
-  // Populate form when editing
   useEffect(() => {
     if (existing.data) {
-      setName(existing.data.name);
-      setEmail(existing.data.email);
-      setTitle(existing.data.title ?? "");
-      setDepartment(existing.data.department ?? "");
-      setPhone(existing.data.phone ?? "");
-      setHiredAt(
-        existing.data.hired_at ? new Date(existing.data.hired_at).toISOString().split("T")[0] : "",
-      );
+      setEmployeeID(existing.data.employeeID);
+      setEmployeeName(existing.data.employee_name ?? "");
+      setJobDesc(existing.data.job_desc ?? "");
     }
   }, [existing.data]);
 
@@ -44,7 +35,7 @@ function EmployeesFormPage() {
   const update = trpc.employee.update.useMutation({
     onSuccess: () => {
       utils.employee.list.invalidate();
-      utils.employee.getById.invalidate({ id: id! });
+      utils.employee.getById.invalidate({ employeeID: id! });
       navigate("/employees");
     },
   });
@@ -54,19 +45,18 @@ function EmployeesFormPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const data = {
-      name,
-      email,
-      title: title || null,
-      department: department || null,
-      phone: phone || null,
-      hired_at: hiredAt ? new Date(hiredAt) : null,
-    };
-
     if (isEditing) {
-      update.mutate({ id: id!, ...data });
+      update.mutate({
+        employeeID: id!,
+        employee_name: employeeName || null,
+        job_desc: jobDesc || null,
+      });
     } else {
-      create.mutate(data);
+      create.mutate({
+        employeeID,
+        employee_name: employeeName || null,
+        job_desc: jobDesc || null,
+      });
     }
   }
 
@@ -98,45 +88,27 @@ function EmployeesFormPage() {
           <div className="rounded bg-white p-8 shadow-md">
             <form className="space-y-6" onSubmit={handleSubmit}>
               <TextInput
-                label="Full Name"
+                label="Employee ID"
                 type="text"
                 required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                maxLength={10}
+                disabled={isEditing}
+                value={employeeID}
+                onChange={(e) => setEmployeeID(e.target.value)}
               />
               <TextInput
-                label="Email Address"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <TextInput
-                label="Job Title"
+                label="Name"
                 type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                value={employeeName}
+                onChange={(e) => setEmployeeName(e.target.value)}
               />
               <TextInput
-                label="Department"
+                label="Job Description"
                 type="text"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-              />
-              <TextInput
-                label="Phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-              <TextInput
-                label="Hire Date"
-                type="date"
-                value={hiredAt}
-                onChange={(e) => setHiredAt(e.target.value)}
+                value={jobDesc}
+                onChange={(e) => setJobDesc(e.target.value)}
               />
 
-              {/* Error display */}
               {(create.isError || update.isError) && (
                 <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {create.error?.message || update.error?.message || "Something went wrong."}

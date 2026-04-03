@@ -1,17 +1,18 @@
-export interface Content {
-  id: string;
-  title: string;
-  body: string;
-  status: string;
-  employee_id: string | null;
-  created_at: string;
-  updated_at: string;
+export interface ContentItem {
+  fileID: string;
+  filename: string | null;
+  url: string | null;
+  content_owner: string | null;
+  job_position: string | null;
+  last_modified: string | null;
+  expiration_date: string | null;
+  content_type: string | null;
+  document_status: string | null;
 }
 
-export interface ContentWithAuthor extends Content {
+export interface ContentWithEmployee extends ContentItem {
   employee: {
-    id: string;
-    name: string;
-    department: string | null;
+    employeeID: string;
+    employee_name: string | null;
   } | null;
 }

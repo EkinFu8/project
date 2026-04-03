@@ -7,30 +7,27 @@ datasource db {
 }
 
 model Employee {
-  id         String   @id @default(uuid()) @db.Uuid
-  name       String
-  email      String   @unique
-  department String?
-  title      String?
-  phone      String?
-  hired_at   DateTime? @db.Date
-  created_at DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at DateTime  @updatedAt @db.Timestamptz(6)
+  employeeID    String  @id @db.Char(10)
+  employee_name String? @db.VarChar(50)
+  job_desc      String? @db.VarChar(200)
 
-  contents Content[]
+  content_items ContentManagement[] @relation("content_owner_fk")
 
-  @@map("employees")
+  @@map("employee")
 }
 
-model Content {
-  id          String   @id @default(uuid()) @db.Uuid
-  title       String
-  body        String
-  status      String   @default("draft")
-  employee_id String?  @db.Uuid
-  employee    Employee? @relation(fields: [employee_id], references: [id], onDelete: SetNull)
-  created_at  DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime  @updatedAt @db.Timestamptz(6)
+model ContentManagement {
+  fileID          String    @id @db.Char(64)
+  filename        String?   @db.VarChar(100)
+  url             String?   @db.VarChar(100)
+  content_owner   String?   @db.VarChar(50)
+  job_position    String?   @db.VarChar(20)
+  last_modified   DateTime? @db.Date
+  expiration_date DateTime? @db.Date
+  content_type    String?   @db.VarChar(20)
+  document_status String?   @db.VarChar(20)
 
-  @@map("contents")
+  employee Employee? @relation("content_owner_fk", fields: [content_owner], references: [employeeID])
+
+  @@map("content_management")
 }

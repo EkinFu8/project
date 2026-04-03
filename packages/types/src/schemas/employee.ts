@@ -1,22 +1,18 @@
 import { z } from "zod";
 
 export const employeeIdSchema = z.object({
-  id: z.string().uuid(),
+  employeeID: z.string().min(1).max(10),
 });
 
 export const createEmployeeSchema = z.object({
-  name: z.string().min(1).max(255),
-  email: z.string().email(),
-  department: z.string().max(255).nullish(),
-  title: z.string().max(255).nullish(),
-  phone: z.string().max(50).nullish(),
-  hired_at: z.coerce.date().nullish(),
+  employeeID: z.string().min(1).max(10),
+  employee_name: z.string().max(50).nullish(),
+  job_desc: z.string().max(200).nullish(),
 });
 
-export const updateEmployeeSchema = createEmployeeSchema.partial();
+export const updateEmployeeSchema = createEmployeeSchema.omit({ employeeID: true }).partial();
 
 export const employeeListQuerySchema = z.object({
-  department: z.string().optional(),
   search: z.string().optional(),
 });
 

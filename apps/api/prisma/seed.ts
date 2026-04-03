@@ -5,125 +5,91 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding database...");
 
-  // Clear existing data
-  await prisma.content.deleteMany();
+  await prisma.contentManagement.deleteMany();
   await prisma.employee.deleteMany();
 
-  // Create employees
   const employees = await Promise.all([
     prisma.employee.create({
-      data: {
-        name: "Alice Johnson",
-        email: "alice@example.com",
-        department: "Engineering",
-        title: "Senior Developer",
-        phone: "555-0101",
-        hired_at: new Date("2022-03-15"),
-      },
+      data: { employeeID: "EMP001", employee_name: "Alice Johnson", job_desc: "Senior Developer" },
     }),
     prisma.employee.create({
-      data: {
-        name: "Bob Martinez",
-        email: "bob@example.com",
-        department: "Marketing",
-        title: "Content Strategist",
-        phone: "555-0102",
-        hired_at: new Date("2023-01-10"),
-      },
+      data: { employeeID: "EMP002", employee_name: "Bob Martinez", job_desc: "Content Strategist" },
     }),
     prisma.employee.create({
-      data: {
-        name: "Carol Chen",
-        email: "carol@example.com",
-        department: "Engineering",
-        title: "Tech Lead",
-        phone: "555-0103",
-        hired_at: new Date("2021-06-01"),
-      },
+      data: { employeeID: "EMP003", employee_name: "Carol Chen", job_desc: "Tech Lead" },
     }),
     prisma.employee.create({
-      data: {
-        name: "David Kim",
-        email: "david@example.com",
-        department: "Design",
-        title: "UI/UX Designer",
-        phone: "555-0104",
-        hired_at: new Date("2023-07-20"),
-      },
+      data: { employeeID: "EMP004", employee_name: "David Kim", job_desc: "UI/UX Designer" },
     }),
     prisma.employee.create({
-      data: {
-        name: "Eva Rodriguez",
-        email: "eva@example.com",
-        department: "Product",
-        title: "Product Manager",
-        phone: "555-0105",
-        hired_at: new Date("2022-11-08"),
-      },
+      data: { employeeID: "EMP005", employee_name: "Eva Rodriguez", job_desc: "Product Manager" },
     }),
   ]);
 
-  // Create content authored by employees
   await Promise.all([
-    prisma.content.create({
+    prisma.contentManagement.create({
       data: {
-        title: "Getting Started with TypeScript",
-        body: "TypeScript adds static type checking to JavaScript, catching errors at compile time rather than runtime. In this guide, we cover setting up a project, configuring tsconfig, and writing your first typed functions.",
-        status: "published",
-        employee_id: employees[0].id,
+        fileID: "FILE-TS-GUIDE-001",
+        filename: "Getting Started with TypeScript",
+        url: "/docs/typescript-guide",
+        content_owner: employees[0].employeeID,
+        job_position: "Senior Developer",
+        last_modified: new Date("2026-03-15"),
+        content_type: "Reference",
+        document_status: "Finalized",
       },
     }),
-    prisma.content.create({
+    prisma.contentManagement.create({
       data: {
-        title: "Q1 Marketing Strategy",
-        body: "Our Q1 focus is on expanding brand awareness through content marketing and social media campaigns. Key metrics include engagement rate, lead generation, and conversion optimization.",
-        status: "published",
-        employee_id: employees[1].id,
+        fileID: "FILE-MKT-Q1-002",
+        filename: "Q1 Marketing Strategy",
+        url: "/docs/q1-marketing",
+        content_owner: employees[1].employeeID,
+        job_position: "Content Strategist",
+        last_modified: new Date("2026-02-20"),
+        content_type: "Workflow",
+        document_status: "Finalized",
       },
     }),
-    prisma.content.create({
+    prisma.contentManagement.create({
       data: {
-        title: "Microservices Architecture Guide",
-        body: "This document outlines our transition from a monolithic architecture to microservices. We cover service boundaries, communication patterns, data ownership, and deployment strategies.",
-        status: "published",
-        employee_id: employees[2].id,
+        fileID: "FILE-ARCH-MICRO-003",
+        filename: "Microservices Architecture Guide",
+        url: "/docs/microservices",
+        content_owner: employees[2].employeeID,
+        job_position: "Tech Lead",
+        last_modified: new Date("2026-01-10"),
+        content_type: "Reference",
+        document_status: "Finalized",
       },
     }),
-    prisma.content.create({
+    prisma.contentManagement.create({
       data: {
-        title: "Design System v2 Proposal",
-        body: "Proposal for the next iteration of our design system. Includes updated color tokens, component library expansion, accessibility improvements, and Figma-to-code workflow enhancements.",
-        status: "draft",
-        employee_id: employees[3].id,
+        fileID: "FILE-DS-V2-004",
+        filename: "Design System v2 Proposal",
+        url: "/docs/design-system-v2",
+        content_owner: employees[3].employeeID,
+        job_position: "UI/UX Designer",
+        last_modified: new Date("2026-03-28"),
+        content_type: "Reference",
+        document_status: "Created",
       },
     }),
-    prisma.content.create({
+    prisma.contentManagement.create({
       data: {
-        title: "Product Roadmap 2026",
-        body: "This roadmap covers our planned features and initiatives for 2026, organized by quarter. Priorities include AI-powered features, performance improvements, and mobile experience overhaul.",
-        status: "draft",
-        employee_id: employees[4].id,
-      },
-    }),
-    prisma.content.create({
-      data: {
-        title: "API Performance Best Practices",
-        body: "A collection of proven patterns for building high-performance APIs: connection pooling, query optimization, caching strategies, and response compression techniques.",
-        status: "published",
-        employee_id: employees[0].id,
-      },
-    }),
-    prisma.content.create({
-      data: {
-        title: "Team Onboarding Handbook",
-        body: "Everything a new team member needs to know: development environment setup, coding standards, PR review process, deployment workflow, and key contacts.",
-        status: "published",
-        employee_id: employees[2].id,
+        fileID: "FILE-ROADMAP-2026-005",
+        filename: "Product Roadmap 2026",
+        url: "/docs/roadmap-2026",
+        content_owner: employees[4].employeeID,
+        job_position: "Product Manager",
+        last_modified: new Date("2026-03-01"),
+        content_type: "Workflow",
+        document_status: "in-progress",
       },
     }),
   ]);
 
-  console.log(`Seeded ${employees.length} employees and 7 content items.`);
+  console.log(`Seeded ${employees.length} employees and 5 content items.`);
 }
 
 main()

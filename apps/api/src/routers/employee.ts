@@ -7,77 +7,55 @@ import {
 import { publicProcedure, router } from "../lib/trpc";
 
 export const employeeRouter = router({
-  /** List all employees, optionally filtered by department or search term. */
   list: publicProcedure.input(employeeListQuerySchema).query(async ({ ctx, input }) => {
     const where: Record<string, unknown> = {};
 
-    if (input.department) {
-      where.department = input.department;
-    }
-
     if (input.search) {
       where.OR = [
-        { name: { contains: input.search, mode: "insensitive" } },
-        { email: { contains: input.search, mode: "insensitive" } },
-        { title: { contains: input.search, mode: "insensitive" } },
+        { employee_name: { contains: input.search, mode: "insensitive" } },
+        { employeeID: { contains: input.search, mode: "insensitive" } },
+        { job_desc: { contains: input.search, mode: "insensitive" } },
       ];
     }
 
     return ctx.prisma.employee.findMany({
       where,
-      orderBy: { name: "asc" },
+      orderBy: { employee_name: "asc" },
       include: {
-        _count: { select: { contents: true } },
+        _count: { select: { content_items: true } },
       },
     });
   }),
 
-  /** Get a single employee by ID, including their authored content. */
   getById: publicProcedure.input(employeeIdSchema).query(async ({ ctx, input }) => {
     return ctx.prisma.employee.findUniqueOrThrow({
-      where: { id: input.id },
+      where: { employeeID: input.employeeID },
       include: {
-        contents: {
+        content_items: {
           select: {
-            id: true,
-            title: true,
-            status: true,
-            created_at: true,
+            fileID: true,
+            filename: true,
+            document_status: true,
+            last_modified: true,
           },
-          orderBy: { created_at: "desc" },
+          orderBy: { last_modified: "desc" },
         },
       },
     });
   }),
 
-  /** Create a new employee. */
   create: publicProcedure.input(createEmployeeSchema).mutation(async ({ ctx, input }) => {
     return ctx.prisma.employee.create({ data: input });
   }),
 
-  /** Update an existing employee. */
   update: publicProcedure
     .input(employeeIdSchema.merge(updateEmployeeSchema))
     .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input;
-      return ctx.prisma.employee.update({ where: { id }, data });
+      const { employeeID, ...data } = input;
+      return ctx.prisma.employee.update({ where: { employeeID }, data });
     }),
 
-  /** Delete an employee. */
   delete: publicProcedure.input(employeeIdSchema).mutation(async ({ ctx, input }) => {
-    return ctx.prisma.employee.delete({ where: { id: input.id } });
-  }),
-
-  /** List distinct departments for filtering. */
-  departments: publicProcedure.query(async ({ ctx }) => {
-    const results = await ctx.prisma.employee.findMany({
-      where: { department: { not: null } },
-      select: { department: true },
-      distinct: ["department"],
-      orderBy: { department: "asc" },
-    });
-    return results
-      .map((r: { department: string | null }) => r.department)
-      .filter(Boolean) as string[];
+    return ctx.prisma.employee.delete({ where: { employeeID: input.employeeID } });
   }),
 });

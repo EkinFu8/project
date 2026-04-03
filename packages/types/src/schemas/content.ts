@@ -1,21 +1,26 @@
 import { z } from "zod";
 
 export const contentIdSchema = z.object({
-  id: z.string().uuid(),
+  fileID: z.string().min(1).max(64),
 });
 
 export const createContentSchema = z.object({
-  title: z.string().min(1).max(500),
-  body: z.string().min(1),
-  status: z.enum(["draft", "published"]).default("draft"),
-  employee_id: z.string().uuid().nullish(),
+  fileID: z.string().min(1).max(64),
+  filename: z.string().max(100).nullish(),
+  url: z.string().max(100).nullish(),
+  content_owner: z.string().max(50).nullish(),
+  job_position: z.string().max(20).nullish(),
+  last_modified: z.coerce.date().nullish(),
+  expiration_date: z.coerce.date().nullish(),
+  content_type: z.enum(["Reference", "Workflow"]).nullish(),
+  document_status: z.enum(["Created", "in-progress", "Finalized", "Archived"]).nullish(),
 });
 
-export const updateContentSchema = createContentSchema.partial();
+export const updateContentSchema = createContentSchema.omit({ fileID: true }).partial();
 
 export const contentListQuerySchema = z.object({
-  status: z.enum(["draft", "published"]).optional(),
-  employee_id: z.string().uuid().optional(),
+  document_status: z.string().optional(),
+  content_owner: z.string().optional(),
   search: z.string().optional(),
 });
 
