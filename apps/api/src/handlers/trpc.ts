@@ -18,9 +18,13 @@ export default async function handler(req: Request): Promise<Response> {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
+  // Vercel passes relative URLs — tRPC needs absolute
+  const url = new URL(req.url, `https://${req.headers.get("host") || "localhost"}`);
+  const absoluteReq = new Request(url.toString(), req);
+
   const response = await fetchRequestHandler({
     endpoint: "/api/trpc",
-    req,
+    req: absoluteReq,
     router: appRouter,
     createContext: createFetchContext,
   });
