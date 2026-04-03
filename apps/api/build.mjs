@@ -11,7 +11,7 @@ await build({
   target: "node22",
   format: "esm",
   outfile: `${FUNC_DIR}/index.mjs`,
-  external: ["@prisma/client", "@prisma/adapter-pg", "pg"],
+  // Bundle everything — Build Output API functions don't get node_modules
   banner: {
     js: 'import{createRequire}from"module";const require=createRequire(import.meta.url);',
   },
