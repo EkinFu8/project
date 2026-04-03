@@ -1,5 +1,5 @@
 {
   "buildCommand": "prisma generate && node build.mjs",
-  "outputDirectory": "dist",
+  "outputDirectory": "public",
   "rewrites": [{ "source": "/api/trpc/:path*", "destination": "/api/trpc/[trpc]" }]
 }
