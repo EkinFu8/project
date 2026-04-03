@@ -7,88 +7,80 @@ import {
 import { publicProcedure, router } from "../lib/trpc";
 
 export const contentRouter = router({
-  /** List all content, optionally filtered by status, author, or search term. */
   list: publicProcedure.input(contentListQuerySchema).query(async ({ ctx, input }) => {
     const where: Record<string, unknown> = {};
 
-    if (input.status) {
-      where.status = input.status;
+    if (input.document_status) {
+      where.document_status = input.document_status;
     }
 
-    if (input.employee_id) {
-      where.employee_id = input.employee_id;
+    if (input.content_owner) {
+      where.content_owner = input.content_owner;
     }
 
     if (input.search) {
       where.OR = [
-        { title: { contains: input.search, mode: "insensitive" } },
-        { body: { contains: input.search, mode: "insensitive" } },
+        { filename: { contains: input.search, mode: "insensitive" } },
+        { url: { contains: input.search, mode: "insensitive" } },
       ];
     }
 
-    return ctx.prisma.content.findMany({
+    return ctx.prisma.contentManagement.findMany({
       where,
-      orderBy: { created_at: "desc" },
+      orderBy: { last_modified: "desc" },
       include: {
         employee: {
           select: {
-            id: true,
-            name: true,
-            department: true,
+            employeeID: true,
+            employee_name: true,
           },
         },
       },
     });
   }),
 
-  /** Get a single content item by ID, including its author. */
   getById: publicProcedure.input(contentIdSchema).query(async ({ ctx, input }) => {
-    return ctx.prisma.content.findUniqueOrThrow({
-      where: { id: input.id },
+    return ctx.prisma.contentManagement.findUniqueOrThrow({
+      where: { fileID: input.fileID },
       include: {
         employee: {
           select: {
-            id: true,
-            name: true,
-            email: true,
-            department: true,
-            title: true,
+            employeeID: true,
+            employee_name: true,
+            job_desc: true,
           },
         },
       },
     });
   }),
 
-  /** Create a new content item. */
   create: publicProcedure.input(createContentSchema).mutation(async ({ ctx, input }) => {
-    return ctx.prisma.content.create({
+    return ctx.prisma.contentManagement.create({
       data: input,
       include: {
         employee: {
-          select: { id: true, name: true, department: true },
+          select: { employeeID: true, employee_name: true },
         },
       },
     });
   }),
 
-  /** Update an existing content item. */
   update: publicProcedure
     .input(contentIdSchema.merge(updateContentSchema))
     .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input;
-      return ctx.prisma.content.update({
-        where: { id },
+      const { fileID, ...data } = input;
+      return ctx.prisma.contentManagement.update({
+        where: { fileID },
         data,
         include: {
           employee: {
-            select: { id: true, name: true, department: true },
+            select: { employeeID: true, employee_name: true },
           },
         },
       });
     }),
 
-  /** Delete a content item. */
   delete: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
-    return ctx.prisma.content.delete({ where: { id: input.id } });
+    return ctx.prisma.contentManagement.delete({ where: { fileID: input.fileID } });
   }),
 });

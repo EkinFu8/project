@@ -3,7 +3,9 @@ import { createHTTPServer } from "@trpc/server/adapters/standalone";
 import { createContext } from "./context";
 import { appRouter } from "./routers";
 
-const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(",")
+  : ["http://localhost:5173", "http://localhost:5174"];
 
 function setCorsHeaders(req: http.IncomingMessage, res: http.ServerResponse) {
   const origin = req.headers.origin;

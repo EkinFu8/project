@@ -2,12 +2,16 @@ import { LayoutGrid, Loader2 } from "lucide-react";
 import { Link } from "react-router";
 import { trpc } from "@/lib/trpc";
 
-function getStatusBadge(status: string) {
+function getStatusBadge(status: string | null) {
   switch (status) {
-    case "published":
+    case "Finalized":
       return "bg-hanover-green text-white";
-    case "draft":
+    case "Created":
       return "bg-[#C9A84C] text-white";
+    case "in-progress":
+      return "bg-blue-500 text-white";
+    case "Archived":
+      return "bg-gray-400 text-white";
     default:
       return "bg-muted text-muted-foreground";
   }
@@ -16,31 +20,23 @@ function getStatusBadge(status: string) {
 function DashboardPage() {
   const employees = trpc.employee.list.useQuery({});
   const allContent = trpc.content.list.useQuery({});
-  const published = trpc.content.list.useQuery({ status: "published" });
-  const drafts = trpc.content.list.useQuery({ status: "draft" });
-  const departments = trpc.employee.departments.useQuery();
 
   const isLoading = employees.isLoading || allContent.isLoading;
+
+  const finalized = allContent.data?.filter((c) => c.document_status === "Finalized") ?? [];
+  const inProgress = allContent.data?.filter((c) => c.document_status === "in-progress") ?? [];
 
   const stats = [
     { label: "Total Employees", value: employees.data?.length ?? "—" },
     { label: "Total Content", value: allContent.data?.length ?? "—" },
-    { label: "Published", value: published.data?.length ?? "—" },
-    { label: "Drafts", value: drafts.data?.length ?? "—" },
+    { label: "Finalized", value: finalized.length },
+    { label: "In Progress", value: inProgress.length },
   ];
-
-  // Count employees per department for the bar chart
-  const deptCounts = (departments.data ?? []).map((dept) => ({
-    dept,
-    count: employees.data?.filter((e) => e.department === dept).length ?? 0,
-  }));
-  const maxCount = Math.max(...deptCounts.map((d) => d.count), 1);
 
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
       <div className="py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Header */}
           <div className="mb-8">
             <h1 className="flex items-center gap-3 text-3xl font-bold text-foreground">
               <LayoutGrid className="h-8 w-8 text-hanover-green" />
@@ -56,7 +52,6 @@ function DashboardPage() {
             </div>
           ) : (
             <>
-              {/* Stats Cards */}
               <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
                 {stats.map((stat) => (
                   <div
@@ -70,30 +65,47 @@ function DashboardPage() {
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
-                {/* Department Bar Chart */}
-                <div className="rounded bg-white p-6 shadow-sm">
-                  <h2 className="mb-4 text-lg font-semibold text-foreground">
-                    Employees by Department
-                  </h2>
-                  {deptCounts.length === 0 ? (
+                {/* Employees Table */}
+                <div className="overflow-x-auto rounded bg-white p-6 shadow-sm">
+                  <h2 className="mb-4 text-lg font-semibold text-foreground">Employees</h2>
+                  {(employees.data?.length ?? 0) === 0 ? (
                     <p className="py-8 text-center text-sm text-muted-foreground">
-                      No department data yet.
+                      No employees yet.
                     </p>
                   ) : (
-                    <div className="flex h-48 items-end justify-around gap-3">
-                      {deptCounts.map(({ dept, count }) => (
-                        <div key={dept} className="flex flex-col items-center gap-1">
-                          <span className="text-xs font-medium text-foreground">{count}</span>
-                          <div
-                            className="w-14 rounded-t bg-hanover-green transition-all"
-                            style={{ height: `${(count / maxCount) * 100}%`, minHeight: 8 }}
-                          />
-                          <span className="max-w-[60px] truncate text-[11px] text-muted-foreground">
-                            {dept}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="px-2 py-3 text-left font-semibold text-foreground">ID</th>
+                          <th className="px-2 py-3 text-left font-semibold text-foreground">
+                            Name
+                          </th>
+                          <th className="px-2 py-3 text-left font-semibold text-foreground">
+                            Role
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {employees.data?.slice(0, 6).map((emp) => (
+                          <tr key={emp.employeeID} className="border-b border-border">
+                            <td className="px-2 py-3 font-mono text-xs text-muted-foreground">
+                              {emp.employeeID}
+                            </td>
+                            <td className="px-2 py-3">
+                              <Link
+                                to={`/employees/${emp.employeeID}`}
+                                className="text-hanover-green hover:underline"
+                              >
+                                {emp.employee_name ?? "—"}
+                              </Link>
+                            </td>
+                            <td className="px-2 py-3 text-muted-foreground">
+                              {emp.job_desc ?? "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   )}
                 </div>
 
@@ -109,10 +121,10 @@ function DashboardPage() {
                       <thead>
                         <tr className="border-b border-border">
                           <th className="px-2 py-3 text-left font-semibold text-foreground">
-                            Title
+                            File
                           </th>
                           <th className="px-2 py-3 text-left font-semibold text-foreground">
-                            Author
+                            Owner
                           </th>
                           <th className="px-2 py-3 text-left font-semibold text-foreground">
                             Status
@@ -121,23 +133,23 @@ function DashboardPage() {
                       </thead>
                       <tbody>
                         {allContent.data?.slice(0, 6).map((item) => (
-                          <tr key={item.id} className="border-b border-border">
+                          <tr key={item.fileID} className="border-b border-border">
                             <td className="px-2 py-3">
                               <Link
-                                to={`/content/${item.id}/edit`}
+                                to={`/content/${item.fileID}/edit`}
                                 className="text-hanover-green hover:underline"
                               >
-                                {item.title}
+                                {item.filename ?? item.fileID}
                               </Link>
                             </td>
                             <td className="px-2 py-3 text-muted-foreground">
-                              {item.employee?.name ?? "Unassigned"}
+                              {item.employee?.employee_name ?? "Unassigned"}
                             </td>
                             <td className="px-2 py-3">
                               <span
-                                className={`rounded px-2 py-0.5 text-xs font-semibold ${getStatusBadge(item.status)}`}
+                                className={`rounded px-2 py-0.5 text-xs font-semibold ${getStatusBadge(item.document_status)}`}
                               >
-                                {item.status}
+                                {item.document_status ?? "—"}
                               </span>
                             </td>
                           </tr>

@@ -5,10 +5,8 @@ import { trpc } from "@/lib/trpc";
 
 function EmployeesPage() {
   const [search, setSearch] = useState("");
-  const [department, setDepartment] = useState("");
 
-  const employees = trpc.employee.list.useQuery({ search, department: department || undefined });
-  const departments = trpc.employee.departments.useQuery();
+  const employees = trpc.employee.list.useQuery({ search });
 
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
@@ -32,30 +30,18 @@ function EmployeesPage() {
             </Link>
           </div>
 
-          {/* Filters */}
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
+          {/* Search */}
+          <div className="mb-6">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search by name, email, or title..."
+                placeholder="Search by name, ID, or job description..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded border border-border bg-white py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
               />
             </div>
-            <select
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              className="rounded border border-border bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
-            >
-              <option value="">All Departments</option>
-              {departments.data?.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* Table */}
@@ -75,19 +61,37 @@ function EmployeesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-[#F9FAFB]">
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">ID</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Email</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Title</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">
-                      Department
+                      Job Description
                     </th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Content</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Hired</th>
                   </tr>
                 </thead>
                 <tbody>
                   {employees.data?.map((emp) => (
-                    <EmployeeRow key={emp.id} emp={emp} />
+                    <tr
+                      key={emp.employeeID}
+                      className="border-b border-border transition-colors hover:bg-[#F9FAFB]"
+                    >
+                      <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
+                        {emp.employeeID}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-foreground">
+                        <Link
+                          to={`/employees/${emp.employeeID}`}
+                          className="text-hanover-green hover:underline"
+                        >
+                          {emp.employee_name ?? "—"}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{emp.job_desc ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {emp._count.content_items} item
+                        {emp._count.content_items !== 1 ? "s" : ""}
+                      </td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -96,47 +100,6 @@ function EmployeesPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-interface EmployeeRowProps {
-  emp: {
-    id: string;
-    name: string;
-    email: string;
-    title: string | null;
-    department: string | null;
-    hired_at: string | null;
-    _count: { contents: number };
-  };
-}
-
-function EmployeeRow({ emp }: EmployeeRowProps) {
-  return (
-    <tr className="border-b border-border transition-colors hover:bg-[#F9FAFB]">
-      <td className="px-4 py-3 font-medium text-foreground">
-        <Link to={`/employees/${emp.id}`} className="text-hanover-green hover:underline">
-          {emp.name}
-        </Link>
-      </td>
-      <td className="px-4 py-3 text-muted-foreground">{emp.email}</td>
-      <td className="px-4 py-3 text-muted-foreground">{emp.title ?? "—"}</td>
-      <td className="px-4 py-3">
-        {emp.department ? (
-          <span className="rounded bg-hanover-green/10 px-2 py-0.5 text-xs font-medium text-hanover-green">
-            {emp.department}
-          </span>
-        ) : (
-          "—"
-        )}
-      </td>
-      <td className="px-4 py-3 text-muted-foreground">
-        {emp._count.contents} item{emp._count.contents !== 1 ? "s" : ""}
-      </td>
-      <td className="px-4 py-3 text-muted-foreground">
-        {emp.hired_at ? new Date(emp.hired_at).toLocaleDateString() : "—"}
-      </td>
-    </tr>
   );
 }
 
