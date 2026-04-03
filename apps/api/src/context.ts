@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js";
-import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import type { CreateHTTPContextOptions } from "@trpc/server/adapters/standalone";
 import { prisma } from "./lib/prisma";
 
@@ -34,14 +33,6 @@ function extractBearerToken(authHeader: string | null | undefined): string | nul
  */
 export async function createContext({ req }: CreateHTTPContextOptions) {
   const authHeader = req.headers.authorization;
-  return createContextInner(extractBearerToken(authHeader));
-}
-
-/**
- * Context for the Vercel Serverless fetch handler (Fetch Request).
- */
-export async function createFetchContext({ req }: FetchCreateContextFnOptions) {
-  const authHeader = req.headers.get("authorization");
   return createContextInner(extractBearerToken(authHeader));
 }
 

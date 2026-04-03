@@ -11,7 +11,8 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "tsx watch --env-file=../../.env.local src/server.ts",
-    "build": "prisma generate && tsc --noEmit",
+    "build": "prisma generate && node build.mjs",
+    "start": "node dist/server.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
