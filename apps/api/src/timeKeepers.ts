@@ -41,7 +41,9 @@ export class RuntimeKeeper{
     }
 
     update():void {
+        this.lastTime=this.currentTime;
         this.currentTime = this.getCurrentUnixSeconds();
+
         this.elapsed += this.currentTime-this.lastTime;
         //this is mostly ported from some old python code i wrote
 
