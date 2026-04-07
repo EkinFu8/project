@@ -83,7 +83,6 @@ function UserFormPage() {
                 label="Username"
                 type="text"
                 required
-                disabled={isEditing}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
