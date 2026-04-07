@@ -118,7 +118,7 @@ export class RuntimeKeeper{
 
     getTimeString():string{
 
-        return "years: "+this.years + " days: "+ this.days + " hours: "+ this.hours + " minutes: "+ this.minutes + "seconds: "+ this.seconds;
+        return "years: "+this.years + " days: "+ this.days + " hours: "+ this.hours + " minutes: "+ this.minutes + " seconds: "+ this.seconds;
     }
 
 

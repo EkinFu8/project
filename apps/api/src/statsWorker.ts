@@ -62,6 +62,7 @@ function sleep(seconds: number): Promise<void> {
 
 //the logic for the stats worker thread
 function statsWorker() : void{
+    console.log("\n\n\n");
     console.log("server telemetry:")
     console.log("current date: "+(new Date(Date.now()).toDateString())+" current time: "+(new Date(Date.now()).toTimeString()));
     console.log("server has been running for: "+runtimeTimer.getTimeString())
