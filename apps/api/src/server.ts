@@ -3,9 +3,9 @@ import { createHTTPServer } from "@trpc/server/adapters/standalone";
 import { createContext } from "./context";
 import { appRouter } from "./routers";
 //the stats thread functions
-import { startStatsWorker } from "./statsWorker";
-import { stopStatsWorker } from "./statsWorker";
-import { wakeStatsWorker} from "./statsWorker";
+import { startTelemetryWorker } from "./telemetryWorker";
+import { stopTelemetryWorker } from "./telemetryWorker";
+import { wakeTelemetryWorker} from "./telemetryWorker";
 
 
 
@@ -48,4 +48,4 @@ server.listen(port, () => {
 //the interval in which the stats worker will run
 let statsInterval:number = 30;
 //start the stats worker thread;
-startStatsWorker(statsInterval);
+startTelemetryWorker(statsInterval);

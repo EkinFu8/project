@@ -17,14 +17,14 @@ let wakeUpResolve: (() => void) | null = null;
 let runtimeTimer:RuntimeKeeper=new RuntimeKeeper();
 runtimeTimer.start();
 //start the worker thread
-export async function startStatsWorker(wakeUpIntervalSeconds:number): Promise<void> {
+export async function startTelemetryWorker(wakeUpIntervalSeconds:number): Promise<void> {
     console.log("stats worker started!");
 
     backgroundThreadRunning=true;
     while (backgroundThreadRunning===true) {
         await sleep(wakeUpIntervalSeconds); // sleep 1 minute
         runtimeTimer.update();
-        statsWorker();
+        telemetryWorker();
 
     }
     if((backgroundThreadRunning===false) || (backgroundThreadRunning!==true)) {
@@ -33,14 +33,14 @@ export async function startStatsWorker(wakeUpIntervalSeconds:number): Promise<vo
 }
 
 //used to stop the stats worker thread
-export function stopStatsWorker() : void {
+export function stopTelemetryWorker() : void {
     backgroundThreadRunning = false;
     wakeUpResolve?.(); // wakes the worker immediately
 
 }
 
 // Manual trigger thread wake
-export function wakeStatsWorker() : void {
+export function wakeTelemetryWorker() : void {
     wakeUpResolve?.(); // wakes the worker immediately
 }
 
@@ -61,12 +61,12 @@ function sleep(seconds: number): Promise<void> {
 
 
 //the logic for the stats worker thread
-function statsWorker() : void{
+function telemetryWorker() : void{
     console.log("\n\n\n");
     console.log("server telemetry:")
     console.log("current date: "+(new Date(Date.now()).toDateString())+" current time: "+(new Date(Date.now()).toTimeString()));
     console.log("server has been running for: "+runtimeTimer.getTimeString())
-    console.log("stats worker running!");
+    console.log("telemetry worker running!");
 
 
 
