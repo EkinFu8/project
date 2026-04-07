@@ -1,13 +1,28 @@
+
+
+
+
+
+
+//worker control thread stuff
 //used to control if the stats worker thread is running
 let backgroundThreadRunning= true;
+
+
 //thing i dont understand that lets the thread be forced awake
 let wakeUpResolve: (() => void) | null = null;
 
+
+
+
 //start the worker thread
-export async function startStatsWorker(wakeUpIntervalSeconds:number) {
+export async function startStatsWorker(wakeUpIntervalSeconds:number): Promise<void> {
     console.log("stats worker started!");
+
+    backgroundThreadRunning=true;
     while (backgroundThreadRunning===true) {
         await sleep(wakeUpIntervalSeconds); // sleep 1 minute
+
         statsWorker();
 
     }
@@ -17,24 +32,21 @@ export async function startStatsWorker(wakeUpIntervalSeconds:number) {
 }
 
 //used to stop the stats worker thread
-export function stopStatsWorker() {
+export function stopStatsWorker() : void {
     backgroundThreadRunning = false;
     wakeUpResolve?.(); // wakes the worker immediately
 
 }
 
 // Manual trigger thread wake
-export function wakeStatsWorker() {
+export function wakeStatsWorker() : void {
     wakeUpResolve?.(); // wakes the worker immediately
 }
 
-//the logic for the stats worker thread
-function statsWorker(){
-    console.log("stats worker running!");
-}
+
 
 // Helper function for sleeping
-function sleep(seconds: number) {
+function sleep(seconds: number): Promise<void> {
     return new Promise<void>((resolve) => {
         const timeout = setTimeout(resolve, seconds * 1000);
         wakeUpResolve = () => {
@@ -42,4 +54,15 @@ function sleep(seconds: number) {
             resolve();            // continue immediately
         };
     });
+}
+
+
+
+//the logic for the stats worker thread
+function statsWorker() : void{
+    console.log("stats worker running!");
+
+
+
+
 }
