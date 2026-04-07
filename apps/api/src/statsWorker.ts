@@ -11,7 +11,7 @@ export async function startStatsWorker(wakeUpIntervalSeconds:number) {
         statsWorker();
 
     }
-    if((backgroundThreadRunning ===false) || (backgroundThreadRunning!==true)) {
+    if((backgroundThreadRunning===false) || (backgroundThreadRunning!==true)) {
         console.log("stats worker stopped!");
     }
 }
