@@ -38,6 +38,7 @@ export class RuntimeKeeper{
     start():void {
         this.resetVals();
         this.lastTime = this.getCurrentUnixSeconds();
+        this.currentTime = this.getCurrentUnixSeconds();
     }
 
     update():void {
