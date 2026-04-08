@@ -1,8 +1,19 @@
+import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { useFileUpload } from "@/hooks/use-file-upload";
 import { trpc } from "@/lib/trpc.ts";
+
+function formatDateField(date: Date | string | null | undefined): string {
+  if (!date) return "";
+  return new Date(date).toISOString().split("T")[0];
+}
+
+function toNullable<T extends string>(value: T | ""): T | null {
+  return (value || null) as T | null;
+}
 
 function ContentFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,26 +33,39 @@ function ContentFormPage() {
   const [contentType, setContentType] = useState("");
   const [documentStatus, setDocumentStatus] = useState("");
 
+  const handleUploadSuccess = useCallback(
+    (result: { publicUrl: string; storagePath: string; fileName: string }) => {
+      setFilename(result.fileName.slice(0, 100));
+      setUrl(result.publicUrl);
+      setLastModified(new Date().toISOString().split("T")[0]);
+
+      if (!isEditing && !fileID) {
+        setFileID(result.storagePath.slice(0, 64));
+      }
+      if (!isEditing && !documentStatus) {
+        setDocumentStatus("Created");
+      }
+    },
+    [isEditing, fileID, documentStatus],
+  );
+
+  const { upload, isUploading, uploadProgress, uploadError } = useFileUpload({
+    bucket: "content-files",
+    onSuccess: handleUploadSuccess,
+  });
+
   useEffect(() => {
-    if (existing.data) {
-      setFileID(existing.data.fileID);
-      setFilename(existing.data.filename ?? "");
-      setUrl(existing.data.url ?? "");
-      setContentOwner(existing.data.content_owner ?? "");
-      setJobPosition(existing.data.job_position ?? "");
-      setLastModified(
-        existing.data.last_modified
-          ? new Date(existing.data.last_modified).toISOString().split("T")[0]
-          : "",
-      );
-      setExpirationDate(
-        existing.data.expiration_date
-          ? new Date(existing.data.expiration_date).toISOString().split("T")[0]
-          : "",
-      );
-      setContentType(existing.data.content_type ?? "");
-      setDocumentStatus(existing.data.document_status ?? "");
-    }
+    const d = existing.data;
+    if (!d) return;
+    setFileID(d.fileID);
+    setFilename(d.filename ?? "");
+    setUrl(d.url ?? "");
+    setContentOwner(d.content_owner ?? "");
+    setJobPosition(d.job_position ?? "");
+    setLastModified(formatDateField(d.last_modified));
+    setExpirationDate(formatDateField(d.expiration_date));
+    setContentType(d.content_type ?? "");
+    setDocumentStatus(d.document_status ?? "");
   }, [existing.data]);
 
   const utils = trpc.useUtils();
@@ -67,19 +91,16 @@ function ContentFormPage() {
     e.preventDefault();
 
     const data = {
-      filename: filename || null,
-      url: url || null,
-      content_owner: contentOwner || null,
-      job_position: jobPosition || null,
+      filename: toNullable(filename),
+      url: toNullable(url),
+      content_owner: toNullable(contentOwner),
+      job_position: toNullable(jobPosition),
       last_modified: lastModified ? new Date(lastModified) : null,
       expiration_date: expirationDate ? new Date(expirationDate) : null,
-      content_type: (contentType || null) as "Reference" | "Workflow" | null,
-      document_status: (documentStatus || null) as
-        | "Created"
-        | "in-progress"
-        | "Finalized"
-        | "Archived"
-        | null,
+      content_type: toNullable<"Reference" | "Workflow">(contentType as "Reference" | "Workflow"),
+      document_status: toNullable<"Created" | "in-progress" | "Finalized" | "Archived">(
+        documentStatus as "Created" | "in-progress" | "Finalized" | "Archived",
+      ),
     };
 
     if (isEditing) {
@@ -116,6 +137,39 @@ function ContentFormPage() {
 
           <div className="rounded bg-card p-8 shadow-md">
             <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* File Upload */}
+              <FileUpload
+                label="Upload File"
+                onFileSelect={upload}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.svg"
+                isUploading={isUploading}
+                progress={uploadProgress}
+                currentFileName={url ? filename : undefined}
+                disabled={isSaving}
+              />
+
+              {uploadError && (
+                <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  Upload failed: {uploadError}
+                </div>
+              )}
+
+              {url && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-medium text-foreground">Uploaded to:</span>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="truncate text-hanover-green underline hover:text-hanover-green/80"
+                  >
+                    {filename || url}
+                  </a>
+                </div>
+              )}
+
+              <hr className="border-border" />
+
               <TextInput
                 label="File ID"
                 type="text"
@@ -227,11 +281,11 @@ function ContentFormPage() {
 
               <button
                 type="submit"
-                disabled={isSaving}
+                disabled={isSaving || isUploading}
                 className="flex w-full items-center justify-center gap-2 rounded bg-hanover-green py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
               >
-                {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isEditing ? "Update Content" : "Save Content"}
+                {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isUploading ? "Uploading..." : isEditing ? "Update Content" : "Save Content"}
               </button>
             </form>
           </div>
