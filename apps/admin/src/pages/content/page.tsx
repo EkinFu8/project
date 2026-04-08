@@ -1,19 +1,27 @@
-import { FileText, Loader2, Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-
-const STATUS_STYLES: Record<string, string> = {
-  Finalized: "bg-hanover-green text-white",
-  "in-progress": "bg-blue-500 text-white",
-  Created: "bg-[#C9A84C] text-white",
-  Archived: "bg-gray-400 text-white",
-};
 
 const ROLE_TABS = [
   { key: "all", label: "All Users" },
   { key: "underwriter", label: "Underwriter" },
   { key: "business-analyst", label: "Business Analyst" },
 ];
+
+function getStatusBadge(status: string | null) {
+  switch (status) {
+    case "Finalized":
+      return "bg-hanover-green text-white";
+    case "Created":
+      return "bg-[#C9A84C] text-white";
+    case "in-progress":
+      return "bg-blue-500 text-white";
+    case "Archived":
+      return "bg-gray-400 text-white";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+}
 
 function matchesRole(jobPosition: string | null, role: string): boolean {
   if (role === "all") return true;
@@ -37,20 +45,10 @@ function AdminContentPage() {
   const filtered = allItems.filter((item) => matchesRole(item.job_position, roleFilter));
 
   return (
-    <div className="min-h-screen bg-muted">
-      <div className="py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="flex items-center gap-3 text-3xl font-bold text-foreground">
-              <FileText className="h-8 w-8 text-hanover-green" />
-              All Content
-            </h1>
-            <p className="mt-1 text-muted-foreground">Viewing content across all user types</p>
-          </div>
-
-          {/* Role filter tabs */}
-          <div className="mb-6 flex items-center gap-2">
+    <div id="admin-content-library" className="scroll-mt-4 border-t border-border/60 py-6 sm:py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-6 flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-2">
             {ROLE_TABS.map((tab) => (
               <button
                 key={tab.key}
@@ -72,8 +70,7 @@ function AdminContentPage() {
             ))}
           </div>
 
-          {/* Search + status filter */}
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -87,7 +84,7 @@ function AdminContentPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded border border-border bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
+              className="rounded border border-border bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green sm:min-w-40"
             >
               <option value="">All Statuses</option>
               <option value="Created">Created</option>
@@ -96,57 +93,51 @@ function AdminContentPage() {
               <option value="Archived">Archived</option>
             </select>
           </div>
-
-          {/* Content */}
-          {contents.isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
-              <span className="ml-2 text-muted-foreground">Loading content...</span>
-            </div>
-          ) : contents.isError ? (
-            <div className="py-16 text-center text-red-600">
-              Failed to load content. Is the API running?
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="py-16 text-center text-muted-foreground">No content found.</div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((item) => (
-                <div
-                  key={item.fileID}
-                  className="rounded border border-border bg-card p-5 shadow-sm"
-                >
-                  {/* Title + status */}
-                  <div className="mb-3 flex items-start justify-between gap-2">
-                    <h3 className="text-base font-semibold leading-snug text-foreground">
-                      {item.filename ?? "Untitled"}
-                    </h3>
-                    <span
-                      className={`shrink-0 rounded px-2 py-0.5 text-xs font-semibold ${STATUS_STYLES[item.document_status ?? ""] ?? "bg-muted text-muted-foreground"}`}
-                    >
-                      {item.document_status ?? "—"}
-                    </span>
-                  </div>
-
-                  {/* Type + position */}
-                  <p className="mb-3 text-xs text-muted-foreground">
-                    {item.content_type ?? "—"} · {item.job_position ?? "—"}
-                  </p>
-
-                  {/* Footer — owner + date */}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      {item.employee?.employee_name ?? item.content_owner ?? "Unassigned"}
-                    </span>
-                    <span>
-                      {item.last_modified ? new Date(item.last_modified).toLocaleDateString() : "—"}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
+
+        {contents.isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
+            <span className="ml-2 text-muted-foreground">Loading content...</span>
+          </div>
+        ) : contents.isError ? (
+          <div className="py-16 text-center text-red-600">
+            Failed to load content. Is the API running?
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-16 text-center text-muted-foreground">No content found.</div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((item) => (
+              <div
+                key={item.fileID}
+                className="group rounded border border-border bg-card p-5 shadow-sm transition-all hover:border-hanover-green hover:shadow-md"
+              >
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <h3 className="text-base font-semibold leading-snug text-foreground group-hover:text-hanover-green">
+                    {item.filename ?? "Untitled"}
+                  </h3>
+                  <span
+                    className={`shrink-0 rounded px-2 py-0.5 text-xs font-semibold ${getStatusBadge(item.document_status)}`}
+                  >
+                    {item.document_status ?? "—"}
+                  </span>
+                </div>
+
+                <p className="mb-3 text-xs text-muted-foreground">
+                  {item.content_type ?? "—"} · {item.job_position ?? "—"}
+                </p>
+
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{item.employee?.employee_name ?? item.content_owner ?? "Unassigned"}</span>
+                  <span>
+                    {item.last_modified ? new Date(item.last_modified).toLocaleDateString() : "—"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

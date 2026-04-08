@@ -15,6 +15,241 @@ function toNullable<T extends string>(value: T | ""): T | null {
   return (value || null) as T | null;
 }
 
+type ContentFormFieldsProps = {
+  isEditing: boolean;
+  fileID: string;
+  setFileID: (v: string) => void;
+  filename: string;
+  setFilename: (v: string) => void;
+  url: string;
+  setUrl: (v: string) => void;
+  contentOwner: string;
+  setContentOwner: (v: string) => void;
+  jobPosition: string;
+  setJobPosition: (v: string) => void;
+  lastModified: string;
+  setLastModified: (v: string) => void;
+  expirationDate: string;
+  setExpirationDate: (v: string) => void;
+  contentType: string;
+  setContentType: (v: string) => void;
+  documentStatus: string;
+  setDocumentStatus: (v: string) => void;
+  employees: ReturnType<typeof trpc.employee.list.useQuery>["data"];
+  upload: (file: File) => void;
+  isUploading: boolean;
+  uploadProgress: number;
+  uploadError: string | null;
+  createError: ReturnType<typeof trpc.content.create.useMutation>["error"];
+  updateError: ReturnType<typeof trpc.content.update.useMutation>["error"];
+  isSaving: boolean;
+  onSubmit: (e: React.FormEvent) => void;
+};
+
+function ContentFormFields({
+  isEditing,
+  fileID,
+  setFileID,
+  filename,
+  setFilename,
+  url,
+  setUrl,
+  contentOwner,
+  setContentOwner,
+  jobPosition,
+  setJobPosition,
+  lastModified,
+  setLastModified,
+  expirationDate,
+  setExpirationDate,
+  contentType,
+  setContentType,
+  documentStatus,
+  setDocumentStatus,
+  employees,
+  upload,
+  isUploading,
+  uploadProgress,
+  uploadError,
+  createError,
+  updateError,
+  isSaving,
+  onSubmit,
+}: ContentFormFieldsProps) {
+  const mutationError = createError?.message || updateError?.message || "Something went wrong.";
+  const submitLabel = isUploading ? "Uploading..." : isEditing ? "Update Content" : "Save Content";
+
+  return (
+    <div className="border-t border-border/60 py-8 sm:py-10">
+      <div className="mx-auto max-w-[640px] px-4 sm:px-6 lg:px-8">
+        <Link
+          to="/hero/content"
+          className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Content
+        </Link>
+
+        <h1 className="mb-6 text-2xl font-bold text-foreground">
+          {isEditing ? "Edit Content" : "New Content"}
+        </h1>
+
+        <div className="rounded bg-card p-8 shadow-md">
+          <form className="space-y-6" onSubmit={onSubmit}>
+            {/* File Upload */}
+            <FileUpload
+              label="Upload File"
+              onFileSelect={upload}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.svg"
+              isUploading={isUploading}
+              progress={uploadProgress}
+              currentFileName={url ? filename : undefined}
+              disabled={isSaving}
+            />
+
+            {uploadError && (
+              <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                Upload failed: {uploadError}
+              </div>
+            )}
+
+            {url && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium text-foreground">Uploaded to:</span>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="truncate text-hanover-green underline hover:text-hanover-green/80"
+                >
+                  {filename || url}
+                </a>
+              </div>
+            )}
+
+            <hr className="border-border" />
+
+            <TextInput
+              label="File ID"
+              type="text"
+              required
+              maxLength={64}
+              disabled={isEditing}
+              value={fileID}
+              onChange={(e) => setFileID(e.target.value)}
+            />
+            <TextInput
+              label="Filename"
+              type="text"
+              value={filename}
+              onChange={(e) => setFilename(e.target.value)}
+            />
+            <TextInput
+              label="URL"
+              type="text"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+
+            {/* Owner */}
+            <div>
+              <label htmlFor="owner" className="mb-2 block text-sm font-semibold text-foreground">
+                Content Owner
+              </label>
+              <select
+                id="owner"
+                value={contentOwner}
+                onChange={(e) => setContentOwner(e.target.value)}
+                className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-hanover-green"
+              >
+                <option value="">Unassigned</option>
+                {employees?.map((emp) => (
+                  <option key={emp.employeeID} value={emp.employeeID}>
+                    {emp.employee_name ?? emp.employeeID}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <TextInput
+              label="Job Position"
+              type="text"
+              value={jobPosition}
+              onChange={(e) => setJobPosition(e.target.value)}
+            />
+            <TextInput
+              label="Last Modified"
+              type="date"
+              value={lastModified}
+              onChange={(e) => setLastModified(e.target.value)}
+            />
+            <TextInput
+              label="Expiration Date"
+              type="date"
+              value={expirationDate}
+              onChange={(e) => setExpirationDate(e.target.value)}
+            />
+
+            {/* Content Type */}
+            <div>
+              <label
+                htmlFor="content-type"
+                className="mb-2 block text-sm font-semibold text-foreground"
+              >
+                Content Type
+              </label>
+              <select
+                id="content-type"
+                value={contentType}
+                onChange={(e) => setContentType(e.target.value)}
+                className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-hanover-green"
+              >
+                <option value="">—</option>
+                <option value="Reference">Reference</option>
+                <option value="Workflow">Workflow</option>
+              </select>
+            </div>
+
+            {/* Status */}
+            <div>
+              <label htmlFor="status" className="mb-2 block text-sm font-semibold text-foreground">
+                Status
+              </label>
+              <select
+                id="status"
+                value={documentStatus}
+                onChange={(e) => setDocumentStatus(e.target.value)}
+                className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-hanover-green"
+              >
+                <option value="">—</option>
+                <option value="Created">Created</option>
+                <option value="in-progress">In Progress</option>
+                <option value="Finalized">Finalized</option>
+                <option value="Archived">Archived</option>
+              </select>
+            </div>
+
+            {(createError || updateError) && (
+              <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {mutationError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSaving || isUploading}
+              className="flex w-full items-center justify-center gap-2 rounded bg-hanover-green py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
+            >
+              {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+              {submitLabel}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ContentFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -120,176 +355,36 @@ function ContentFormPage() {
   }
 
   return (
-    <div className="border-t border-border/60 py-8 sm:py-10">
-      <div className="mx-auto max-w-[640px] px-4 sm:px-6 lg:px-8">
-          <Link
-            to="/hero/content"
-            className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Content
-          </Link>
-
-          <h1 className="mb-6 text-2xl font-bold text-foreground">
-            {isEditing ? "Edit Content" : "New Content"}
-          </h1>
-
-          <div className="rounded bg-card p-8 shadow-md">
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              {/* File Upload */}
-              <FileUpload
-                label="Upload File"
-                onFileSelect={upload}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.svg"
-                isUploading={isUploading}
-                progress={uploadProgress}
-                currentFileName={url ? filename : undefined}
-                disabled={isSaving}
-              />
-
-              {uploadError && (
-                <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  Upload failed: {uploadError}
-                </div>
-              )}
-
-              {url && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-foreground">Uploaded to:</span>
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="truncate text-hanover-green underline hover:text-hanover-green/80"
-                  >
-                    {filename || url}
-                  </a>
-                </div>
-              )}
-
-              <hr className="border-border" />
-
-              <TextInput
-                label="File ID"
-                type="text"
-                required
-                maxLength={64}
-                disabled={isEditing}
-                value={fileID}
-                onChange={(e) => setFileID(e.target.value)}
-              />
-              <TextInput
-                label="Filename"
-                type="text"
-                value={filename}
-                onChange={(e) => setFilename(e.target.value)}
-              />
-              <TextInput
-                label="URL"
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-              />
-
-              {/* Owner */}
-              <div>
-                <label htmlFor="owner" className="mb-2 block text-sm font-semibold text-foreground">
-                  Content Owner
-                </label>
-                <select
-                  id="owner"
-                  value={contentOwner}
-                  onChange={(e) => setContentOwner(e.target.value)}
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-hanover-green"
-                >
-                  <option value="">Unassigned</option>
-                  {employees.data?.map((emp) => (
-                    <option key={emp.employeeID} value={emp.employeeID}>
-                      {emp.employee_name ?? emp.employeeID}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <TextInput
-                label="Job Position"
-                type="text"
-                value={jobPosition}
-                onChange={(e) => setJobPosition(e.target.value)}
-              />
-              <TextInput
-                label="Last Modified"
-                type="date"
-                value={lastModified}
-                onChange={(e) => setLastModified(e.target.value)}
-              />
-              <TextInput
-                label="Expiration Date"
-                type="date"
-                value={expirationDate}
-                onChange={(e) => setExpirationDate(e.target.value)}
-              />
-
-              {/* Content Type */}
-              <div>
-                <label
-                  htmlFor="content-type"
-                  className="mb-2 block text-sm font-semibold text-foreground"
-                >
-                  Content Type
-                </label>
-                <select
-                  id="content-type"
-                  value={contentType}
-                  onChange={(e) => setContentType(e.target.value)}
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-hanover-green"
-                >
-                  <option value="">—</option>
-                  <option value="Reference">Reference</option>
-                  <option value="Workflow">Workflow</option>
-                </select>
-              </div>
-
-              {/* Status */}
-              <div>
-                <label
-                  htmlFor="status"
-                  className="mb-2 block text-sm font-semibold text-foreground"
-                >
-                  Status
-                </label>
-                <select
-                  id="status"
-                  value={documentStatus}
-                  onChange={(e) => setDocumentStatus(e.target.value)}
-                  className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-hanover-green"
-                >
-                  <option value="">—</option>
-                  <option value="Created">Created</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="Finalized">Finalized</option>
-                  <option value="Archived">Archived</option>
-                </select>
-              </div>
-
-              {(create.isError || update.isError) && (
-                <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {create.error?.message || update.error?.message || "Something went wrong."}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isSaving || isUploading}
-                className="flex w-full items-center justify-center gap-2 rounded bg-hanover-green py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
-              >
-                {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isUploading ? "Uploading..." : isEditing ? "Update Content" : "Save Content"}
-              </button>
-            </form>
-          </div>
-        </div>
-    </div>
+    <ContentFormFields
+      isEditing={isEditing}
+      fileID={fileID}
+      setFileID={setFileID}
+      filename={filename}
+      setFilename={setFilename}
+      url={url}
+      setUrl={setUrl}
+      contentOwner={contentOwner}
+      setContentOwner={setContentOwner}
+      jobPosition={jobPosition}
+      setJobPosition={setJobPosition}
+      lastModified={lastModified}
+      setLastModified={setLastModified}
+      expirationDate={expirationDate}
+      setExpirationDate={setExpirationDate}
+      contentType={contentType}
+      setContentType={setContentType}
+      documentStatus={documentStatus}
+      setDocumentStatus={setDocumentStatus}
+      employees={employees.data}
+      upload={upload}
+      isUploading={isUploading}
+      uploadProgress={uploadProgress}
+      uploadError={uploadError}
+      createError={create.error}
+      updateError={update.error}
+      isSaving={isSaving}
+      onSubmit={handleSubmit}
+    />
   );
 }
 

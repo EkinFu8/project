@@ -18,7 +18,7 @@ model AppUser {
 }
 
 model Employee {
-  employeeID    String  @id @db.Char(10)
+  employeeID    String  @id @map("employeeid") @db.Char(10)
   employee_name String? @db.VarChar(50)
   job_desc      String? @db.VarChar(200)
 
@@ -28,7 +28,7 @@ model Employee {
 }
 
 model ContentManagement {
-  fileID          String    @id @db.Char(64)
+  fileID          String    @id @map("fileid") @db.Char(64)
   filename        String?   @db.VarChar(100)
   url             String?   @db.VarChar(500)
   content_owner   String?   @db.VarChar(50)

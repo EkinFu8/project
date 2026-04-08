@@ -130,7 +130,7 @@ function FileUpload({
               />
             </svg>
             <p className="text-sm font-medium text-foreground">Uploading...</p>
-]            <div className="h-1.5 w-48 overflow-hidden rounded-full bg-muted">
+            <div className="h-1.5 w-48 overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-hanover-green transition-all duration-300"
                 style={{ width: `${progress}%` }}

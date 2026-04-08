@@ -88,7 +88,7 @@ function UserFormPage() {
 
   if (isEditing && existingUser.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted">
+      <div className="flex justify-center border-t border-border/60 py-16">
         <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
         <span className="ml-2 text-muted-foreground">Loading user...</span>
       </div>
@@ -97,8 +97,8 @@ function UserFormPage() {
 
   if (isEditing && existingUser.isError) {
     return (
-      <div className="min-h-screen bg-muted py-12">
-        <div className="mx-auto max-w-[640px] px-4">
+      <div className="border-t border-border/60 py-8 sm:py-10">
+        <div className="mx-auto max-w-[640px] px-4 sm:px-6 lg:px-8">
           <Link
             to="/users"
             className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -106,87 +106,87 @@ function UserFormPage() {
             <ArrowLeft className="h-4 w-4" />
             Back to User Management
           </Link>
-          <div className="py-16 text-center text-red-600">User not found.</div>
+          <div className="rounded border border-red-200 bg-red-50 py-12 text-center text-sm text-red-700">
+            User not found.
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-muted">
-      <div className="py-12">
-        <div className="mx-auto max-w-[640px] px-4">
-          <Link
-            to="/users"
-            className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to User Management
-          </Link>
+    <div className="border-t border-border/60 py-8 sm:py-10">
+      <div className="mx-auto max-w-[640px] px-4 sm:px-6 lg:px-8">
+        <Link
+          to="/users"
+          className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to User Management
+        </Link>
 
-          <h1 className="mb-6 text-2xl font-bold text-foreground">
-            {isEditing ? "Edit User" : "Add New User"}
-          </h1>
+        <h1 className="mb-6 text-2xl font-bold text-foreground">
+          {isEditing ? "Edit User" : "Add New User"}
+        </h1>
 
-          <div className="rounded bg-card p-8 shadow-md">
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              <TextInput
-                label="Username"
-                type="text"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
+        <div className="rounded bg-card p-8 shadow-md">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <TextInput
+              label="Username"
+              type="text"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
 
-              <TextInput
-                label="Password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+            <TextInput
+              label="Password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
 
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="role" className="text-sm font-medium text-foreground">
-                  Role
-                </label>
-                <select
-                  id="role"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRole)}
-                  className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABELS[r]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <TextInput
-                label="Display Name"
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-              />
-
-              {error && (
-                <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isPending}
-                className="flex w-full items-center justify-center gap-2 rounded bg-hanover-green py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-50"
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="role" className="text-sm font-medium text-foreground">
+                Role
+              </label>
+              <select
+                id="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as UserRole)}
+                className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
               >
-                {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isEditing ? "Update User" : "Save User"}
-              </button>
-            </form>
-          </div>
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABELS[r]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <TextInput
+              label="Display Name"
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+
+            {error && (
+              <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isPending}
+              className="flex w-full items-center justify-center gap-2 rounded bg-hanover-green py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-50"
+            >
+              {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isEditing ? "Update User" : "Save User"}
+            </button>
+          </form>
         </div>
       </div>
     </div>
