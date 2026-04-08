@@ -1,4 +1,4 @@
-import { Loader2, Plus, Search, Users } from "lucide-react";
+import { Loader2, Mail, Search, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/lib/trpc.ts";
@@ -6,37 +6,28 @@ import { trpc } from "@/lib/trpc.ts";
 function EmployeesPage() {
   const [search, setSearch] = useState("");
 
-  const employees = trpc.employee.list.useQuery({ search });
+  const coworkers = trpc.employee.list.useQuery({ search, coworkersOnly: true });
 
   return (
     <div className="min-h-screen bg-muted">
       <div className="py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="flex items-center gap-3 text-3xl font-bold text-foreground">
-                <Users className="h-8 w-8 text-hanover-green" />
-                Employees
-              </h1>
-              <p className="mt-1 text-muted-foreground">Manage your team directory</p>
-            </div>
-            <Link
-              to="/employees/new"
-              className="flex items-center gap-2 rounded bg-hanover-green px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-hanover-green/90"
-            >
-              <Plus className="h-4 w-4" />
-              Add Employee
-            </Link>
+          <div className="mb-8">
+            <h1 className="flex items-center gap-3 text-3xl font-bold text-foreground">
+              <Users className="h-8 w-8 text-hanover-green" />
+              Coworkers
+            </h1>
+            <p className="mt-1 text-muted-foreground">
+              People on the employee portal with you — use email to reach out.
+            </p>
           </div>
 
-          {/* Search */}
           <div className="mb-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search by name, ID, or job description..."
+                placeholder="Search by name, email, code, or job description..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded border border-border bg-background py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
@@ -44,58 +35,64 @@ function EmployeesPage() {
             </div>
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto rounded bg-card shadow-sm">
-            {employees.isLoading ? (
+            {coworkers.isLoading ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
-                <span className="ml-2 text-muted-foreground">Loading employees...</span>
+                <span className="ml-2 text-muted-foreground">Loading coworkers...</span>
               </div>
-            ) : employees.isError ? (
+            ) : coworkers.isError ? (
               <div className="mx-auto max-w-lg px-4 py-16 text-center">
-                <p className="font-medium text-red-600">Could not load employees.</p>
+                <p className="font-medium text-red-600">Could not load coworkers.</p>
                 <p className="mt-2 break-words text-sm text-muted-foreground">
-                  {employees.error instanceof Error
-                    ? employees.error.message
-                    : String(employees.error)}
+                  {coworkers.error instanceof Error
+                    ? coworkers.error.message
+                    : String(coworkers.error)}
                 </p>
               </div>
-            ) : employees.data?.length === 0 ? (
-              <div className="py-16 text-center text-muted-foreground">No employees found.</div>
+            ) : coworkers.data?.length === 0 ? (
+              <div className="py-16 text-center text-muted-foreground">
+                No coworkers match your search.
+              </div>
             ) : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/80">
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">ID</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">
-                      Job Description
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Content</th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">Email</th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">Code</th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">Job</th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">Role</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {employees.data?.map((emp) => (
+                  {coworkers.data?.map((emp) => (
                     <tr
-                      key={emp.employeeID}
+                      key={emp.id}
                       className="border-b border-border transition-colors hover:bg-muted/80"
                     >
-                      <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
-                        {emp.employeeID}
-                      </td>
                       <td className="px-4 py-3 font-medium text-foreground">
                         <Link
-                          to={`/employees/${emp.employeeID}`}
+                          to={`/employees/${emp.id}`}
                           className="text-hanover-green hover:underline"
                         >
-                          {emp.employee_name ?? "—"}
+                          {emp.name}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">{emp.job_desc ?? "—"}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {emp._count.content_items} item
-                        {emp._count.content_items !== 1 ? "s" : ""}
+                      <td className="max-w-[14rem] px-4 py-3">
+                        <a
+                          href={`mailto:${encodeURIComponent(emp.email)}`}
+                          className="inline-flex items-center gap-1 break-all text-hanover-green hover:underline"
+                        >
+                          <Mail className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                          {emp.email}
+                        </a>
                       </td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                        {emp.employee_code ?? "—"}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{emp.job_desc ?? "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{emp.role}</td>
                     </tr>
                   ))}
                 </tbody>

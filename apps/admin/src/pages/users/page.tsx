@@ -11,16 +11,18 @@ const ROLE_LABELS: Record<UserRole, string> = {
   "business-analyst": "Business Analyst",
 };
 
+const PORTAL_LABELS = { employee: "Employee app", admin: "Admin app" } as const;
+
 function UsersPage() {
   const [search, setSearch] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
-  const users = trpc.appUser.list.useQuery({ search });
+  const users = trpc.user.adminList.useQuery({ search });
 
-  const deleteMutation = trpc.appUser.delete.useMutation({
+  const deleteMutation = trpc.user.adminDelete.useMutation({
     onSuccess: () => {
-      utils.appUser.list.invalidate();
+      utils.user.adminList.invalidate();
       setConfirmDeleteId(null);
     },
   });
@@ -36,7 +38,7 @@ function UsersPage() {
               <Users className="h-8 w-8 text-hanover-green" />
               User Management
             </h1>
-            <p className="mt-1 text-muted-foreground">Add, edit, and remove user accounts</p>
+            <p className="mt-1 text-muted-foreground">Supabase accounts and directory fields</p>
           </div>
           <Link
             to="/users/new"
@@ -52,7 +54,7 @@ function UsersPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by username, name, or role..."
+              placeholder="Search by email, name, role, or employee code..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded border border-border bg-background py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
@@ -60,7 +62,6 @@ function UsersPage() {
           </div>
         </div>
 
-        {/* Content */}
         {users.isLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
@@ -81,11 +82,11 @@ function UsersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/80">
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Username</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">
-                      Display Name
-                    </th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">Email</th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">Portal</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Role</th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">Code</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Actions</th>
                   </tr>
                 </thead>
@@ -95,14 +96,16 @@ function UsersPage() {
                       key={user.id}
                       className="border-b border-border transition-colors hover:bg-muted/80"
                     >
-                      <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
-                        {user.username}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-foreground">
-                        {user.display_name ?? user.username}
+                      <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
+                      <td className="px-4 py-3 font-medium text-foreground">{user.name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {PORTAL_LABELS[user.portal as "employee" | "admin"] ?? user.portal}
                       </td>
                       <td className="px-4 py-3">
-                        <RoleBadge role={user.role as UserRole} />
+                        <RoleBadge role={user.role} />
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                        {user.employee_code ?? "—"}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -125,7 +128,7 @@ function UsersPage() {
                         {confirmDeleteId === user.id && (
                           <div className="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2">
                             <p className="mb-2 text-xs text-red-700">
-                              Delete <strong>{user.username}</strong>? This cannot be undone.
+                              Delete <strong>{user.email}</strong>? This cannot be undone.
                             </p>
                             <div className="flex items-center gap-2">
                               <button
@@ -159,16 +162,17 @@ function UsersPage() {
   );
 }
 
-function RoleBadge({ role }: { role: UserRole }) {
+function RoleBadge({ role }: { role: string }) {
+  const known = role as UserRole;
   const styles: Record<UserRole, string> = {
     admin: "bg-hanover-deepblue/10 text-hanover-deepblue",
     underwriter: "bg-hanover-green/10 text-hanover-green",
     "business-analyst": "bg-[#C9A84C]/20 text-[#8a6f28]",
   };
+  const label = ROLE_LABELS[known as UserRole] ?? role;
+  const cls = styles[known] ?? "bg-muted text-muted-foreground";
   return (
-    <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${styles[role]}`}>
-      {ROLE_LABELS[role]}
-    </span>
+    <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${cls}`}>{label}</span>
   );
 }
 

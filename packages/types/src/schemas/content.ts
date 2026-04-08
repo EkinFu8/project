@@ -8,7 +8,7 @@ export const createContentSchema = z.object({
   fileID: z.string().min(1).max(64),
   filename: z.string().max(100).nullish(),
   url: z.string().max(500).nullish(),
-  content_owner: z.string().max(50).nullish(),
+  owner_id: z.string().uuid().nullish(),
   job_position: z.string().max(20).nullish(),
   last_modified: z.coerce.date().nullish(),
   expiration_date: z.coerce.date().nullish(),
@@ -20,7 +20,7 @@ export const updateContentSchema = createContentSchema.omit({ fileID: true }).pa
 
 export const contentListQuerySchema = z.object({
   document_status: z.string().optional(),
-  content_owner: z.string().optional(),
+  owner_id: z.string().uuid().optional(),
   search: z.string().optional(),
 });
 

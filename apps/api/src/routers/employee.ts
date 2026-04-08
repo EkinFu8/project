@@ -1,37 +1,77 @@
-import {
-  createEmployeeSchema,
-  employeeIdSchema,
-  employeeListQuerySchema,
-  updateEmployeeSchema,
-} from "@myapp/types/schemas";
-import { publicProcedure, router } from "../lib/trpc";
+import { directoryEntryIdSchema, directoryListQuerySchema } from "@myapp/types/schemas";
+import type { Prisma } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
+import { protectedProcedure, router } from "../lib/trpc";
 
+function listWhere(
+  ctx: { user: { id: string } },
+  input: {
+    search?: string | undefined;
+    coworkersOnly?: boolean | undefined;
+    employeePortalOnly?: boolean | undefined;
+  },
+): Prisma.UserProfileWhereInput | undefined {
+  const filters: Prisma.UserProfileWhereInput[] = [];
+
+  if (input.coworkersOnly) {
+    filters.push({ portal: "employee", id: { not: ctx.user.id } });
+  } else if (input.employeePortalOnly) {
+    filters.push({ portal: "employee" });
+  }
+
+  if (input.search && input.search.trim() !== "") {
+    const s = input.search.trim();
+    filters.push({
+      OR: [
+        { name: { contains: s, mode: "insensitive" as const } },
+        { email: { contains: s, mode: "insensitive" as const } },
+        { employee_code: { contains: s, mode: "insensitive" as const } },
+        { job_desc: { contains: s, mode: "insensitive" as const } },
+      ],
+    });
+  }
+
+  if (filters.length === 0) return undefined;
+  if (filters.length === 1) return filters[0];
+  return { AND: filters };
+}
+
+/** Employee directory — unified `public.users` profiles. */
 export const employeeRouter = router({
-  list: publicProcedure.input(employeeListQuerySchema).query(async ({ ctx, input }) => {
-    const where: Record<string, unknown> = {};
-
-    if (input.search) {
-      where.OR = [
-        { employee_name: { contains: input.search, mode: "insensitive" } },
-        { employeeID: { contains: input.search, mode: "insensitive" } },
-        { job_desc: { contains: input.search, mode: "insensitive" } },
-      ];
+  list: protectedProcedure.input(directoryListQuerySchema).query(async ({ ctx, input }) => {
+    const viewer = await ctx.prisma.userProfile.findUnique({
+      where: { id: ctx.user.id },
+      select: { portal: true },
+    });
+    if (!viewer) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Profile not found." });
     }
 
-    return ctx.prisma.employee.findMany({
+    const coworkersOnly = input.coworkersOnly;
+    let employeePortalOnly = input.employeePortalOnly;
+
+    if (viewer.portal === "employee") {
+      if (!coworkersOnly && !employeePortalOnly) {
+        employeePortalOnly = true;
+      }
+    }
+
+    const where = listWhere(ctx, { ...input, coworkersOnly, employeePortalOnly });
+
+    return ctx.prisma.userProfile.findMany({
       where,
-      orderBy: { employee_name: "asc" },
+      orderBy: { name: "asc" },
       include: {
-        _count: { select: { content_items: true } },
+        _count: { select: { owned_content: true } },
       },
     });
   }),
 
-  getById: publicProcedure.input(employeeIdSchema).query(async ({ ctx, input }) => {
-    return ctx.prisma.employee.findUniqueOrThrow({
-      where: { employeeID: input.employeeID },
+  getById: protectedProcedure.input(directoryEntryIdSchema).query(async ({ ctx, input }) => {
+    const row = await ctx.prisma.userProfile.findUniqueOrThrow({
+      where: { id: input.id },
       include: {
-        content_items: {
+        owned_content: {
           select: {
             fileID: true,
             filename: true,
@@ -42,20 +82,21 @@ export const employeeRouter = router({
         },
       },
     });
-  }),
 
-  create: publicProcedure.input(createEmployeeSchema).mutation(async ({ ctx, input }) => {
-    return ctx.prisma.employee.create({ data: input });
-  }),
+    const viewer = await ctx.prisma.userProfile.findUnique({
+      where: { id: ctx.user.id },
+      select: { portal: true },
+    });
+    if (!viewer) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Profile not found." });
+    }
 
-  update: publicProcedure
-    .input(employeeIdSchema.merge(updateEmployeeSchema))
-    .mutation(async ({ ctx, input }) => {
-      const { employeeID, ...data } = input;
-      return ctx.prisma.employee.update({ where: { employeeID }, data });
-    }),
+    if (viewer.portal === "employee") {
+      if (row.portal !== "employee" || row.id === ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Profile not found." });
+      }
+    }
 
-  delete: publicProcedure.input(employeeIdSchema).mutation(async ({ ctx, input }) => {
-    return ctx.prisma.employee.delete({ where: { employeeID: input.employeeID } });
+    return row;
   }),
 });

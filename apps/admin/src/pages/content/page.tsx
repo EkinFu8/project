@@ -23,11 +23,11 @@ function getStatusBadge(status: string | null) {
   }
 }
 
-function matchesRole(jobPosition: string | null, role: string): boolean {
+function matchesOwnerRole(owner: { role: string } | null | undefined, role: string): boolean {
   if (role === "all") return true;
-  const pos = jobPosition?.toLowerCase() ?? "";
-  if (role === "underwriter") return pos.includes("underwriter");
-  if (role === "business-analyst") return pos.includes("business") || pos.includes("analyst");
+  const r = owner?.role ?? "";
+  if (role === "underwriter") return r === "underwriter";
+  if (role === "business-analyst") return r === "business-analyst";
   return false;
 }
 
@@ -42,7 +42,7 @@ function AdminContentPage() {
   });
 
   const allItems = contents.data ?? [];
-  const filtered = allItems.filter((item) => matchesRole(item.job_position, roleFilter));
+  const filtered = allItems.filter((item) => matchesOwnerRole(item.owner, roleFilter));
 
   return (
     <div id="admin-content-library" className="scroll-mt-4 border-t border-border/60 py-6 sm:py-8">
@@ -63,7 +63,7 @@ function AdminContentPage() {
                 {tab.label}
                 {!contents.isLoading && (
                   <span className="ml-2 text-xs opacity-70">
-                    {allItems.filter((item) => matchesRole(item.job_position, tab.key)).length}
+                    {allItems.filter((item) => matchesOwnerRole(item.owner, tab.key)).length}
                   </span>
                 )}
               </button>
@@ -132,7 +132,7 @@ function AdminContentPage() {
                 </p>
 
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{item.employee?.employee_name ?? item.content_owner ?? "Unassigned"}</span>
+                  <span>{item.owner?.name ?? "Unassigned"}</span>
                   <span>
                     {item.last_modified ? new Date(item.last_modified).toLocaleDateString() : "—"}
                   </span>
