@@ -14,13 +14,16 @@ function App() {
     <BrowserRouter>
       <div className="min-h-screen bg-background text-foreground">
         <TopNav items={navItems} brandTo="/content" />
-        <Routes>
-          <Route path="/" element={<Navigate to="/content" replace />} />
-          <Route path="/content" element={<AdminContentPage />} />
-          <Route path="/users" element={<UsersPage />} />
-          <Route path="/users/new" element={<UserFormPage />} />
-          <Route path="/users/:id" element={<UserFormPage />} />
-        </Routes>
+        {/* Same muted content band as web `HeroLayout` (no banner / quick links). */}
+        <div className="min-h-[calc(100vh-2.75rem)] bg-muted">
+          <Routes>
+            <Route path="/" element={<Navigate to="/content" replace />} />
+            <Route path="/content" element={<AdminContentPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/users/new" element={<UserFormPage />} />
+            <Route path="/users/:id" element={<UserFormPage />} />
+          </Routes>
+        </div>
       </div>
     </BrowserRouter>
   );

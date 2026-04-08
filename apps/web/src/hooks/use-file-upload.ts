@@ -27,14 +27,26 @@ export function useFileUpload({ bucket, onSuccess }: UseFileUploadOptions) {
           setUploadProgress((prev) => Math.min(prev + 10, 90));
         }, 200);
 
-        const { error } = await supabase.storage
+        let { error } = await supabase.storage
           .from(bucket)
           .upload(storagePath, file, { upsert: false });
+
+        // Stale session tokens (e.g. after `supabase stop` / switching projects) can break the
+        // Authorization header while the anon key in env is fine. Retry once unauthenticated.
+        if (error?.message.includes("Invalid Compact JWS")) {
+          await supabase.auth.signOut();
+          ({ error } = await supabase.storage
+            .from(bucket)
+            .upload(storagePath, file, { upsert: false }));
+        }
 
         clearInterval(progressInterval);
 
         if (error) {
-          setUploadError(error.message);
+          const message = error.message.includes("Invalid Compact JWS")
+            ? `${error.message}. Confirm VITE_SUPABASE_ANON_KEY matches this Supabase project (repo-root .env). If you reset local Supabase or changed projects, clear site data for this origin.`
+            : error.message;
+          setUploadError(message);
           setIsUploading(false);
           setUploadProgress(0);
           return;

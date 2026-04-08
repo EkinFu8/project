@@ -5,7 +5,14 @@ import { PrismaClient } from "@prisma/client";
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 function createPrismaClient() {
-  const adapter = new PrismaPg(process.env.DATABASE_URL!);
+  const url = process.env.DATABASE_URL?.trim();
+  if (!url) {
+    throw new Error(
+      "[prisma] DATABASE_URL is not set. Add it to the repo-root .env or .env.local (next to apps/), e.g. postgresql://postgres:postgres@127.0.0.1:54322/postgres for local Supabase.",
+    );
+  }
+
+  const adapter = new PrismaPg(url);
 
   return new PrismaClient({
     adapter,

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import heroCampus from "@/assets/hero-campus.png";
 
-const HERO_CONTENT_PATH = "/hero/content";
+const HERO_CONTENT_PATH = "/hero#content-library";
 
 function HeroBanner() {
   const [heroExpanded, setHeroExpanded] = useState(true);
@@ -12,7 +12,7 @@ function HeroBanner() {
     <div
       className={`relative isolate w-full transition-[min-height,max-height] duration-300 ease-in-out ${
         heroExpanded
-          ? "min-h-[min(22rem,calc(100dvh-5rem))] max-h-none overflow-hidden lg:min-h-[min(30rem,calc(100dvh-6rem))]"
+          ? "min-h-[min(22rem,calc(100dvh-4.75rem))] max-h-none overflow-hidden lg:min-h-[min(30rem,calc(100dvh-5.75rem))]"
           : "h-0 max-h-0 min-h-0 overflow-hidden"
       }`}
     >
