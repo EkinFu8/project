@@ -112,7 +112,10 @@ function AdminContentPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filtered.map((item) => (
-                <div key={item.fileID} className="rounded border border-border bg-white p-5 shadow-sm">
+                <div
+                  key={item.fileID}
+                  className="rounded border border-border bg-white p-5 shadow-sm"
+                >
                   {/* Title + status */}
                   <div className="mb-3 flex items-start justify-between gap-2">
                     <h3 className="text-base font-semibold leading-snug text-foreground">
