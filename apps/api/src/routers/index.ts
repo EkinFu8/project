@@ -3,12 +3,14 @@ import { contentRouter } from "./content";
 import { employeeRouter } from "./employee";
 import { healthRouter } from "./health";
 import { userRouter } from "./user";
+import {loginRouter} from "./login";
 
 export const appRouter = router({
   health: healthRouter,
   user: userRouter,
   employee: employeeRouter,
   content: contentRouter,
+  login: loginRouter,
 });
 
 export type AppRouter = typeof appRouter;

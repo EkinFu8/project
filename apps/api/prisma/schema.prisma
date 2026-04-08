@@ -6,12 +6,23 @@ datasource db {
   provider = "postgresql"
 }
 
+model Credentials {
+  employeeID String @id @db.Char(10)
+  email      String @unique @db.VarChar(50)
+  password   String @db.VarChar(50)
+
+  id_fk Employee @relation(fields: [employeeID], references: [employeeID])
+
+  @@map("credentials")
+}
+
 model Employee {
   employeeID    String  @id @db.Char(10)
   employee_name String? @db.VarChar(50)
   job_desc      String? @db.VarChar(200)
 
   content_items ContentManagement[] @relation("content_owner_fk")
+  credentials   Credentials?
 
   @@map("employee")
 }

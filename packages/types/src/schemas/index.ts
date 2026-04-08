@@ -27,3 +27,7 @@ export {
   updateUserSchema,
   userIdSchema,
 } from "./user";
+export {
+  type Login,
+  loginSchema,
+} from './login';
