@@ -19,7 +19,7 @@ model Employee {
 model ContentManagement {
   fileID          String    @id @db.Char(64)
   filename        String?   @db.VarChar(100)
-  url             String?   @db.VarChar(100)
+  url             String?   @db.VarChar(500)
   content_owner   String?   @db.VarChar(50)
   job_position    String?   @db.VarChar(20)
   last_modified   DateTime? @db.Date

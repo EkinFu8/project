@@ -1,7 +1,9 @@
+import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc.ts";
 
 function ContentFormPage() {
@@ -21,6 +23,11 @@ function ContentFormPage() {
   const [expirationDate, setExpirationDate] = useState("");
   const [contentType, setContentType] = useState("");
   const [documentStatus, setDocumentStatus] = useState("");
+
+  // File upload state
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (existing.data) {
@@ -62,6 +69,72 @@ function ContentFormPage() {
   });
 
   const isSaving = create.isPending || update.isPending;
+
+  const handleFileSelect = useCallback(
+    async (file: File) => {
+      setUploadError(null);
+      setIsUploading(true);
+      setUploadProgress(0);
+
+      try {
+        // Build a unique storage path: timestamp-originalname
+        const timestamp = Date.now();
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const storagePath = `${timestamp}-${safeName}`;
+
+        // Simulate incremental progress (Supabase JS SDK doesn't expose XHR progress)
+        const progressInterval = setInterval(() => {
+          setUploadProgress((prev) => Math.min(prev + 10, 90));
+        }, 200);
+
+        const { error } = await supabase.storage
+          .from("content-files")
+          .upload(storagePath, file, { upsert: false });
+
+        clearInterval(progressInterval);
+
+        if (error) {
+          setUploadError(error.message);
+          setIsUploading(false);
+          setUploadProgress(0);
+          return;
+        }
+
+        // Get the public URL for the uploaded file
+        const { data: publicUrlData } = supabase.storage
+          .from("content-files")
+          .getPublicUrl(storagePath);
+
+        setUploadProgress(100);
+
+        // Auto-fill the filename and URL fields
+        setFilename(file.name.slice(0, 100));
+        setUrl(publicUrlData.publicUrl);
+
+        // Set last_modified to today
+        setLastModified(new Date().toISOString().split("T")[0]);
+
+        // If creating and no fileID yet, generate one from the storage path
+        if (!isEditing && !fileID) {
+          setFileID(storagePath.slice(0, 64));
+        }
+
+        // Mark status as Created for new content
+        if (!isEditing && !documentStatus) {
+          setDocumentStatus("Created");
+        }
+
+        setTimeout(() => {
+          setIsUploading(false);
+        }, 400);
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Upload failed");
+        setIsUploading(false);
+        setUploadProgress(0);
+      }
+    },
+    [isEditing, fileID, documentStatus],
+  );
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -116,6 +189,39 @@ function ContentFormPage() {
 
           <div className="rounded bg-white p-8 shadow-md">
             <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* File Upload */}
+              <FileUpload
+                label="Upload File"
+                onFileSelect={handleFileSelect}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.svg"
+                isUploading={isUploading}
+                progress={uploadProgress}
+                currentFileName={url ? filename : undefined}
+                disabled={isSaving}
+              />
+
+              {uploadError && (
+                <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  Upload failed: {uploadError}
+                </div>
+              )}
+
+              {url && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-medium text-foreground">Uploaded to:</span>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="truncate text-hanover-green underline hover:text-hanover-green/80"
+                  >
+                    {filename || url}
+                  </a>
+                </div>
+              )}
+
+              <hr className="border-border" />
+
               <TextInput
                 label="File ID"
                 type="text"
@@ -227,11 +333,15 @@ function ContentFormPage() {
 
               <button
                 type="submit"
-                disabled={isSaving}
+                disabled={isSaving || isUploading}
                 className="flex w-full items-center justify-center gap-2 rounded bg-hanover-green py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
               >
-                {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isEditing ? "Update Content" : "Save Content"}
+                {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isUploading
+                  ? "Uploading..."
+                  : isEditing
+                    ? "Update Content"
+                    : "Save Content"}
               </button>
             </form>
           </div>
