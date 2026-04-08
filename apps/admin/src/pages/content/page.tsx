@@ -37,7 +37,7 @@ function AdminContentPage() {
   const filtered = allItems.filter((item) => matchesRole(item.job_position, roleFilter));
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen bg-muted">
       <div className="py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -59,7 +59,7 @@ function AdminContentPage() {
                 className={`rounded px-4 py-1.5 text-sm font-medium transition-colors ${
                   roleFilter === tab.key
                     ? "bg-hanover-deepblue text-white"
-                    : "border border-border bg-white text-muted-foreground hover:text-foreground"
+                    : "border border-border bg-card text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {tab.label}
@@ -81,13 +81,13 @@ function AdminContentPage() {
                 placeholder="Search by filename or URL..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded border border-border bg-white py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
+                className="w-full rounded border border-border bg-background py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded border border-border bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
+              className="rounded border border-border bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
             >
               <option value="">All Statuses</option>
               <option value="Created">Created</option>
@@ -114,7 +114,7 @@ function AdminContentPage() {
               {filtered.map((item) => (
                 <div
                   key={item.fileID}
-                  className="rounded border border-border bg-white p-5 shadow-sm"
+                  className="rounded border border-border bg-card p-5 shadow-sm"
                 >
                   {/* Title + status */}
                   <div className="mb-3 flex items-start justify-between gap-2">

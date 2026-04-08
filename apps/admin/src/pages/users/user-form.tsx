@@ -88,7 +88,7 @@ function UserFormPage() {
 
   if (isEditing && existingUser.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F5F5F5]">
+      <div className="flex min-h-screen items-center justify-center bg-muted">
         <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
         <span className="ml-2 text-muted-foreground">Loading user...</span>
       </div>
@@ -97,7 +97,7 @@ function UserFormPage() {
 
   if (isEditing && existingUser.isError) {
     return (
-      <div className="min-h-screen bg-[#F5F5F5] py-12">
+      <div className="min-h-screen bg-muted py-12">
         <div className="mx-auto max-w-[640px] px-4">
           <Link
             to="/users"
@@ -113,7 +113,7 @@ function UserFormPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen bg-muted">
       <div className="py-12">
         <div className="mx-auto max-w-[640px] px-4">
           <Link
@@ -128,7 +128,7 @@ function UserFormPage() {
             {isEditing ? "Edit User" : "Add New User"}
           </h1>
 
-          <div className="rounded bg-white p-8 shadow-md">
+          <div className="rounded bg-card p-8 shadow-md">
             <form className="space-y-6" onSubmit={handleSubmit}>
               <TextInput
                 label="Username"
@@ -154,7 +154,7 @@ function UserFormPage() {
                   id="role"
                   value={role}
                   onChange={(e) => setRole(e.target.value as UserRole)}
-                  className="rounded border border-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
+                  className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
                 >
                   {ROLES.map((r) => (
                     <option key={r} value={r}>

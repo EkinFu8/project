@@ -28,7 +28,7 @@ function UsersPage() {
   const allUsers = users.data ?? [];
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen bg-muted">
       <div className="py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -58,7 +58,7 @@ function UsersPage() {
                 placeholder="Search by username, name, or role..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded border border-border bg-white py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
+                className="w-full rounded border border-border bg-background py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
               />
             </div>
           </div>
@@ -74,13 +74,13 @@ function UsersPage() {
               Failed to load users. Is the API running?
             </div>
           ) : (
-            <div className="overflow-x-auto rounded bg-white shadow-sm">
+            <div className="overflow-x-auto rounded bg-card shadow-sm">
               {allUsers.length === 0 ? (
                 <div className="py-16 text-center text-muted-foreground">No users found.</div>
               ) : (
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-border bg-[#F9FAFB]">
+                    <tr className="border-b border-border bg-muted/80">
                       <th className="px-4 py-3 text-left font-semibold text-foreground">
                         Username
                       </th>
@@ -95,7 +95,7 @@ function UsersPage() {
                     {allUsers.map((user) => (
                       <tr
                         key={user.id}
-                        className="border-b border-border transition-colors hover:bg-[#F9FAFB]"
+                        className="border-b border-border transition-colors hover:bg-muted/80"
                       >
                         <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
                           {user.username}
@@ -133,7 +133,7 @@ function UsersPage() {
                                 <button
                                   type="button"
                                   onClick={() => setConfirmDeleteId(null)}
-                                  className="rounded border border-border bg-white px-3 py-1 text-xs font-medium text-foreground transition-colors hover:bg-[#F9FAFB]"
+                                  className="rounded border border-border bg-card px-3 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted/80"
                                 >
                                   Cancel
                                 </button>

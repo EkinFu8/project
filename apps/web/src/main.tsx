@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { ThemeProvider } from "@myapp/ui/components/theme-provider";
 import App from "./App.tsx";
 import "./index.css";
 import { supabase } from "./lib/supabase";
@@ -18,7 +19,9 @@ function Root() {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <App />
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
       </QueryClientProvider>
     </trpc.Provider>
   );
