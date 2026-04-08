@@ -1,4 +1,5 @@
 -- Initial schema setup
+-- (File must not be named *init* — Supabase CLI skips those migrations.)
 
 -- Users table (extends Supabase auth.users)
 create table public.users (
@@ -53,25 +54,23 @@ create trigger users_updated_at
   before update on public.users
   for each row execute function public.update_updated_at();
 
--- employee table
+-- employee + content_management (required before 20260407000000_content_storage.sql)
 
-CREATE TABLE employee (
+CREATE TABLE public.employee (
     employeeID CHAR(10) PRIMARY KEY,
     employee_name VARCHAR(50),
     job_desc VARCHAR(200)
 );
 
--- content management table
-
-CREATE TABLE content_management (
+CREATE TABLE public.content_management (
     fileID CHAR(64) PRIMARY KEY,
     filename VARCHAR(100),
-    url VARCHAR(100),
+    url VARCHAR(500),
     content_owner VARCHAR(50),
     job_position VARCHAR(20),
     last_modified DATE,
     expiration_date DATE,
     content_type VARCHAR(20),
     document_status VARCHAR(20),
-    FOREIGN KEY (content_owner) REFERENCES employee(employeeID)
+    FOREIGN KEY (content_owner) REFERENCES public.employee(employeeID)
 );
