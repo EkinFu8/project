@@ -8,6 +8,7 @@ import EmployeesPage from "@/pages/employees";
 import EmployeesFormPage from "@/pages/employees-form";
 import HeroPage from "./pages/hero";
 import UnderwriterPage from "./pages/underwriter";
+import LoginFormPage from "./pages/login";
 
 const navItems = [
   { label: "Hero", to: "/hero" },
@@ -16,6 +17,7 @@ const navItems = [
   { label: "Employees", to: "/employees" },
   { label: "Content", to: "/content" },
   { label: "Dashboard", to: "/dashboard" },
+  { label: "Login", to: "/login" },
 ];
 
 function App() {
@@ -40,6 +42,7 @@ function App() {
           <Route path="/content/:id/edit" element={<ContentFormPage />} />
 
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/login" element={<LoginFormPage/>} />
         </Routes>
       </div>
     </BrowserRouter>
