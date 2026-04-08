@@ -67,8 +67,11 @@ function UsersPage() {
             <span className="ml-2 text-muted-foreground">Loading users...</span>
           </div>
         ) : users.isError ? (
-          <div className="py-16 text-center text-red-600">
-            Failed to load users. Is the API running?
+          <div className="mx-auto max-w-lg px-4 py-16 text-center">
+            <p className="font-medium text-red-600">Could not load users.</p>
+            <p className="mt-2 break-words text-sm text-muted-foreground">
+              {users.error instanceof Error ? users.error.message : String(users.error)}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded bg-card shadow-sm">

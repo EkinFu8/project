@@ -10,17 +10,17 @@
   },
   "scripts": {
     "postinstall": "prisma generate",
-    "dev": "tsx watch --env-file=../../.env.local src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "prisma generate && node build.mjs",
     "start": "node dist/server.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "prisma generate",
-    "db:push": "node --env-file=../../.env.local ./node_modules/prisma/build/index.js db push --accept-data-loss",
-    "db:migrate": "node --env-file=../../.env.local ./node_modules/prisma/build/index.js migrate dev",
-    "db:seed": "tsx --env-file=../../.env.local prisma/seed.ts",
-    "db:studio": "node --env-file=../../.env.local ./node_modules/prisma/build/index.js studio"
+    "db:push": "node --import ./load-env-pre.js ./node_modules/prisma/build/index.js db push --accept-data-loss",
+    "db:migrate": "node --import ./load-env-pre.js ./node_modules/prisma/build/index.js migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "node --import ./load-env-pre.js ./node_modules/prisma/build/index.js studio"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -32,6 +32,7 @@
     "@prisma/client": "^7.6.0",
     "@supabase/supabase-js": "^2.49.0",
     "@trpc/server": "^11.0.0",
+    "dotenv": "^16.6.1",
     "pg": "^8.20.0",
     "prisma": "^7.6.0",
     "zod": "^3.24.0"

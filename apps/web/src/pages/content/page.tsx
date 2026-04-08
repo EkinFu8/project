@@ -67,8 +67,16 @@ function ContentListPage() {
             <span className="ml-2 text-muted-foreground">Loading content...</span>
           </div>
         ) : contents.isError ? (
-          <div className="py-16 text-center text-red-600">
-            Failed to load content. Is the API running?
+          <div className="mx-auto max-w-lg px-4 py-16 text-center">
+            <p className="font-medium text-red-600">Could not load content.</p>
+            <p className="mt-2 break-words text-sm text-muted-foreground">
+              {contents.error instanceof Error ? contents.error.message : String(contents.error)}
+            </p>
+            <p className="mt-4 text-xs text-muted-foreground">
+              API should be at{" "}
+              {import.meta.env.VITE_API_URL ?? "http://127.0.0.1:3000 (dev default)"}. Run{" "}
+              <code className="rounded bg-muted px-1">pnpm dev</code> from the repo root.
+            </p>
           </div>
         ) : contents.data?.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground">No content found.</div>

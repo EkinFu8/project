@@ -52,8 +52,13 @@ function EmployeesPage() {
                 <span className="ml-2 text-muted-foreground">Loading employees...</span>
               </div>
             ) : employees.isError ? (
-              <div className="py-16 text-center text-red-600">
-                Failed to load employees. Is the API running?
+              <div className="mx-auto max-w-lg px-4 py-16 text-center">
+                <p className="font-medium text-red-600">Could not load employees.</p>
+                <p className="mt-2 break-words text-sm text-muted-foreground">
+                  {employees.error instanceof Error
+                    ? employees.error.message
+                    : String(employees.error)}
+                </p>
               </div>
             ) : employees.data?.length === 0 ? (
               <div className="py-16 text-center text-muted-foreground">No employees found.</div>
