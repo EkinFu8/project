@@ -6,50 +6,35 @@ datasource db {
   provider = "postgresql"
 }
 
-model AppUser {
-  id           String   @id @default(cuid())
-  username     String   @unique @db.VarChar(50)
-  password     String   @db.VarChar(100)
-  role         String   @db.VarChar(20)
-  display_name String?  @db.VarChar(100)
-  created_at   DateTime @default(now())
+/// public.users — unified profile row for every Supabase Auth user.
+model UserProfile {
+  id             String   @id @db.Uuid
+  email          String
+  name           String
+  portal         String
+  role           String
+  employee_code  String?  @unique @db.VarChar(10)
+  job_desc       String?  @db.VarChar(200)
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
-  @@map("app_user")
-}
+  owned_content ContentManagement[]
 
-model Credentials {
-  employeeID String @id @db.Char(10)
-  email      String @unique @db.VarChar(50)
-  password   String @db.VarChar(50)
-
-  id_fk Employee @relation(fields: [employeeID], references: [employeeID])
-
-  @@map("credentials")
-}
-
-model Employee {
-  employeeID    String  @id @map("employeeid") @db.Char(10)
-  employee_name String? @db.VarChar(50)
-  job_desc      String? @db.VarChar(200)
-
-  content_items ContentManagement[] @relation("content_owner_fk")
-  credentials   Credentials?
-
-  @@map("employee")
+  @@map("users")
 }
 
 model ContentManagement {
   fileID          String    @id @map("fileid") @db.Char(64)
   filename        String?   @db.VarChar(100)
   url             String?   @db.VarChar(500)
-  content_owner   String?   @db.VarChar(50)
+  owner_id        String?   @map("owner_id") @db.Uuid
   job_position    String?   @db.VarChar(20)
   last_modified   DateTime? @db.Date
   expiration_date DateTime? @db.Date
   content_type    String?   @db.VarChar(20)
   document_status String?   @db.VarChar(20)
 
-  employee Employee? @relation("content_owner_fk", fields: [content_owner], references: [employeeID])
+  owner UserProfile? @relation(fields: [owner_id], references: [id])
 
   @@map("content_management")
 }

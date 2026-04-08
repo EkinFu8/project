@@ -61,23 +61,20 @@ function DashboardLoaded({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="px-2 py-3 text-left font-semibold text-foreground">ID</th>
+                  <th className="px-2 py-3 text-left font-semibold text-foreground">Code</th>
                   <th className="px-2 py-3 text-left font-semibold text-foreground">Name</th>
-                  <th className="px-2 py-3 text-left font-semibold text-foreground">Role</th>
+                  <th className="px-2 py-3 text-left font-semibold text-foreground">Job</th>
                 </tr>
               </thead>
               <tbody>
                 {employees.slice(0, 6).map((emp) => (
-                  <tr key={emp.employeeID} className="border-b border-border">
+                  <tr key={emp.id} className="border-b border-border">
                     <td className="px-2 py-3 font-mono text-xs text-muted-foreground">
-                      {emp.employeeID}
+                      {emp.employee_code ?? "—"}
                     </td>
                     <td className="px-2 py-3">
-                      <Link
-                        to={`/employees/${emp.employeeID}`}
-                        className="text-hanover-green hover:underline"
-                      >
-                        {emp.employee_name ?? "—"}
+                      <Link to={`/employees/${emp.id}`} className="text-hanover-green hover:underline">
+                        {emp.name}
                       </Link>
                     </td>
                     <td className="px-2 py-3 text-muted-foreground">{emp.job_desc ?? "—"}</td>
@@ -113,7 +110,7 @@ function DashboardLoaded({
                       </Link>
                     </td>
                     <td className="px-2 py-3 text-muted-foreground">
-                      {item.employee?.employee_name ?? "Unassigned"}
+                      {item.owner?.name ?? "Unassigned"}
                     </td>
                     <td className="px-2 py-3">
                       <span

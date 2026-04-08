@@ -102,7 +102,7 @@ function ContentListPage() {
                   {item.content_type ?? "—"} · {item.job_position ?? "—"}
                 </p>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{item.employee?.employee_name ?? "Unassigned"}</span>
+                  <span>{item.owner?.name ?? "Unassigned"}</span>
                   <span>
                     {item.last_modified ? new Date(item.last_modified).toLocaleDateString() : "—"}
                   </span>

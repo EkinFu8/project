@@ -1,12 +1,18 @@
-import { FileText, LayoutGrid, Minus, Users } from "lucide-react";
+import { FileText, Minus, Shield, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import heroCampus from "@/assets/hero-campus.png";
+import { trpc } from "@/lib/trpc";
 
 const HERO_CONTENT_PATH = "/hero#content-library";
 
 function HeroBanner() {
   const [heroExpanded, setHeroExpanded] = useState(true);
+  const { data: access } = trpc.user.myAccess.useQuery();
+  const job =
+    access?.role === "business-analyst"
+      ? { to: "/business-analyst" as const, label: "Business Analyst" as const }
+      : { to: "/underwriter" as const, label: "Underwriter" as const };
 
   return (
     <div
@@ -43,7 +49,7 @@ function HeroBanner() {
           id="hero-panel"
           className="relative z-10 w-full px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12"
         >
-          <div className="mx-auto w-full max-w-[17.5rem] rounded-xl border border-border/60 bg-card/90 p-4 shadow-md backdrop-blur-md sm:max-w-[18.5rem] sm:p-4 lg:mx-0 lg:ml-8">
+          <div className="mx-auto w-full max-w-[22rem] rounded-xl border border-border/60 bg-card/90 p-4 shadow-md backdrop-blur-md sm:max-w-[24rem] sm:p-4 lg:mx-0 lg:ml-8">
             <h1 className="text-xl font-bold leading-tight text-foreground sm:text-2xl">
               Welcome to Hanover
             </h1>
@@ -59,21 +65,21 @@ function HeroBanner() {
                 </span>
               </Link>
               <Link
+                to={job.to}
+                className="flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 rounded-md bg-hanover-green px-1 py-2 text-center text-white shadow-sm transition-colors hover:bg-hanover-green/90 sm:min-h-16 sm:py-2"
+              >
+                <Shield className="size-4 shrink-0 sm:size-5" aria-hidden />
+                <span className="text-[0.6rem] font-medium leading-tight sm:text-[0.65rem]">
+                  {job.label}
+                </span>
+              </Link>
+              <Link
                 to="/employees"
                 className="flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 rounded-md bg-hanover-green px-1 py-2 text-center text-white shadow-sm transition-colors hover:bg-hanover-green/90 sm:min-h-16 sm:py-2"
               >
                 <Users className="size-4 shrink-0 sm:size-5" aria-hidden />
                 <span className="text-[0.6rem] font-medium leading-tight sm:text-[0.65rem]">
-                  Employees
-                </span>
-              </Link>
-              <Link
-                to="/dashboard"
-                className="flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 rounded-md bg-hanover-green px-1 py-2 text-center text-white shadow-sm transition-colors hover:bg-hanover-green/90 sm:min-h-16 sm:py-2"
-              >
-                <LayoutGrid className="size-4 shrink-0 sm:size-5" aria-hidden />
-                <span className="text-[0.6rem] font-medium leading-tight sm:text-[0.65rem]">
-                  Dashboard
+                  Coworkers
                 </span>
               </Link>
             </div>

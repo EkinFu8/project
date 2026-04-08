@@ -17,6 +17,10 @@ interface FileUploadProps {
   /** Currently uploaded file name to display */
   currentFileName?: string;
   disabled?: boolean;
+  /** Smaller drop zone for secondary "replace" uploads */
+  compact?: boolean;
+  /** Omit the filename row under the zone (e.g. when preview is shown elsewhere) */
+  hideFileNameRow?: boolean;
 }
 
 function formatFileSize(bytes: number): string {
@@ -34,6 +38,8 @@ function FileUpload({
   progress = 0,
   currentFileName,
   disabled = false,
+  compact = false,
+  hideFileNameRow = false,
 }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -89,7 +95,11 @@ function FileUpload({
 
   return (
     <div>
-      <span className="mb-2 block text-sm font-semibold text-foreground">{label}</span>
+      <span
+        className={cn("mb-2 block font-semibold text-foreground", compact ? "text-xs" : "text-sm")}
+      >
+        {label}
+      </span>
 
       <button
         type="button"
@@ -99,7 +109,8 @@ function FileUpload({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "relative flex w-full cursor-pointer flex-col items-center justify-center rounded border-2 border-dashed px-4 py-8 transition-colors",
+          "relative flex w-full cursor-pointer flex-col items-center justify-center rounded border-2 border-dashed px-4 transition-colors",
+          compact ? "py-4" : "py-8",
           "hover:border-hanover-green hover:bg-hanover-green/5",
           "focus:outline-none focus:ring-2 focus:ring-hanover-green",
           isDragOver && "border-hanover-green bg-hanover-green/5",
@@ -111,7 +122,7 @@ function FileUpload({
           <div className="flex w-full flex-col items-center gap-2">
             <svg
               aria-hidden="true"
-              className="h-8 w-8 animate-spin text-hanover-green"
+              className={cn("animate-spin text-hanover-green", compact ? "h-6 w-6" : "h-8 w-8")}
               viewBox="0 0 24 24"
               fill="none"
             >
@@ -142,7 +153,7 @@ function FileUpload({
           <>
             <svg
               aria-hidden="true"
-              className="mb-2 h-8 w-8 text-muted-foreground"
+              className={cn("mb-2 text-muted-foreground", compact ? "h-6 w-6" : "h-8 w-8")}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -154,13 +165,21 @@ function FileUpload({
                 d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
               />
             </svg>
-            <p className="text-sm font-medium text-foreground">
+            <p className={cn("font-medium text-foreground", compact ? "text-xs" : "text-sm")}>
               {displayName ? "Replace file" : "Click to upload or drag and drop"}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {accept ? `Accepted: ${accept}` : "Any file type"} &middot; Max{" "}
-              {formatFileSize(maxSize)}
-            </p>
+            {!compact && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {accept ? `Accepted: ${accept}` : "Any file type"} &middot; Max{" "}
+                {formatFileSize(maxSize)}
+              </p>
+            )}
+            {compact && (
+              <p className="mt-0.5 text-[11px] text-muted-foreground" title={accept}>
+                Max {formatFileSize(maxSize)}
+                {accept ? " · hover for types" : ""}
+              </p>
+            )}
           </>
         )}
       </button>
@@ -174,7 +193,7 @@ function FileUpload({
         tabIndex={-1}
       />
 
-      {displayName && !isUploading && (
+      {displayName && !isUploading && !hideFileNameRow && (
         <div className="mt-2 flex items-center gap-2 rounded border border-border bg-muted/50 px-3 py-2 text-sm">
           <svg
             aria-hidden="true"

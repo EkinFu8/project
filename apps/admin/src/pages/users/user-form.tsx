@@ -1,53 +1,65 @@
 import { TextInput } from "@myapp/ui/components/text-input";
+import type { AccountRole, UserPortal } from "@myapp/types/schemas";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { trpc } from "@/lib/trpc";
 
-type UserRole = "admin" | "underwriter" | "business-analyst";
+const ROLES: AccountRole[] = ["admin", "underwriter", "business-analyst"];
 
-const ROLES: UserRole[] = ["admin", "underwriter", "business-analyst"];
-
-const ROLE_LABELS: Record<UserRole, string> = {
+const ROLE_LABELS: Record<AccountRole, string> = {
   admin: "Admin",
   underwriter: "Underwriter",
   "business-analyst": "Business Analyst",
 };
 
+const PORTALS: UserPortal[] = ["employee", "admin"];
+const PORTAL_LABELS: Record<UserPortal, string> = {
+  employee: "Employee portal (web app)",
+  admin: "Admin portal",
+};
+
 function UserFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const isEditing = Boolean(id);
+  const isEditing = Boolean(id) && id !== "new";
   const utils = trpc.useUtils();
 
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("underwriter");
-  const [displayName, setDisplayName] = useState("");
+  const [name, setName] = useState("");
+  const [portal, setPortal] = useState<UserPortal>("employee");
+  const [role, setRole] = useState<AccountRole>("underwriter");
+  const [employeeCode, setEmployeeCode] = useState("");
+  const [jobDesc, setJobDesc] = useState("");
   const [error, setError] = useState("");
 
-  const existingUser = trpc.appUser.getById.useQuery({ id: id! }, { enabled: isEditing });
+  const existingUser = trpc.user.adminGetById.useQuery({ id: id! }, { enabled: isEditing });
 
   useEffect(() => {
     if (existingUser.data) {
-      setUsername(existingUser.data.username);
-      setPassword(existingUser.data.password);
-      setRole(existingUser.data.role as UserRole);
-      setDisplayName(existingUser.data.display_name ?? "");
+      setEmail(existingUser.data.email);
+      setPassword("");
+      setName(existingUser.data.name);
+      setPortal(existingUser.data.portal as UserPortal);
+      setRole(existingUser.data.role as AccountRole);
+      setEmployeeCode(existingUser.data.employee_code ?? "");
+      setJobDesc(existingUser.data.job_desc ?? "");
     }
   }, [existingUser.data]);
 
-  const createMutation = trpc.appUser.create.useMutation({
+  const createMutation = trpc.user.adminCreate.useMutation({
     onSuccess: () => {
-      utils.appUser.list.invalidate();
+      utils.user.adminList.invalidate();
       navigate("/users");
     },
     onError: (err) => setError(err.message),
   });
 
-  const updateMutation = trpc.appUser.update.useMutation({
-    onSuccess: () => {
-      utils.appUser.list.invalidate();
+  const updateMutation = trpc.user.adminUpdate.useMutation({
+    onSuccess: (_data, variables) => {
+      utils.user.adminList.invalidate();
+      utils.user.adminGetById.invalidate({ id: variables.id });
       navigate("/users");
     },
     onError: (err) => setError(err.message),
@@ -59,29 +71,39 @@ function UserFormPage() {
     e.preventDefault();
     setError("");
 
-    if (!username.trim()) {
-      setError("Username is required.");
+    if (!email.trim()) {
+      setError("Email is required.");
       return;
     }
-    if (!password.trim()) {
+    if (!isEditing && !password.trim()) {
       setError("Password is required.");
+      return;
+    }
+    if (!name.trim()) {
+      setError("Name is required.");
       return;
     }
 
     if (isEditing && id) {
       updateMutation.mutate({
         id,
-        username: username.trim(),
-        password: password.trim(),
+        email: email.trim(),
+        ...(password.trim() ? { password: password.trim() } : {}),
+        name: name.trim(),
+        portal,
         role,
-        display_name: displayName.trim() || null,
+        employee_code: employeeCode.trim() || null,
+        job_desc: jobDesc.trim() || null,
       });
     } else {
       createMutation.mutate({
-        username: username.trim(),
+        email: email.trim(),
         password: password.trim(),
+        name: name.trim(),
+        portal,
         role,
-        display_name: displayName.trim() || null,
+        employee_code: employeeCode.trim() || null,
+        job_desc: jobDesc.trim() || null,
       });
     }
   }
@@ -132,29 +154,57 @@ function UserFormPage() {
         <div className="rounded bg-card p-8 shadow-md">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <TextInput
-              label="Username"
-              type="text"
+              label="Email"
+              type="email"
               required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
 
             <TextInput
-              label="Password"
+              label={isEditing ? "New password (leave blank to keep current)" : "Password"}
               type="password"
-              required
+              required={!isEditing}
+              autoComplete={isEditing ? "new-password" : "new-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
 
+            <TextInput
+              label="Display name"
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="portal" className="text-sm font-medium text-foreground">
+                Portal access
+              </label>
+              <select
+                id="portal"
+                value={portal}
+                onChange={(e) => setPortal(e.target.value as UserPortal)}
+                className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
+              >
+                {PORTALS.map((p) => (
+                  <option key={p} value={p}>
+                    {PORTAL_LABELS[p]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <label htmlFor="role" className="text-sm font-medium text-foreground">
-                Role
+                Job role
               </label>
               <select
                 id="role"
                 value={role}
-                onChange={(e) => setRole(e.target.value as UserRole)}
+                onChange={(e) => setRole(e.target.value as AccountRole)}
                 className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
               >
                 {ROLES.map((r) => (
@@ -166,10 +216,18 @@ function UserFormPage() {
             </div>
 
             <TextInput
-              label="Display Name"
+              label="Employee code (optional)"
               type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              maxLength={10}
+              value={employeeCode}
+              onChange={(e) => setEmployeeCode(e.target.value)}
+            />
+
+            <TextInput
+              label="Job description (optional)"
+              type="text"
+              value={jobDesc}
+              onChange={(e) => setJobDesc(e.target.value)}
             />
 
             {error && (

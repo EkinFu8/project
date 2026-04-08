@@ -14,8 +14,8 @@ export const contentRouter = router({
       where.document_status = input.document_status;
     }
 
-    if (input.content_owner) {
-      where.content_owner = input.content_owner;
+    if (input.owner_id) {
+      where.owner_id = input.owner_id;
     }
 
     if (input.search) {
@@ -29,10 +29,12 @@ export const contentRouter = router({
       where,
       orderBy: { last_modified: "desc" },
       include: {
-        employee: {
+        owner: {
           select: {
-            employeeID: true,
-            employee_name: true,
+            id: true,
+            name: true,
+            employee_code: true,
+            role: true,
           },
         },
       },
@@ -43,10 +45,11 @@ export const contentRouter = router({
     return ctx.prisma.contentManagement.findUniqueOrThrow({
       where: { fileID: input.fileID },
       include: {
-        employee: {
+        owner: {
           select: {
-            employeeID: true,
-            employee_name: true,
+            id: true,
+            name: true,
+            employee_code: true,
             job_desc: true,
           },
         },
@@ -58,8 +61,8 @@ export const contentRouter = router({
     return ctx.prisma.contentManagement.create({
       data: input,
       include: {
-        employee: {
-          select: { employeeID: true, employee_name: true },
+        owner: {
+          select: { id: true, name: true, employee_code: true },
         },
       },
     });
@@ -73,8 +76,8 @@ export const contentRouter = router({
         where: { fileID },
         data,
         include: {
-          employee: {
-            select: { employeeID: true, employee_name: true },
+          owner: {
+            select: { id: true, name: true, employee_code: true },
           },
         },
       });

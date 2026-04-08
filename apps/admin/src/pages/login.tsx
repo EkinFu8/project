@@ -22,7 +22,6 @@ function redirectTarget(state: unknown, fallback: string): string {
   return fallback;
 }
 
-/** Login help for developers: Vite dev server only (stripped from production / cloud builds). */
 function showLocalLoginHint(): boolean {
   if (!import.meta.env.DEV) return false;
   const host = globalThis.location?.hostname;
@@ -68,8 +67,8 @@ function LoginFormPage({
 
   return (
     <LoginLayout
-      title="Sign in"
-      subtitle="Employee portal — sign in with your Hanover employee or administrator account."
+      title="Hanover Admin portal"
+      subtitle="Sign in with your Hanover account (employee or administrator portal)."
     >
       <div className="rounded-2xl border border-white/25 bg-card/95 p-8 text-card-foreground shadow-2xl shadow-black/20 backdrop-blur-md dark:border-white/10 dark:shadow-black/35">
         {bannerText ? (
@@ -114,7 +113,7 @@ function LoginFormPage({
       {localHint ? (
         <p className="mt-6 text-center text-xs leading-relaxed text-white/65">
           Local dev:{" "}
-          <code className="rounded bg-white/10 px-1 py-0.5 text-white/90">user@hanover.test</code>
+          <code className="rounded bg-white/10 px-1 py-0.5 text-white/90">admin@hanover.test</code>
           {" / "}
           <code className="rounded bg-white/10 px-1 py-0.5 text-white/90">HanoverTest123!</code>
         </p>
