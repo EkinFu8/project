@@ -4,10 +4,6 @@ import { createContext } from "./context";
 import { appRouter } from "./routers";
 //the stats thread functions
 import { startTelemetryWorker } from "./telemetryWorker";
-import { stopTelemetryWorker } from "./telemetryWorker";
-import { wakeTelemetryWorker} from "./telemetryWorker";
-
-
 
 const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",")
@@ -46,6 +42,6 @@ server.listen(port, () => {
   console.log(`API server running on http://localhost:${port}`);
 });
 //the interval in which the stats worker will run
-let statsInterval:number = 30;
+const statsInterval: number = 30;
 //start the stats worker thread;
 startTelemetryWorker(statsInterval);

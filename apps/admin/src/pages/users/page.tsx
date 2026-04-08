@@ -1,7 +1,7 @@
 import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { deleteUser, getUsers, ROLE_LABELS, type AppUser } from "@/lib/users-store";
+import { type AppUser, deleteUser, getUsers, ROLE_LABELS } from "@/lib/users-store";
 
 function UsersPage() {
   const [users, setUsers] = useState<AppUser[]>(() => getUsers());
@@ -99,6 +99,7 @@ function UsersPage() {
                               Edit
                             </Link>
                             <button
+                              type="button"
                               onClick={() => setConfirmDeleteId(user.id)}
                               className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
                             >
@@ -117,12 +118,14 @@ function UsersPage() {
                               </span>
                               <div className="flex items-center gap-2">
                                 <button
+                                  type="button"
                                   onClick={() => setConfirmDeleteId(null)}
                                   className="rounded border border-border bg-white px-3 py-1.5 text-xs font-medium text-foreground hover:bg-[#F9FAFB] transition-colors"
                                 >
                                   Cancel
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => handleDelete(user.id)}
                                   className="rounded bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors"
                                 >

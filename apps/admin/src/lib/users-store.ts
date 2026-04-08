@@ -13,7 +13,13 @@ const STORAGE_KEY = "app_users";
 const DEFAULT_USERS: AppUser[] = [
   { id: "1", username: "admin", password: "admin", role: "admin", displayName: "Administrator" },
   { id: "2", username: "emp1", password: "emp1", role: "underwriter", displayName: "Employee 1" },
-  { id: "3", username: "emp2", password: "emp2", role: "business-analyst", displayName: "Employee 2" },
+  {
+    id: "3",
+    username: "emp2",
+    password: "emp2",
+    role: "business-analyst",
+    displayName: "Employee 2",
+  },
 ];
 
 export function getUsers(): AppUser[] {

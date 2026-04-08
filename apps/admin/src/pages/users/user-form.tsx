@@ -3,11 +3,11 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import {
+  type AppUser,
   generateId,
   getUserById,
   ROLE_LABELS,
   saveUser,
-  type AppUser,
   type UserRole,
 } from "@/lib/users-store";
 
@@ -96,8 +96,11 @@ function UserFormPage() {
               />
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-foreground">Role</label>
+                <label htmlFor="role-select" className="text-sm font-medium text-foreground">
+                  Role
+                </label>
                 <select
+                  id="role-select"
                   value={role}
                   onChange={(e) => setRole(e.target.value as UserRole)}
                   className="rounded border border-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
