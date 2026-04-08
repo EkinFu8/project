@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
 import type * as React from "react";
+import { useCallback, useRef, useState } from "react";
 import { cn } from "../lib/utils";
 
 interface FileUploadProps {
@@ -89,7 +89,7 @@ function FileUpload({
 
   return (
     <div>
-      <label className="mb-2 block text-sm font-semibold text-foreground">{label}</label>
+      <span className="mb-2 block text-sm font-semibold text-foreground">{label}</span>
 
       <button
         type="button"
@@ -110,6 +110,7 @@ function FileUpload({
         {isUploading ? (
           <div className="flex w-full flex-col items-center gap-2">
             <svg
+              aria-hidden="true"
               className="h-8 w-8 animate-spin text-hanover-green"
               viewBox="0 0 24 24"
               fill="none"
@@ -140,6 +141,7 @@ function FileUpload({
         ) : (
           <>
             <svg
+              aria-hidden="true"
               className="mb-2 h-8 w-8 text-muted-foreground"
               fill="none"
               viewBox="0 0 24 24"
@@ -175,6 +177,7 @@ function FileUpload({
       {displayName && !isUploading && (
         <div className="mt-2 flex items-center gap-2 rounded border border-border bg-gray-50 px-3 py-2 text-sm">
           <svg
+            aria-hidden="true"
             className="h-4 w-4 shrink-0 text-hanover-green"
             fill="none"
             viewBox="0 0 24 24"
@@ -192,9 +195,7 @@ function FileUpload({
         </div>
       )}
 
-      {error && (
-        <p className="mt-2 text-sm text-red-600">{error}</p>
-      )}
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
   );
 }

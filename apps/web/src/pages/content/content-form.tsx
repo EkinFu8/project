@@ -3,8 +3,17 @@ import { TextInput } from "@myapp/ui/components/text-input";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { supabase } from "@/lib/supabase";
+import { useFileUpload } from "@/hooks/use-file-upload";
 import { trpc } from "@/lib/trpc.ts";
+
+function formatDateField(date: Date | string | null | undefined): string {
+  if (!date) return "";
+  return new Date(date).toISOString().split("T")[0];
+}
+
+function toNullable<T extends string>(value: T | ""): T | null {
+  return (value || null) as T | null;
+}
 
 function ContentFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,31 +33,39 @@ function ContentFormPage() {
   const [contentType, setContentType] = useState("");
   const [documentStatus, setDocumentStatus] = useState("");
 
-  // File upload state
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const handleUploadSuccess = useCallback(
+    (result: { publicUrl: string; storagePath: string; fileName: string }) => {
+      setFilename(result.fileName.slice(0, 100));
+      setUrl(result.publicUrl);
+      setLastModified(new Date().toISOString().split("T")[0]);
+
+      if (!isEditing && !fileID) {
+        setFileID(result.storagePath.slice(0, 64));
+      }
+      if (!isEditing && !documentStatus) {
+        setDocumentStatus("Created");
+      }
+    },
+    [isEditing, fileID, documentStatus],
+  );
+
+  const { upload, isUploading, uploadProgress, uploadError } = useFileUpload({
+    bucket: "content-files",
+    onSuccess: handleUploadSuccess,
+  });
 
   useEffect(() => {
-    if (existing.data) {
-      setFileID(existing.data.fileID);
-      setFilename(existing.data.filename ?? "");
-      setUrl(existing.data.url ?? "");
-      setContentOwner(existing.data.content_owner ?? "");
-      setJobPosition(existing.data.job_position ?? "");
-      setLastModified(
-        existing.data.last_modified
-          ? new Date(existing.data.last_modified).toISOString().split("T")[0]
-          : "",
-      );
-      setExpirationDate(
-        existing.data.expiration_date
-          ? new Date(existing.data.expiration_date).toISOString().split("T")[0]
-          : "",
-      );
-      setContentType(existing.data.content_type ?? "");
-      setDocumentStatus(existing.data.document_status ?? "");
-    }
+    const d = existing.data;
+    if (!d) return;
+    setFileID(d.fileID);
+    setFilename(d.filename ?? "");
+    setUrl(d.url ?? "");
+    setContentOwner(d.content_owner ?? "");
+    setJobPosition(d.job_position ?? "");
+    setLastModified(formatDateField(d.last_modified));
+    setExpirationDate(formatDateField(d.expiration_date));
+    setContentType(d.content_type ?? "");
+    setDocumentStatus(d.document_status ?? "");
   }, [existing.data]);
 
   const utils = trpc.useUtils();
@@ -70,89 +87,20 @@ function ContentFormPage() {
 
   const isSaving = create.isPending || update.isPending;
 
-  const handleFileSelect = useCallback(
-    async (file: File) => {
-      setUploadError(null);
-      setIsUploading(true);
-      setUploadProgress(0);
-
-      try {
-        // Build a unique storage path: timestamp-originalname
-        const timestamp = Date.now();
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const storagePath = `${timestamp}-${safeName}`;
-
-        // Simulate incremental progress (Supabase JS SDK doesn't expose XHR progress)
-        const progressInterval = setInterval(() => {
-          setUploadProgress((prev) => Math.min(prev + 10, 90));
-        }, 200);
-
-        const { error } = await supabase.storage
-          .from("content-files")
-          .upload(storagePath, file, { upsert: false });
-
-        clearInterval(progressInterval);
-
-        if (error) {
-          setUploadError(error.message);
-          setIsUploading(false);
-          setUploadProgress(0);
-          return;
-        }
-
-        // Get the public URL for the uploaded file
-        const { data: publicUrlData } = supabase.storage
-          .from("content-files")
-          .getPublicUrl(storagePath);
-
-        setUploadProgress(100);
-
-        // Auto-fill the filename and URL fields
-        setFilename(file.name.slice(0, 100));
-        setUrl(publicUrlData.publicUrl);
-
-        // Set last_modified to today
-        setLastModified(new Date().toISOString().split("T")[0]);
-
-        // If creating and no fileID yet, generate one from the storage path
-        if (!isEditing && !fileID) {
-          setFileID(storagePath.slice(0, 64));
-        }
-
-        // Mark status as Created for new content
-        if (!isEditing && !documentStatus) {
-          setDocumentStatus("Created");
-        }
-
-        setTimeout(() => {
-          setIsUploading(false);
-        }, 400);
-      } catch (err) {
-        setUploadError(err instanceof Error ? err.message : "Upload failed");
-        setIsUploading(false);
-        setUploadProgress(0);
-      }
-    },
-    [isEditing, fileID, documentStatus],
-  );
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     const data = {
-      filename: filename || null,
-      url: url || null,
-      content_owner: contentOwner || null,
-      job_position: jobPosition || null,
+      filename: toNullable(filename),
+      url: toNullable(url),
+      content_owner: toNullable(contentOwner),
+      job_position: toNullable(jobPosition),
       last_modified: lastModified ? new Date(lastModified) : null,
       expiration_date: expirationDate ? new Date(expirationDate) : null,
-      content_type: (contentType || null) as "Reference" | "Workflow" | null,
-      document_status: (documentStatus || null) as
-        | "Created"
-        | "in-progress"
-        | "Finalized"
-        | "Archived"
-        | null,
+      content_type: toNullable<"Reference" | "Workflow">(contentType as "Reference" | "Workflow"),
+      document_status: toNullable<"Created" | "in-progress" | "Finalized" | "Archived">(
+        documentStatus as "Created" | "in-progress" | "Finalized" | "Archived",
+      ),
     };
 
     if (isEditing) {
@@ -192,7 +140,7 @@ function ContentFormPage() {
               {/* File Upload */}
               <FileUpload
                 label="Upload File"
-                onFileSelect={handleFileSelect}
+                onFileSelect={upload}
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.svg"
                 isUploading={isUploading}
                 progress={uploadProgress}
@@ -337,11 +285,7 @@ function ContentFormPage() {
                 className="flex w-full items-center justify-center gap-2 rounded bg-hanover-green py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
               >
                 {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isUploading
-                  ? "Uploading..."
-                  : isEditing
-                    ? "Update Content"
-                    : "Save Content"}
+                {isUploading ? "Uploading..." : isEditing ? "Update Content" : "Save Content"}
               </button>
             </form>
           </div>
