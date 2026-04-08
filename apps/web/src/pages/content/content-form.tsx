@@ -112,7 +112,7 @@ function ContentFormPage() {
 
   if (isEditing && existing.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted">
+      <div className="flex justify-center border-t border-border/60 py-16">
         <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
         <span className="ml-2 text-muted-foreground">Loading content...</span>
       </div>
@@ -120,9 +120,8 @@ function ContentFormPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted">
-      <div className="py-12">
-        <div className="mx-auto max-w-[640px] px-4">
+    <div className="border-t border-border/60 py-8 sm:py-10">
+      <div className="mx-auto max-w-[640px] px-4 sm:px-6 lg:px-8">
           <Link
             to="/hero/content"
             className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -290,7 +289,6 @@ function ContentFormPage() {
             </form>
           </div>
         </div>
-      </div>
     </div>
   );
 }

@@ -136,7 +136,7 @@ function DashboardPage() {
                           <tr key={item.fileID} className="border-b border-border">
                             <td className="px-2 py-3">
                               <Link
-                                to={`/content/${item.fileID}/edit`}
+                                to={`/hero/content/${item.fileID}/edit`}
                                 className="text-hanover-green hover:underline"
                               >
                                 {item.filename ?? item.fileID}

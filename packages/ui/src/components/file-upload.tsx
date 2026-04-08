@@ -103,7 +103,7 @@ function FileUpload({
           "hover:border-hanover-green hover:bg-hanover-green/5",
           "focus:outline-none focus:ring-2 focus:ring-hanover-green",
           isDragOver && "border-hanover-green bg-hanover-green/5",
-          !isDragOver && "border-border bg-white",
+          !isDragOver && "border-border bg-muted/50",
           (disabled || isUploading) && "cursor-not-allowed opacity-60",
         )}
       >
@@ -130,7 +130,7 @@ function FileUpload({
               />
             </svg>
             <p className="text-sm font-medium text-foreground">Uploading...</p>
-            <div className="h-1.5 w-48 overflow-hidden rounded-full bg-gray-200">
+            <div className="h-1.5 w-48 overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-hanover-green transition-all duration-300"
                 style={{ width: `${progress}%` }}
@@ -175,7 +175,7 @@ function FileUpload({
       />
 
       {displayName && !isUploading && (
-        <div className="mt-2 flex items-center gap-2 rounded border border-border bg-gray-50 px-3 py-2 text-sm">
+        <div className="mt-2 flex items-center gap-2 rounded border border-border bg-muted/50 px-3 py-2 text-sm">
           <svg
             aria-hidden="true"
             className="h-4 w-4 shrink-0 text-hanover-green"

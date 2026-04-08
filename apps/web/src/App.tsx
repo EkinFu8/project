@@ -1,5 +1,5 @@
 import { TopNav } from "@myapp/ui/components/top-nav";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router";
 import BusinessAnalyst from "@/pages/business-analyst/page.tsx";
 import ContentFormPage from "@/pages/content/content-form.tsx";
 import ContentListPage from "@/pages/content/page.tsx";
@@ -8,6 +8,11 @@ import EmployeesFormPage from "@/pages/employees/employees-form.tsx";
 import EmployeesPage from "@/pages/employees/page.tsx";
 import HeroLayout from "@/pages/hero/layout.tsx";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
+
+function LegacyContentEditRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/hero/content/${id}/edit`} replace />;
+}
 
 const navItems = [
   { label: "Underwriter", to: "/underwriter" },
@@ -25,8 +30,12 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/hero" replace />} />
           <Route path="/hero" element={<HeroLayout />}>
-            <Route index element={null} />
-            <Route path="content" element={<ContentListPage embedded />} />
+            <Route index element={<ContentListPage />} />
+            <Route path="content">
+              <Route index element={<ContentListPage />} />
+              <Route path="new" element={<ContentFormPage />} />
+              <Route path=":id/edit" element={<ContentFormPage />} />
+            </Route>
           </Route>
           <Route path="/content" element={<Navigate to="/hero/content" replace />} />
           <Route path="/underwriter" element={<UnderwriterPage />} />
@@ -37,9 +46,8 @@ function App() {
           <Route path="/employees/new" element={<EmployeesFormPage />} />
           <Route path="/employees/:id" element={<EmployeesFormPage />} />
 
-          {/* Content: list lives under /hero/content; create / edit stay full-page */}
-          <Route path="/content/new" element={<ContentFormPage />} />
-          <Route path="/content/:id/edit" element={<ContentFormPage />} />
+          <Route path="/content/new" element={<Navigate to="/hero/content/new" replace />} />
+          <Route path="/content/:id/edit" element={<LegacyContentEditRedirect />} />
 
           <Route path="/dashboard" element={<DashboardPage />} />
         </Routes>
