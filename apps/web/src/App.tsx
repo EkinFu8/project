@@ -13,7 +13,8 @@ const navItems = [
   { label: "Hero", to: "/hero" },
   { label: "Underwriter", to: "/underwriter" },
   { label: "Business Analyst", to: "/businessAnalyst" },
-  { label: "Employees", to: "/employees" },
+    // TODO - MOVE THE EMPLOYEES PAGE TO ONLY LIVE IN ADMIN VIEW
+  // { label: "Employees", to: "/employees" },
   { label: "Content", to: "/content" },
   { label: "Dashboard", to: "/dashboard" },
 ];
