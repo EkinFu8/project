@@ -20,6 +20,10 @@ export {
   updateEmployeeSchema,
 } from "./employee";
 export {
+  type Login,
+  loginSchema,
+} from "./login";
+export {
   type CreateUser,
   createUserSchema,
   type UpdateUser,
@@ -27,7 +31,3 @@ export {
   updateUserSchema,
   userIdSchema,
 } from "./user";
-export {
-  type Login,
-  loginSchema,
-} from './login';
