@@ -9,20 +9,20 @@ interface NavItem {
 function TopNav({ items }: { items: NavItem[] }) {
   return (
     <nav className="w-full bg-hanover-deepblue py-2">
-      <div className="flex items-left px-8 h-24 w-full">
-        <span className="text-lg font-bold tracking-tight text-white shrink-0">Hanover</span>
+      <div className="flex h-24 w-full items-center justify-between px-8">
+        <span className="shrink-0 text-lg font-bold tracking-tight text-white">Hanover</span>
 
-        <div className="ml-16 flex items-center justify-end gap-2 h-full flex-1">
+        <div className="flex h-full items-center gap-2">
           {items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center h-full px-4 text-sm font-medium transition-colors border-b-2",
+                  "flex h-full items-center border-b-2 px-4 text-sm font-medium transition-colors",
                   isActive
-                    ? "text-white border-hanover-green"
-                    : "text-white border-transparent hover:border-hanover-green/50",
+                    ? "border-hanover-green text-white"
+                    : "border-transparent text-white hover:border-hanover-green/50",
                 )
               }
             >
