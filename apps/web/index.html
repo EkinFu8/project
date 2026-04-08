@@ -6,12 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="darkreader-lock" />
     <script>
-      (function () {
+      (() => {
         var k = "hanover-ui-theme";
         var p = null;
         try {
           p = localStorage.getItem(k);
-        } catch (e) {}
+        } catch {}
         var dark =
           p === "dark" || (p !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
         document.documentElement.classList.toggle("dark", dark);

@@ -1,7 +1,7 @@
+import { ThemeProvider } from "@myapp/ui/components/theme-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ThemeProvider } from "@myapp/ui/components/theme-provider";
 import App from "./App.tsx";
 import "./index.css";
 import { supabase } from "./lib/supabase";
