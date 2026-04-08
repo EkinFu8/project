@@ -28,6 +28,7 @@
     "serve": "^14.2.0"
   },
   "devDependencies": {
+    "@trpc/server": "^11.0.0",
     "@tailwindcss/vite": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

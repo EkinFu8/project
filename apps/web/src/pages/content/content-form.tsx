@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useFileUpload } from "@/hooks/use-file-upload";
-import { trpc } from "@/lib/trpc.ts";
+import { trpc, type RouterOutputs } from "@/lib/trpc.ts";
 
 function formatDateField(date: Date | string | null | undefined): string {
   if (!date) return "";
@@ -35,7 +35,7 @@ type ContentFormFieldsProps = {
   setContentType: (v: string) => void;
   documentStatus: string;
   setDocumentStatus: (v: string) => void;
-  employees: ReturnType<typeof trpc.employee.list.useQuery>["data"];
+  employees: RouterOutputs["employee"]["list"] | undefined;
   upload: (file: File) => void;
   isUploading: boolean;
   uploadProgress: number;
