@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useFileUpload } from "@/hooks/use-file-upload";
-import { trpc, type RouterOutputs } from "@/lib/trpc.ts";
+import { type RouterOutputs, trpc } from "@/lib/trpc.ts";
 
 function formatDateField(date: Date | string | null | undefined): string {
   if (!date) return "";
