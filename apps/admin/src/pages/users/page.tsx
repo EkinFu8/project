@@ -88,9 +88,7 @@ function UsersPage() {
                         Display Name
                       </th>
                       <th className="px-4 py-3 text-left font-semibold text-foreground">Role</th>
-                      <th className="px-4 py-3 text-left font-semibold text-foreground">
-                        Actions
-                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>

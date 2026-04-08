@@ -135,11 +135,11 @@ function AdminContentPage() {
 
                   {/* Footer — owner + date */}
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{item.employee?.employee_name ?? item.content_owner ?? "Unassigned"}</span>
                     <span>
-                      {item.last_modified
-                        ? new Date(item.last_modified).toLocaleDateString()
-                        : "—"}
+                      {item.employee?.employee_name ?? item.content_owner ?? "Unassigned"}
+                    </span>
+                    <span>
+                      {item.last_modified ? new Date(item.last_modified).toLocaleDateString() : "—"}
                     </span>
                   </div>
                 </div>

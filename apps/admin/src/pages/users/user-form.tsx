@@ -26,10 +26,7 @@ function UserFormPage() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
 
-  const existingUser = trpc.appUser.getById.useQuery(
-    { id: id! },
-    { enabled: isEditing },
-  );
+  const existingUser = trpc.appUser.getById.useQuery({ id: id! }, { enabled: isEditing });
 
   useEffect(() => {
     if (existingUser.data) {
@@ -150,8 +147,11 @@ function UserFormPage() {
               />
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-foreground">Role</label>
+                <label htmlFor="role" className="text-sm font-medium text-foreground">
+                  Role
+                </label>
                 <select
+                  id="role"
                   value={role}
                   onChange={(e) => setRole(e.target.value as UserRole)}
                   className="rounded border border-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
