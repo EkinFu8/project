@@ -5,7 +5,11 @@ import { protectedProcedure, router } from "../lib/trpc";
 
 function listWhere(
   ctx: { user: { id: string } },
-  input: { search?: string | undefined; coworkersOnly?: boolean | undefined; employeePortalOnly?: boolean | undefined },
+  input: {
+    search?: string | undefined;
+    coworkersOnly?: boolean | undefined;
+    employeePortalOnly?: boolean | undefined;
+  },
 ): Prisma.UserProfileWhereInput | undefined {
   const filters: Prisma.UserProfileWhereInput[] = [];
 
@@ -43,7 +47,7 @@ export const employeeRouter = router({
       throw new TRPCError({ code: "NOT_FOUND", message: "Profile not found." });
     }
 
-    let coworkersOnly = input.coworkersOnly;
+    const coworkersOnly = input.coworkersOnly;
     let employeePortalOnly = input.employeePortalOnly;
 
     if (viewer.portal === "employee") {

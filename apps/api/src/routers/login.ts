@@ -15,7 +15,9 @@ export const loginRouter = router({
       where: { id: user.id },
       select: { portal: true },
     });
-    const assigned = profile?.portal ?? accountPortalFromUserMetadata(user.user_metadata as Record<string, unknown>);
+    const assigned =
+      profile?.portal ??
+      accountPortalFromUserMetadata(user.user_metadata as Record<string, unknown>);
     // Both apps accept either portal assignment; routing/UI differ by app URL.
     if (assigned !== "employee" && assigned !== "admin") {
       throw new TRPCError({

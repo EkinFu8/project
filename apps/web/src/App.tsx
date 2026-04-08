@@ -1,17 +1,26 @@
 import { TopNav } from "@myapp/ui/components/top-nav";
 import { Loader2 } from "lucide-react";
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from "react-router";
+import {
+  BrowserRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router";
 import { useSession } from "@/auth/session-context";
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
 import AccountPage from "@/pages/account/page.tsx";
+import BusinessAnalystPage from "@/pages/business-analyst/page.tsx";
 import ContentFormPage from "@/pages/content/content-form.tsx";
 import ContentListPage from "@/pages/content/page.tsx";
-import HeroLayout from "@/pages/hero/layout.tsx";
 import EmployeeDetailPage from "@/pages/employees/employee-detail.tsx";
 import EmployeesPage from "@/pages/employees/page.tsx";
+import HeroLayout from "@/pages/hero/layout.tsx";
 import LoginFormPage from "@/pages/login.tsx";
-import BusinessAnalystPage from "@/pages/business-analyst/page.tsx";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
 
 function LegacyContentEditRedirect() {
@@ -52,13 +61,7 @@ function WebLoginRoute() {
   if (loading) return <AuthSplash />;
   if (session && canUseWebApp(accessQuery.data?.portal)) return <Navigate to="/hero" replace />;
 
-  return (
-    <LoginFormPage
-      portal="employee"
-      defaultRedirect="/hero"
-      bannerText={state?.notice}
-    />
-  );
+  return <LoginFormPage portal="employee" defaultRedirect="/hero" bannerText={state?.notice} />;
 }
 
 function ProtectedLayout() {
@@ -103,7 +106,11 @@ function ProtectedLayout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <TopNav items={navItems} brandTo="/hero" accountMenu={{ settingsTo: "/account", onSignOut: handleSignOut }} />
+      <TopNav
+        items={navItems}
+        brandTo="/hero"
+        accountMenu={{ settingsTo: "/account", onSignOut: handleSignOut }}
+      />
       <Outlet />
     </div>
   );

@@ -1,6 +1,6 @@
-import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
+import { type LucideIcon, Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "../lib/utils";
-import { useTheme, type ThemePreference } from "./theme-provider";
+import { type ThemePreference, useTheme } from "./theme-provider";
 
 const ORDER: ThemePreference[] = ["system", "light", "dark"];
 
@@ -28,10 +28,9 @@ function ThemeSlider({ className }: { className?: string }) {
 
   return (
     <div className={cn("w-full", className)}>
-      <div
-        role="group"
+      <fieldset
         aria-label="Color theme"
-        className="relative flex gap-1 rounded-lg border border-border bg-muted/90 p-1"
+        className="relative m-0 flex min-w-0 gap-1 rounded-lg border border-border bg-muted/90 p-1"
       >
         <span
           aria-hidden
@@ -54,7 +53,9 @@ function ThemeSlider({ className }: { className?: string }) {
               className={cn(
                 "relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 px-1 text-sm font-medium outline-none transition-colors sm:gap-2 sm:px-1.5",
                 "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                preference === key ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                preference === key
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
               onClick={() => setPreference(key)}
               aria-pressed={preference === key}
@@ -64,7 +65,7 @@ function ThemeSlider({ className }: { className?: string }) {
             </button>
           );
         })}
-      </div>
+      </fieldset>
     </div>
   );
 }

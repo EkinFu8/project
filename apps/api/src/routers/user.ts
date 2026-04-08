@@ -6,8 +6,52 @@ import {
   userIdSchema,
 } from "@myapp/types/schemas";
 import { TRPCError } from "@trpc/server";
-import { adminPortalProcedure, protectedProcedure, router } from "../lib/trpc";
 import { createSupabaseAdmin } from "../lib/supabase";
+import { adminPortalProcedure, protectedProcedure, router } from "../lib/trpc";
+
+type AdminProfilePatch = {
+  email?: string;
+  password?: string;
+  name?: string;
+  portal?: string;
+  role?: string;
+  employee_code?: string | null;
+  job_desc?: string | null;
+};
+
+async function applyAdminAuthCredentialUpdates(
+  admin: ReturnType<typeof createSupabaseAdmin>,
+  userId: string,
+  email: string | undefined,
+  password: string | undefined,
+) {
+  if (email === undefined && password === undefined) return;
+  const creds: { email?: string; password?: string } = {};
+  if (email !== undefined) creds.email = email;
+  if (password !== undefined) creds.password = password;
+  const { error } = await admin.auth.admin.updateUserById(userId, creds);
+  if (error) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+  }
+}
+
+function buildProfileUpdateData(patch: AdminProfilePatch) {
+  const data: {
+    email?: string;
+    name?: string;
+    portal?: string;
+    role?: string;
+    employee_code?: string | null;
+    job_desc?: string | null;
+  } = {};
+  if (patch.email !== undefined) data.email = patch.email;
+  if (patch.name !== undefined) data.name = patch.name;
+  if (patch.portal !== undefined) data.portal = patch.portal;
+  if (patch.role !== undefined) data.role = patch.role;
+  if (patch.employee_code !== undefined) data.employee_code = patch.employee_code;
+  if (patch.job_desc !== undefined) data.job_desc = patch.job_desc;
+  return data;
+}
 
 export const userRouter = router({
   me: protectedProcedure.query(async ({ ctx }) => {
@@ -81,30 +125,32 @@ export const userRouter = router({
     return ctx.prisma.userProfile.findUniqueOrThrow({ where: { id: input.id } });
   }),
 
-  adminCreate: adminPortalProcedure.input(adminCreateUserSchema).mutation(async ({ ctx, input }) => {
-    const admin = createSupabaseAdmin();
-    const { employee_code, job_desc, ...rest } = input;
-    const { data, error } = await admin.auth.admin.createUser({
-      email: rest.email,
-      password: rest.password,
-      email_confirm: true,
-      user_metadata: {
-        name: rest.name,
-        portal: rest.portal,
-        role: rest.role,
-        ...(employee_code ? { employee_code } : {}),
-        ...(job_desc ? { job_desc } : {}),
-      },
-    });
-    if (error || !data.user) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: error?.message ?? "Failed to create auth user.",
+  adminCreate: adminPortalProcedure
+    .input(adminCreateUserSchema)
+    .mutation(async ({ ctx, input }) => {
+      const admin = createSupabaseAdmin();
+      const { employee_code, job_desc, ...rest } = input;
+      const { data, error } = await admin.auth.admin.createUser({
+        email: rest.email,
+        password: rest.password,
+        email_confirm: true,
+        user_metadata: {
+          name: rest.name,
+          portal: rest.portal,
+          role: rest.role,
+          ...(employee_code ? { employee_code } : {}),
+          ...(job_desc ? { job_desc } : {}),
+        },
       });
-    }
+      if (error || !data.user) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error?.message ?? "Failed to create auth user.",
+        });
+      }
 
-    return ctx.prisma.userProfile.findUniqueOrThrow({ where: { id: data.user.id } });
-  }),
+      return ctx.prisma.userProfile.findUniqueOrThrow({ where: { id: data.user.id } });
+    }),
 
   adminUpdate: adminPortalProcedure
     .input(userIdSchema.merge(adminUpdateUserSchema))
@@ -112,31 +158,9 @@ export const userRouter = router({
       const { id, ...patch } = input;
       const admin = createSupabaseAdmin();
 
-      if (patch.email !== undefined || patch.password !== undefined) {
-        const creds: { email?: string; password?: string } = {};
-        if (patch.email !== undefined) creds.email = patch.email;
-        if (patch.password !== undefined) creds.password = patch.password;
-        const { error } = await admin.auth.admin.updateUserById(id, creds);
-        if (error) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
-        }
-      }
+      await applyAdminAuthCredentialUpdates(admin, id, patch.email, patch.password);
 
-      const data: {
-        email?: string;
-        name?: string;
-        portal?: string;
-        role?: string;
-        employee_code?: string | null;
-        job_desc?: string | null;
-      } = {};
-      if (patch.email !== undefined) data.email = patch.email;
-      if (patch.name !== undefined) data.name = patch.name;
-      if (patch.portal !== undefined) data.portal = patch.portal;
-      if (patch.role !== undefined) data.role = patch.role;
-      if (patch.employee_code !== undefined) data.employee_code = patch.employee_code;
-      if (patch.job_desc !== undefined) data.job_desc = patch.job_desc;
-
+      const data = buildProfileUpdateData(patch);
       if (Object.keys(data).length > 0) {
         await ctx.prisma.userProfile.update({ where: { id }, data });
       }
@@ -158,7 +182,7 @@ export const userRouter = router({
       return row;
     }),
 
-  adminDelete: adminPortalProcedure.input(userIdSchema).mutation(async ({ ctx, input }) => {
+  adminDelete: adminPortalProcedure.input(userIdSchema).mutation(async ({ input }) => {
     const admin = createSupabaseAdmin();
     const { error } = await admin.auth.admin.deleteUser(input.id);
     if (error) {

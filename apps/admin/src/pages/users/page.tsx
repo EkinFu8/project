@@ -172,9 +172,7 @@ function RoleBadge({ role }: { role: string }) {
   const label = ROLE_LABELS[known as UserRole] ?? role;
   const cls = styles[known] ?? "bg-muted text-muted-foreground";
   return (
-    <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${cls}`}>
-      {label}
-    </span>
+    <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${cls}`}>{label}</span>
   );
 }
 

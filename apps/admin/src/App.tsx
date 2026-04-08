@@ -1,6 +1,14 @@
 import { TopNav } from "@myapp/ui/components/top-nav";
 import { Loader2 } from "lucide-react";
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router";
+import {
+  BrowserRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router";
 import { useSession } from "@/auth/session-context";
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
@@ -46,15 +54,10 @@ function AdminLoginRoute() {
     return <AuthSplash />;
   }
   if (loading) return <AuthSplash />;
-  if (session && canUseAdminApp(accessQuery.data?.portal)) return <Navigate to="/content" replace />;
+  if (session && canUseAdminApp(accessQuery.data?.portal))
+    return <Navigate to="/content" replace />;
 
-  return (
-    <LoginFormPage
-      portal="admin"
-      defaultRedirect="/content"
-      bannerText={state?.notice}
-    />
-  );
+  return <LoginFormPage portal="admin" defaultRedirect="/content" bannerText={state?.notice} />;
 }
 
 function ProtectedLayout() {

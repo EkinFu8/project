@@ -73,7 +73,10 @@ function DashboardLoaded({
                       {emp.employee_code ?? "—"}
                     </td>
                     <td className="px-2 py-3">
-                      <Link to={`/employees/${emp.id}`} className="text-hanover-green hover:underline">
+                      <Link
+                        to={`/employees/${emp.id}`}
+                        className="text-hanover-green hover:underline"
+                      >
                         {emp.name}
                       </Link>
                     </td>

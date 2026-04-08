@@ -23,10 +23,7 @@ function getStatusBadge(status: string | null) {
   }
 }
 
-function matchesOwnerRole(
-  owner: { role: string } | null | undefined,
-  role: string,
-): boolean {
+function matchesOwnerRole(owner: { role: string } | null | undefined, role: string): boolean {
   if (role === "all") return true;
   const r = owner?.role ?? "";
   if (role === "underwriter") return r === "underwriter";

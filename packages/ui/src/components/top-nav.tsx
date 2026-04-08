@@ -93,9 +93,17 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
                 </span>
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
-                <DropdownMenu.Content className={menuContentClass} sideOffset={8} align="end" collisionPadding={8}>
+                <DropdownMenu.Content
+                  className={menuContentClass}
+                  sideOffset={8}
+                  align="end"
+                  collisionPadding={8}
+                >
                   <DropdownMenu.Item asChild className={menuItemClass}>
-                    <NavLink to={accountMenu.settingsTo} className={cn(menuItemClass, "no-underline")}>
+                    <NavLink
+                      to={accountMenu.settingsTo}
+                      className={cn(menuItemClass, "no-underline")}
+                    >
                       Settings
                     </NavLink>
                   </DropdownMenu.Item>

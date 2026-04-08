@@ -1,5 +1,5 @@
-import { TextInput } from "@myapp/ui/components/text-input";
 import type { AccountRole, UserPortal } from "@myapp/types/schemas";
+import { TextInput } from "@myapp/ui/components/text-input";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -18,6 +18,34 @@ const PORTAL_LABELS: Record<UserPortal, string> = {
   employee: "Employee portal (web app)",
   admin: "Admin portal",
 };
+
+function userFormValidationError(
+  emailRaw: string,
+  passwordRaw: string,
+  nameRaw: string,
+  isEditing: boolean,
+): string | null {
+  if (!emailRaw.trim()) return "Email is required.";
+  if (!isEditing && !passwordRaw.trim()) return "Password is required.";
+  if (!nameRaw.trim()) return "Name is required.";
+  return null;
+}
+
+function sharedUserPayload(
+  nameRaw: string,
+  portal: UserPortal,
+  role: AccountRole,
+  employeeCodeRaw: string,
+  jobDescRaw: string,
+) {
+  return {
+    name: nameRaw.trim(),
+    portal,
+    role,
+    employee_code: employeeCodeRaw.trim() || null,
+    job_desc: jobDescRaw.trim() || null,
+  };
+}
 
 function UserFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -70,40 +98,24 @@ function UserFormPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-
-    if (!email.trim()) {
-      setError("Email is required.");
+    const validationError = userFormValidationError(email, password, name, isEditing);
+    if (validationError) {
+      setError(validationError);
       return;
     }
-    if (!isEditing && !password.trim()) {
-      setError("Password is required.");
-      return;
-    }
-    if (!name.trim()) {
-      setError("Name is required.");
-      return;
-    }
-
+    const fields = sharedUserPayload(name, portal, role, employeeCode, jobDesc);
     if (isEditing && id) {
       updateMutation.mutate({
         id,
         email: email.trim(),
         ...(password.trim() ? { password: password.trim() } : {}),
-        name: name.trim(),
-        portal,
-        role,
-        employee_code: employeeCode.trim() || null,
-        job_desc: jobDesc.trim() || null,
+        ...fields,
       });
     } else {
       createMutation.mutate({
         email: email.trim(),
         password: password.trim(),
-        name: name.trim(),
-        portal,
-        role,
-        employee_code: employeeCode.trim() || null,
-        job_desc: jobDesc.trim() || null,
+        ...fields,
       });
     }
   }

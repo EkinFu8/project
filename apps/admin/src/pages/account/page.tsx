@@ -82,7 +82,10 @@ function AccountPage() {
           <h2 className="mb-4 text-lg font-semibold">Profile</h2>
           <form className="space-y-4" onSubmit={handleProfileSubmit}>
             <div>
-              <label htmlFor="admin-account-email" className="mb-2 block text-sm font-semibold text-foreground">
+              <label
+                htmlFor="admin-account-email"
+                className="mb-2 block text-sm font-semibold text-foreground"
+              >
                 Email
               </label>
               <input
@@ -132,7 +135,9 @@ function AccountPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
             {passwordError ? <p className="text-sm text-destructive">{passwordError}</p> : null}
-            {passwordMessage ? <p className="text-sm text-hanover-green">{passwordMessage}</p> : null}
+            {passwordMessage ? (
+              <p className="text-sm text-hanover-green">{passwordMessage}</p>
+            ) : null}
             <button
               type="submit"
               disabled={passwordBusy || !newPassword}
