@@ -34,7 +34,7 @@ function DashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen bg-muted">
       <div className="py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
@@ -56,7 +56,7 @@ function DashboardPage() {
                 {stats.map((stat) => (
                   <div
                     key={stat.label}
-                    className="rounded border-t-4 border-t-hanover-green bg-white p-6 shadow-sm"
+                    className="rounded border-t-4 border-t-hanover-green bg-card p-6 shadow-sm"
                   >
                     <div className="text-3xl font-bold text-foreground">{stat.value}</div>
                     <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
@@ -66,7 +66,7 @@ function DashboardPage() {
 
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Employees Table */}
-                <div className="overflow-x-auto rounded bg-white p-6 shadow-sm">
+                <div className="overflow-x-auto rounded bg-card p-6 shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-foreground">Employees</h2>
                   {(employees.data?.length ?? 0) === 0 ? (
                     <p className="py-8 text-center text-sm text-muted-foreground">
@@ -110,7 +110,7 @@ function DashboardPage() {
                 </div>
 
                 {/* Recent Content Table */}
-                <div className="overflow-x-auto rounded bg-white p-6 shadow-sm">
+                <div className="overflow-x-auto rounded bg-card p-6 shadow-sm">
                   <h2 className="mb-4 text-lg font-semibold text-foreground">Recent Content</h2>
                   {(allContent.data?.length ?? 0) === 0 ? (
                     <p className="py-8 text-center text-sm text-muted-foreground">

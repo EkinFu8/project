@@ -62,7 +62,7 @@ function EmployeesFormPage() {
 
   if (isEditing && existing.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F5F5F5]">
+      <div className="flex min-h-screen items-center justify-center bg-muted">
         <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
         <span className="ml-2 text-muted-foreground">Loading employee...</span>
       </div>
@@ -70,7 +70,7 @@ function EmployeesFormPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen bg-muted">
       <div className="py-12">
         <div className="mx-auto max-w-[640px] px-4">
           <Link
@@ -85,7 +85,7 @@ function EmployeesFormPage() {
             {isEditing ? "Edit Employee" : "Add New Employee"}
           </h1>
 
-          <div className="rounded bg-white p-8 shadow-md">
+          <div className="rounded bg-card p-8 shadow-md">
             <form className="space-y-6" onSubmit={handleSubmit}>
               <TextInput
                 label="Employee ID"

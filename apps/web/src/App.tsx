@@ -6,15 +6,14 @@ import ContentListPage from "@/pages/content/page.tsx";
 import DashboardPage from "@/pages/dashboard/page.tsx";
 import EmployeesFormPage from "@/pages/employees/employees-form.tsx";
 import EmployeesPage from "@/pages/employees/page.tsx";
-import HeroPage from "@/pages/hero/page.tsx";
+import HeroLayout from "@/pages/hero/layout.tsx";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
 
 const navItems = [
-  { label: "Hero", to: "/hero" },
   { label: "Underwriter", to: "/underwriter" },
   { label: "Business Analyst", to: "/businessAnalyst" },
   { label: "Employees", to: "/employees" },
-  { label: "Content", to: "/content" },
+  { label: "Content", to: "/hero/content" },
   { label: "Dashboard", to: "/dashboard" },
 ];
 
@@ -22,10 +21,14 @@ function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-background text-foreground">
-        <TopNav items={navItems} />
+        <TopNav items={navItems} brandTo="/hero" />
         <Routes>
           <Route path="/" element={<Navigate to="/hero" replace />} />
-          <Route path="/hero" element={<HeroPage />} />
+          <Route path="/hero" element={<HeroLayout />}>
+            <Route index element={null} />
+            <Route path="content" element={<ContentListPage embedded />} />
+          </Route>
+          <Route path="/content" element={<Navigate to="/hero/content" replace />} />
           <Route path="/underwriter" element={<UnderwriterPage />} />
           <Route path="/businessAnalyst" element={<BusinessAnalyst />} />
 
@@ -34,8 +37,7 @@ function App() {
           <Route path="/employees/new" element={<EmployeesFormPage />} />
           <Route path="/employees/:id" element={<EmployeesFormPage />} />
 
-          {/* Content: list → create / edit */}
-          <Route path="/content" element={<ContentListPage />} />
+          {/* Content: list lives under /hero/content; create / edit stay full-page */}
           <Route path="/content/new" element={<ContentFormPage />} />
           <Route path="/content/:id/edit" element={<ContentFormPage />} />
 
