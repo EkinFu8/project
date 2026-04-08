@@ -73,7 +73,7 @@ function ContentFormPage() {
   const create = trpc.content.create.useMutation({
     onSuccess: () => {
       utils.content.list.invalidate();
-      navigate("/content");
+      navigate("/hero/content");
     },
   });
 
@@ -81,7 +81,7 @@ function ContentFormPage() {
     onSuccess: () => {
       utils.content.list.invalidate();
       utils.content.getById.invalidate({ fileID: id! });
-      navigate("/content");
+      navigate("/hero/content");
     },
   });
 
@@ -112,7 +112,7 @@ function ContentFormPage() {
 
   if (isEditing && existing.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F5F5F5]">
+      <div className="flex min-h-screen items-center justify-center bg-muted">
         <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
         <span className="ml-2 text-muted-foreground">Loading content...</span>
       </div>
@@ -120,11 +120,11 @@ function ContentFormPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen bg-muted">
       <div className="py-12">
         <div className="mx-auto max-w-[640px] px-4">
           <Link
-            to="/content"
+            to="/hero/content"
             className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -135,7 +135,7 @@ function ContentFormPage() {
             {isEditing ? "Edit Content" : "New Content"}
           </h1>
 
-          <div className="rounded bg-white p-8 shadow-md">
+          <div className="rounded bg-card p-8 shadow-md">
             <form className="space-y-6" onSubmit={handleSubmit}>
               {/* File Upload */}
               <FileUpload
