@@ -9,7 +9,7 @@ function EmployeesPage() {
   const employees = trpc.employee.list.useQuery({ search });
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen bg-muted">
       <div className="py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Header */}
@@ -39,28 +39,33 @@ function EmployeesPage() {
                 placeholder="Search by name, ID, or job description..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded border border-border bg-white py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
+                className="w-full rounded border border-border bg-background py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
               />
             </div>
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto rounded bg-white shadow-sm">
+          <div className="overflow-x-auto rounded bg-card shadow-sm">
             {employees.isLoading ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
                 <span className="ml-2 text-muted-foreground">Loading employees...</span>
               </div>
             ) : employees.isError ? (
-              <div className="py-16 text-center text-red-600">
-                Failed to load employees. Is the API running?
+              <div className="mx-auto max-w-lg px-4 py-16 text-center">
+                <p className="font-medium text-red-600">Could not load employees.</p>
+                <p className="mt-2 break-words text-sm text-muted-foreground">
+                  {employees.error instanceof Error
+                    ? employees.error.message
+                    : String(employees.error)}
+                </p>
               </div>
             ) : employees.data?.length === 0 ? (
               <div className="py-16 text-center text-muted-foreground">No employees found.</div>
             ) : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-[#F9FAFB]">
+                  <tr className="border-b border-border bg-muted/80">
                     <th className="px-4 py-3 text-left font-semibold text-foreground">ID</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">
@@ -73,7 +78,7 @@ function EmployeesPage() {
                   {employees.data?.map((emp) => (
                     <tr
                       key={emp.employeeID}
-                      className="border-b border-border transition-colors hover:bg-[#F9FAFB]"
+                      className="border-b border-border transition-colors hover:bg-muted/80"
                     >
                       <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
                         {emp.employeeID}

@@ -11,10 +11,16 @@ async function createContextInner(authToken: string | null) {
   let user = null;
 
   if (authToken) {
-    const {
-      data: { user: supabaseUser },
-    } = await supabase.auth.getUser(authToken);
-    user = supabaseUser;
+    try {
+      const { data, error } = await supabase.auth.getUser(authToken);
+      if (error) {
+        console.warn("[context] auth.getUser:", error.message);
+      } else {
+        user = data.user;
+      }
+    } catch (err) {
+      console.warn("[context] auth.getUser failed:", err);
+    }
   }
 
   return { supabase, prisma, user };

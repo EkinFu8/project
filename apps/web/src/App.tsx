@@ -1,21 +1,25 @@
 import { TopNav } from "@myapp/ui/components/top-nav";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router";
-import BusinessAnalyst from "@/pages/business-analyst";
-import ContentFormPage from "@/pages/content-form";
-import ContentListPage from "@/pages/content-list";
-import DashboardPage from "@/pages/dashboard";
-import EmployeesPage from "@/pages/employees";
-import EmployeesFormPage from "@/pages/employees-form";
-import HeroPage from "./pages/hero";
-import UnderwriterPage from "./pages/underwriter";
-import LoginFormPage from "./pages/login";
+import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router";
+import BusinessAnalyst from "@/pages/business-analyst/page.tsx";
+import ContentFormPage from "@/pages/content/content-form.tsx";
+import ContentListPage from "@/pages/content/page.tsx";
+import DashboardPage from "@/pages/dashboard/page.tsx";
+import EmployeesFormPage from "@/pages/employees/employees-form.tsx";
+import EmployeesPage from "@/pages/employees/page.tsx";
+import HeroLayout from "@/pages/hero/layout.tsx";
+import LoginFormPage from "@/pages/login.tsx";
+import UnderwriterPage from "@/pages/underwriter/page.tsx";
+
+function LegacyContentEditRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/hero/content/${id}/edit`} replace />;
+}
 
 const navItems = [
-  { label: "Hero", to: "/hero" },
   { label: "Underwriter", to: "/underwriter" },
   { label: "Business Analyst", to: "/businessAnalyst" },
   { label: "Employees", to: "/employees" },
-  { label: "Content", to: "/content" },
+  { label: "Content", to: "/hero/content" },
   { label: "Dashboard", to: "/dashboard" },
   { label: "Login", to: "/login" },
 ];
@@ -24,10 +28,18 @@ function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-background text-foreground">
-        <TopNav items={navItems} />
+        <TopNav items={navItems} brandTo="/hero" />
         <Routes>
           <Route path="/" element={<Navigate to="/hero" replace />} />
-          <Route path="/hero" element={<HeroPage />} />
+          <Route path="/hero" element={<HeroLayout />}>
+            <Route index element={<ContentListPage />} />
+            <Route path="content">
+              <Route index element={<ContentListPage />} />
+              <Route path="new" element={<ContentFormPage />} />
+              <Route path=":id/edit" element={<ContentFormPage />} />
+            </Route>
+          </Route>
+          <Route path="/content" element={<Navigate to="/hero/content" replace />} />
           <Route path="/underwriter" element={<UnderwriterPage />} />
           <Route path="/businessAnalyst" element={<BusinessAnalyst />} />
 
@@ -36,10 +48,8 @@ function App() {
           <Route path="/employees/new" element={<EmployeesFormPage />} />
           <Route path="/employees/:id" element={<EmployeesFormPage />} />
 
-          {/* Content: list → create / edit */}
-          <Route path="/content" element={<ContentListPage />} />
-          <Route path="/content/new" element={<ContentFormPage />} />
-          <Route path="/content/:id/edit" element={<ContentFormPage />} />
+          <Route path="/content/new" element={<Navigate to="/hero/content/new" replace />} />
+          <Route path="/content/:id/edit" element={<LegacyContentEditRedirect />} />
 
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/login" element={<LoginFormPage/>} />

@@ -24,12 +24,14 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@prisma/engines",
+      "esbuild",
       "prisma",
-      "esbuild"
+      "supabase"
     ]
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
+    "supabase": "^2.88.1",
     "turbo": "^2.5.0",
     "typescript": "^5.8.0",
     "vitest": "^3.1.0"

@@ -7,7 +7,7 @@ export const contentIdSchema = z.object({
 export const createContentSchema = z.object({
   fileID: z.string().min(1).max(64),
   filename: z.string().max(100).nullish(),
-  url: z.string().max(100).nullish(),
+  url: z.string().max(500).nullish(),
   content_owner: z.string().max(50).nullish(),
   job_position: z.string().max(20).nullish(),
   last_modified: z.coerce.date().nullish(),
