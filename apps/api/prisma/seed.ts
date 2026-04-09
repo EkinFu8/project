@@ -1,10 +1,6 @@
 import "../load-env-pre.js";
-import {
-  DEMO_ADMIN_EMAIL,
-  DEMO_USER_EMAIL,
-  ensureDemoAuthAndProfiles,
-} from "./ensure-demo-users";
 import { prisma } from "../src/lib/prisma";
+import { DEMO_ADMIN_EMAIL, DEMO_USER_EMAIL, ensureDemoAuthAndProfiles } from "./ensure-demo-users";
 
 async function main() {
   console.log("Seeding database...");

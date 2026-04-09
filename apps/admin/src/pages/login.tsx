@@ -22,12 +22,6 @@ function redirectTarget(state: unknown, fallback: string): string {
   return fallback;
 }
 
-function showLocalLoginHint(): boolean {
-  if (!import.meta.env.DEV) return false;
-  const host = globalThis.location?.hostname;
-  return host === "localhost" || host === "127.0.0.1";
-}
-
 function LoginFormPage({
   defaultRedirect,
   portal,
