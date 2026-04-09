@@ -9,7 +9,7 @@
     }
   },
   "scripts": {
-    "postinstall": "prisma generate",
+    "postinstall": "node -e \"if (process.env.CI) process.exit(0); require('child_process').execSync('prisma generate', { stdio: 'inherit' })\"",
     "dev": "tsx watch src/server.ts",
     "build": "prisma generate && node build.mjs",
     "start": "node dist/server.mjs",
