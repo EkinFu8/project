@@ -26,7 +26,7 @@ const isRemoteCli = process.env.PRISMA_USE_REMOTE_DATABASE === "1";
 // Remote `db push` / migrate: Prisma's engine must use session pooler (:5432). If we pass transaction
 // pooler (:6543) as datasource.url, the CLI still uses it for most work → 10+ minute "hangs" and errors.
 // Prefer DIRECT_URL for both url + migrate when running pnpm db:push:remote.
-const databaseUrl = (() => {
+let databaseUrl: string | undefined = (() => {
   if (isRemoteCli && sessionUrl) return sessionUrl;
   if (pooledUrl) return pooledUrl;
   if (sessionUrl) return sessionUrl;
@@ -34,9 +34,15 @@ const databaseUrl = (() => {
 })();
 
 if (!databaseUrl) {
-  throw new Error(
-    "DATABASE_URL is not set. Local: repo-root .env / .env.local. Remote push: .env.database.remote (pnpm db:push:remote). See .env.example.",
-  );
+  // `prisma generate` and bundled API builds do not open a DB connection; Prisma still loads this config.
+  // CI has no repo `.env` — use a well-formed placeholder so turbo `^build` → `api#build` can run.
+  if (process.env.CI === "true") {
+    databaseUrl = "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
+  } else {
+    throw new Error(
+      "DATABASE_URL is not set. Local: repo-root .env / .env.local. Remote push: .env.database.remote (pnpm db:push:remote). See .env.example.",
+    );
+  }
 }
 
 const directUrl = sessionUrl || pooledUrl || databaseUrl;
