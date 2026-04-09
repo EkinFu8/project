@@ -77,17 +77,17 @@ function UserFormPage() {
   }, [existingUser.data]);
 
   const createMutation = trpc.user.adminCreate.useMutation({
-    onSuccess: () => {
-      utils.user.adminList.invalidate();
+    onSuccess: async () => {
+      // Wait so the list query is stale/refetched before /users remounts (avoids showing cached rows).
+      await utils.user.invalidate();
       navigate("/users");
     },
     onError: (err) => setError(err.message),
   });
 
   const updateMutation = trpc.user.adminUpdate.useMutation({
-    onSuccess: (_data, variables) => {
-      utils.user.adminList.invalidate();
-      utils.user.adminGetById.invalidate({ id: variables.id });
+    onSuccess: async () => {
+      await utils.user.invalidate();
       navigate("/users");
     },
     onError: (err) => setError(err.message),

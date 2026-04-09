@@ -21,8 +21,8 @@ function UsersPage() {
   const users = trpc.user.adminList.useQuery({ search });
 
   const deleteMutation = trpc.user.adminDelete.useMutation({
-    onSuccess: () => {
-      utils.user.adminList.invalidate();
+    onSuccess: async () => {
+      await utils.user.invalidate();
       setConfirmDeleteId(null);
     },
   });
