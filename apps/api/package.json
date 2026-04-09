@@ -13,7 +13,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "prisma generate && node build.mjs",
     "start": "node dist/server.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "prisma generate && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "prisma generate",
