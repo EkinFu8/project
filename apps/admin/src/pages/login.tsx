@@ -40,8 +40,6 @@ function LoginFormPage({
   const location = useLocation();
   const navigate = useNavigate();
   const from = redirectTarget(location.state, defaultRedirect);
-  const localHint = showLocalLoginHint();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -110,14 +108,6 @@ function LoginFormPage({
           </button>
         </form>
       </div>
-      {localHint ? (
-        <p className="mt-6 text-center text-xs leading-relaxed text-white/65">
-          Local dev:{" "}
-          <code className="rounded bg-white/10 px-1 py-0.5 text-white/90">admin@hanover.test</code>
-          {" / "}
-          <code className="rounded bg-white/10 px-1 py-0.5 text-white/90">HanoverTest123!</code>
-        </p>
-      ) : null}
     </LoginLayout>
   );
 }
