@@ -35,8 +35,8 @@ let databaseUrl: string | undefined = (() => {
 
 if (!databaseUrl) {
   // `prisma generate` and bundled API builds do not open a DB connection; Prisma still loads this config.
-  // CI has no repo `.env` — use a well-formed placeholder so turbo `^build` → `api#build` can run.
-  if (process.env.CI === "true") {
+  // CI / Railway builds often have no repo `.env` — use a well-formed placeholder for config parsing only.
+  if (process.env.CI === "true" || process.env.RAILWAY_ENVIRONMENT) {
     databaseUrl = "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
   } else {
     throw new Error(
