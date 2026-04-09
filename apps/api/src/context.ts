@@ -1,6 +1,6 @@
 import type { CreateHTTPContextOptions } from "@trpc/server/adapters/standalone";
-import { createSupabaseClient } from "./lib/supabase";
 import { prisma } from "./lib/prisma";
+import { createSupabaseClient } from "./lib/supabase";
 
 /**
  * Inner context builder — adapter-agnostic. Takes an auth token directly.
