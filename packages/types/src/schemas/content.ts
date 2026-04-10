@@ -14,6 +14,7 @@ export const createContentSchema = z.object({
   expiration_date: z.coerce.date().nullish(),
   content_type: z.enum(["Reference", "Workflow"]).nullish(),
   document_status: z.enum(["Created", "in-progress", "Finalized", "Archived"]).nullish(),
+  is_favorited: z.boolean().nullish(),
 });
 
 export const updateContentSchema = createContentSchema.omit({ fileID: true }).partial();

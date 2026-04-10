@@ -22,6 +22,11 @@ function ContentListPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
 
+  const utils = trpc.useUtils();
+  const toggleFavorite = trpc.content.update.useMutation({
+    onSuccess: () => utils.content.list.invalidate(),
+  });
+
   const contents = trpc.content.list.useQuery({
     search,
     document_status: status || undefined,
@@ -92,11 +97,20 @@ function ContentListPage() {
                   <h3 className="text-base font-semibold text-foreground group-hover:text-hanover-green">
                     {item.filename ?? "Untitled"}
                   </h3>
-                  <span
-                    className={`ml-2 shrink-0 rounded px-2 py-0.5 text-xs font-semibold ${getStatusBadge(item.document_status)}`}
-                  >
-                    {item.document_status ?? "—"}
-                  </span>
+                  <div className="ml-2 flex shrink-0 items-center gap-1">
+                    <span className={`rounded px-2 py-0.5 text-xs font-semibold ${getStatusBadge(item.document_status)}`}>
+                      {item.document_status ?? "—"}
+                    </span>
+                    <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleFavorite.mutate({ fileID: item.fileID, is_favorited: !item.is_favorited });
+                        }}
+                        className="text-yellow-400 hover:text-yellow-500"
+                    >
+                      {item.is_favorited ? "★" : "☆"}
+                    </button>
+                  </div>
                 </div>
                 <p className="mb-1 text-xs text-muted-foreground">
                   {item.content_type ?? "—"} · {item.job_position ?? "—"}
