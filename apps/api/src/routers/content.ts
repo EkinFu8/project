@@ -18,33 +18,33 @@ function assertCanEdit(file: any, userId: string) {
 
 
 export const contentRouter = router({
-  checkout: publicProcedure
-      .input(contentIdSchema)
-      .mutation(async ({ ctx, input }) => {
-          const userId = ctx.user?.id;
-          if (!userId) throw new Error("Not authenticated");
+    checkout: publicProcedure
+        .input(contentIdSchema)
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.user?.id;
+            if (!userId) throw new Error("Not authenticated");
 
-        const file = await ctx.prisma.contentManagement.findUnique({
-          where: { fileID: input.fileID },
-        });
+            const result = await ctx.prisma.contentManagement.updateMany({
+                where: {
+                    fileID: input.fileID,
+                    OR: [
+                        { is_checked_out: false },
+                        { checked_out_by: userId }, // allows re-checkout by same user
+                    ],
+                },
+                data: {
+                    is_checked_out: true,
+                    checked_out_by: userId,
+                    checked_out_at: new Date(),
+                },
+            });
 
-        if (!file) {
-          throw new Error("File not found");
-        }
+            if (result.count === 0) {
+                throw new Error("File is already checked out by someone else");
+            }
 
-        if (file.is_checked_out && file.checked_out_by !== userId) {
-          throw new Error("Someone else is already using this file");
-        }
-
-        return ctx.prisma.contentManagement.update({
-          where: { fileID: input.fileID },
-          data: {
-            is_checked_out: true,
-            checked_out_by: userId,
-            checked_out_at: new Date(),
-          },
-        });
-      }),
+            return { success: true };
+        }),
 
     forceUnlock: publicProcedure
         .input(contentIdSchema)
