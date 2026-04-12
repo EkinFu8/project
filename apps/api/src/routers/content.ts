@@ -6,11 +6,23 @@ import {
 } from "@myapp/types/schemas";
 import { publicProcedure, router } from "../lib/trpc";
 
+
+function assertCanEdit(file: any, userId: string) {
+    if (!file) throw new Error("File not found");
+
+    if (file.is_checked_out && file.checked_out_by !== userId) {
+        throw new Error("This file is checked out by another user");
+    }
+}
+
+
+
 export const contentRouter = router({
   checkout: publicProcedure
       .input(contentIdSchema)
       .mutation(async ({ ctx, input }) => {
-        const userId:any = ctx.user.id;
+          const userId = ctx.user?.id;
+          if (!userId) throw new Error("Not authenticated");
 
         const file = await ctx.prisma.contentManagement.findUnique({
           where: { fileID: input.fileID },
@@ -33,10 +45,42 @@ export const contentRouter = router({
           },
         });
       }),
+
+    forceUnlock: publicProcedure
+        .input(contentIdSchema)
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.user?.id;
+            if (!userId) throw new Error("Not authenticated");
+            const userRole = ctx.user?.role;
+            if (!userRole) throw new Error("Role is required");
+
+            if (userRole !== "admin") {
+                throw new Error("Only admins can force unlock files");
+            }
+
+            const file = await ctx.prisma.contentManagement.findUnique({
+                where: { fileID: input.fileID },
+            });
+
+            if (!file) {
+                throw new Error("File not found");
+            }
+
+            return ctx.prisma.contentManagement.update({
+                where: { fileID: input.fileID },
+                data: {
+                    is_checked_out: false,
+                    checked_out_by: null,
+                    checked_out_at: null,
+                },
+            });
+        }),
+
   checkin: publicProcedure
       .input(contentIdSchema)
       .mutation(async ({ ctx, input }) => {
-        const userId :any = ctx.user.id;
+          const userId = ctx.user?.id;
+          if (!userId) throw new Error("Not authenticated");
 
         const file = await ctx.prisma.contentManagement.findUnique({
           where: { fileID: input.fileID },
@@ -120,23 +164,45 @@ export const contentRouter = router({
     });
   }),
 
-  update: publicProcedure
-    .input(contentIdSchema.merge(updateContentSchema))
-    .mutation(async ({ ctx, input }) => {
-      const { fileID, ...data } = input;
-      return ctx.prisma.contentManagement.update({
-        where: { fileID },
-        data,
-        include: {
-          owner: {
-            select: { id: true, name: true, employee_code: true },
-          },
-        },
-      });
-    }),
+    update: publicProcedure
+        .input(contentIdSchema.merge(updateContentSchema))
+        .mutation(async ({ ctx, input }) => {
+            const { fileID, ...data } = input;
+            const userId = ctx.user?.id;
+            if (!userId) throw new Error("Not authenticated");
 
-  delete: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
-    return ctx.prisma.contentManagement.delete({ where: { fileID: input.fileID } });
-  }),
+            const file = await ctx.prisma.contentManagement.findUnique({
+                where: { fileID },
+            });
+
+            assertCanEdit(file, userId);
+
+            return ctx.prisma.contentManagement.update({
+                where: { fileID },
+                data,
+                include: {
+                    owner: {
+                        select: { id: true, name: true, employee_code: true },
+                    },
+                },
+            });
+        }),
+
+    delete: publicProcedure
+        .input(contentIdSchema)
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.user?.id;
+            if (!userId) throw new Error("Not authenticated");
+
+            const file = await ctx.prisma.contentManagement.findUnique({
+                where: { fileID: input.fileID },
+            });
+
+            assertCanEdit(file, userId);
+
+            return ctx.prisma.contentManagement.delete({
+                where: { fileID: input.fileID },
+            });
+        }),
 
 });
