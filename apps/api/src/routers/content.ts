@@ -10,7 +10,7 @@ export const contentRouter = router({
   checkout: publicProcedure
       .input(contentIdSchema)
       .mutation(async ({ ctx, input }) => {
-        const userId = ctx.user.id;
+        const userId:any = ctx.user.id;
 
         const file = await ctx.prisma.contentManagement.findUnique({
           where: { fileID: input.fileID },
@@ -36,7 +36,7 @@ export const contentRouter = router({
   checkin: publicProcedure
       .input(contentIdSchema)
       .mutation(async ({ ctx, input }) => {
-        const userId = ctx.user.id;
+        const userId :any = ctx.user.id;
 
         const file = await ctx.prisma.contentManagement.findUnique({
           where: { fileID: input.fileID },
