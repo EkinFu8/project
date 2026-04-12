@@ -76,33 +76,32 @@ export const contentRouter = router({
             });
         }),
 
-  checkin: publicProcedure
-      .input(contentIdSchema)
-      .mutation(async ({ ctx, input }) => {
-          const userId = ctx.user?.id;
-          if (!userId) throw new Error("Not authenticated");
+    checkin: publicProcedure
+        .input(contentIdSchema)
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.user?.id;
+            if (!userId) throw new Error("Not authenticated");
 
-        const file = await ctx.prisma.contentManagement.findUnique({
-          where: { fileID: input.fileID },
-        });
+            const result = await ctx.prisma.contentManagement.updateMany({
+                where: {
+                    fileID: input.fileID,
+                    checked_out_by: userId,
+                },
+                data: {
+                    is_checked_out: false,
+                    checked_out_by: null,
+                    checked_out_at: null,
+                },
+            });
 
-        if (!file) {
-          throw new Error("File not found");
-        }
+            if (result.count === 0) {
+                throw new Error("You don't own this checkout");
+            }
 
-        if (file.checked_out_by !== userId) {
-          throw new Error("You don't own this file");
-        }
+            return { success: true };
+        }),
 
-        return ctx.prisma.contentManagement.update({
-          where: { fileID: input.fileID },
-          data: {
-            is_checked_out: false,
-            checked_out_by: null,
-            checked_out_at: null,
-          },
-        });
-      }),
+
   list: publicProcedure.input(contentListQuerySchema).query(async ({ ctx, input }) => {
     const where: Record<string, unknown> = {};
 
@@ -197,7 +196,8 @@ export const contentRouter = router({
             const file = await ctx.prisma.contentManagement.findUnique({
                 where: { fileID: input.fileID },
             });
-
+            
+            if (!file) throw new Error("File not found");
             assertCanEdit(file, userId);
 
             return ctx.prisma.contentManagement.delete({
