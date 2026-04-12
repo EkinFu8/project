@@ -8,15 +8,15 @@ datasource db {
 
 /// public.users — unified profile row for every Supabase Auth user.
 model UserProfile {
-  id             String   @id @db.Uuid
-  email          String
-  name           String
-  portal         String
-  role           String
-  employee_code  String?  @unique @db.VarChar(10)
-  job_desc       String?  @db.VarChar(200)
-  created_at     DateTime @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  id            String   @id @db.Uuid
+  email         String
+  name          String
+  portal        String
+  role          String
+  employee_code String?  @unique @db.VarChar(10)
+  job_desc      String?  @db.VarChar(200)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @updatedAt @db.Timestamptz(6)
 
   owned_content ContentManagement[]
 
@@ -33,6 +33,9 @@ model ContentManagement {
   expiration_date DateTime? @db.Date
   content_type    String?   @db.VarChar(20)
   document_status String?   @db.VarChar(20)
+  is_checked_out  Boolean   @default(false)
+  checked_out_by  String?   @db.Uuid
+  checked_out_at  DateTime? @db.Timestamptz(6)
 
   owner UserProfile? @relation(fields: [owner_id], references: [id])
 
