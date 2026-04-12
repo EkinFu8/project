@@ -7,6 +7,58 @@ import {
 import { publicProcedure, router } from "../lib/trpc";
 
 export const contentRouter = router({
+  checkout: publicProcedure
+      .input(contentIdSchema)
+      .mutation(async ({ ctx, input }) => {
+        const userId = ctx.user.id;
+
+        const file = await ctx.prisma.contentManagement.findUnique({
+          where: { fileID: input.fileID },
+        });
+
+        if (!file) {
+          throw new Error("File not found");
+        }
+
+        if (file.is_checked_out && file.checked_out_by !== userId) {
+          throw new Error("Someone else is already using this file");
+        }
+
+        return ctx.prisma.contentManagement.update({
+          where: { fileID: input.fileID },
+          data: {
+            is_checked_out: true,
+            checked_out_by: userId,
+            checked_out_at: new Date(),
+          },
+        });
+      }),
+  checkin: publicProcedure
+      .input(contentIdSchema)
+      .mutation(async ({ ctx, input }) => {
+        const userId = ctx.user.id;
+
+        const file = await ctx.prisma.contentManagement.findUnique({
+          where: { fileID: input.fileID },
+        });
+
+        if (!file) {
+          throw new Error("File not found");
+        }
+
+        if (file.checked_out_by !== userId) {
+          throw new Error("You don't own this file");
+        }
+
+        return ctx.prisma.contentManagement.update({
+          where: { fileID: input.fileID },
+          data: {
+            is_checked_out: false,
+            checked_out_by: null,
+            checked_out_at: null,
+          },
+        });
+      }),
   list: publicProcedure.input(contentListQuerySchema).query(async ({ ctx, input }) => {
     const where: Record<string, unknown> = {};
 
@@ -86,4 +138,5 @@ export const contentRouter = router({
   delete: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     return ctx.prisma.contentManagement.delete({ where: { fileID: input.fileID } });
   }),
+
 });
