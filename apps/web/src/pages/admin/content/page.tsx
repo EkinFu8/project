@@ -1,5 +1,6 @@
 import { Loader2, Search } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 import { trpc } from "@/lib/trpc";
 
 const ROLE_TABS = [
@@ -112,8 +113,9 @@ function AdminContentPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map((item) => (
-              <div
+              <Link
                 key={item.fileID}
+                to={`/hero/content/${item.fileID}/edit`}
                 className="group rounded border border-border bg-card p-5 shadow-sm transition-all hover:border-hanover-green hover:shadow-md"
               >
                 <div className="mb-3 flex items-start justify-between gap-2">
@@ -137,7 +139,7 @@ function AdminContentPage() {
                     {item.last_modified ? new Date(item.last_modified).toLocaleDateString() : "\u2014"}
                   </span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

@@ -6,12 +6,6 @@ import { useNavigate } from "react-router";
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
 
-/** Pick the landing page based on the user's role returned by the login endpoint. */
-function defaultRouteForRole(role: string): string {
-  if (role === "admin") return "/admin/content";
-  return "/hero";
-}
-
 function LoginFormPage({ bannerText }: { bannerText?: string }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -28,7 +22,7 @@ function LoginFormPage({ bannerText }: { bannerText?: string }) {
         console.error("[login] setSession:", error);
         return;
       }
-      navigate(defaultRouteForRole(data.role), { replace: true });
+      navigate("/hero", { replace: true });
     },
   });
 

@@ -79,7 +79,7 @@ function UserFormPage() {
   const createMutation = trpc.user.adminCreate.useMutation({
     onSuccess: async () => {
       await utils.user.invalidate();
-      navigate("/admin/users");
+      navigate("/users");
     },
     onError: (err) => setError(err.message),
   });
@@ -87,7 +87,7 @@ function UserFormPage() {
   const updateMutation = trpc.user.adminUpdate.useMutation({
     onSuccess: async () => {
       await utils.user.invalidate();
-      navigate("/admin/users");
+      navigate("/users");
     },
     onError: (err) => setError(err.message),
   });
@@ -133,7 +133,7 @@ function UserFormPage() {
       <div className="border-t border-border/60 py-8 sm:py-10">
         <div className="mx-auto max-w-[640px] px-4 sm:px-6 lg:px-8">
           <Link
-            to="/admin/users"
+            to="/users"
             className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -151,7 +151,7 @@ function UserFormPage() {
     <div className="border-t border-border/60 py-8 sm:py-10">
       <div className="mx-auto max-w-[640px] px-4 sm:px-6 lg:px-8">
         <Link
-          to="/admin/users"
+          to="/users"
           className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />

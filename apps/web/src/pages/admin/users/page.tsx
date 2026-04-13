@@ -41,7 +41,7 @@ function UsersPage() {
             <p className="mt-1 text-muted-foreground">Supabase accounts and directory fields</p>
           </div>
           <Link
-            to="/admin/users/new"
+            to="/users/new"
             className="flex shrink-0 items-center justify-center gap-2 rounded bg-hanover-green px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-hanover-green/90"
           >
             <Plus className="h-4 w-4" />
@@ -110,7 +110,7 @@ function UsersPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Link
-                            to={`/admin/users/${user.id}`}
+                            to={`/users/${user.id}`}
                             className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-hanover-green transition-colors hover:bg-hanover-green/10"
                           >
                             <Pencil className="h-3.5 w-3.5" />
