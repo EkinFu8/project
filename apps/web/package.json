@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "pnpm --filter @myapp/api exec prisma generate && tsc -b && vite build",
     "start": "serve -s dist -l ${PORT:-3000}",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm --filter @myapp/api exec prisma generate && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -28,6 +28,7 @@
     "serve": "^14.2.0"
   },
   "devDependencies": {
+    "@trpc/server": "^11.0.0",
     "@tailwindcss/vite": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

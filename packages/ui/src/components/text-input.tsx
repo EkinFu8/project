@@ -16,7 +16,7 @@ function TextInput({ label, className, id, ...props }: TextInputProps) {
       <input
         id={inputId}
         className={cn(
-          "w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+          "w-full rounded border border-border bg-background px-4 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring",
           className,
         )}
         {...props}

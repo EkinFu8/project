@@ -13,7 +13,7 @@ const businessAnalystLinks = [
 
 function BusinessAnalystPage() {
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen bg-muted">
       <div className="py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Page Header */}
@@ -27,7 +27,7 @@ function BusinessAnalystPage() {
             {businessAnalystLinks.map((link) => (
               <div
                 key={link}
-                className="cursor-pointer rounded border border-border bg-white p-4 transition-all hover:border-l-4 hover:border-l-primary"
+                className="cursor-pointer rounded border border-border bg-card p-4 transition-all hover:border-l-4 hover:border-l-primary"
               >
                 <span className="font-bold text-foreground">{link}</span>
               </div>
@@ -35,7 +35,7 @@ function BusinessAnalystPage() {
           </div>
 
           {/* Persona Summary Card */}
-          <div className="rounded border border-border border-l-4 border-l-[#C9A84C] bg-white p-6">
+          <div className="rounded border border-border border-l-4 border-l-[#C9A84C] bg-card p-6">
             <h2 className="mb-4 text-xl font-bold text-foreground">About the Business Analyst</h2>
             <div className="space-y-3">
               <div>

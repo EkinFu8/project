@@ -19,17 +19,23 @@
     "db:reset": "supabase db reset",
     "db:migration:new": "supabase migration new",
     "db:migration:up": "supabase migration up",
+    "db:remote:push": "supabase db push",
+    "db:prisma:push:remote": "pnpm --filter @myapp/api db:push:remote",
+    "db:prisma:push:remote:debug": "pnpm --filter @myapp/api db:push:remote:debug",
+    "db:prisma:seed:remote": "pnpm --filter @myapp/api db:seed:remote",
     "db:gen-types": "supabase gen types typescript --local > packages/types/src/database.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "@prisma/engines",
+      "esbuild",
       "prisma",
-      "esbuild"
+      "supabase"
     ]
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
+    "supabase": "^2.88.1",
     "turbo": "^2.5.0",
     "typescript": "^5.8.0",
     "vitest": "^3.1.0"

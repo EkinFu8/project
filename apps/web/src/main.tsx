@@ -1,6 +1,8 @@
+import { ThemeProvider } from "@myapp/ui/components/theme-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { SessionProvider } from "@/auth/session-context";
 import App from "./App.tsx";
 import "./index.css";
 import { supabase } from "./lib/supabase";
@@ -16,11 +18,15 @@ function Root() {
   );
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>
-    </trpc.Provider>
+    <SessionProvider>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <App />
+          </ThemeProvider>
+        </QueryClientProvider>
+      </trpc.Provider>
+    </SessionProvider>
   );
 }
 
