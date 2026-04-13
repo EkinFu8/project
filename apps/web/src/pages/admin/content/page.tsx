@@ -136,7 +136,9 @@ function AdminContentPage() {
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>{item.owner?.name ?? "Unassigned"}</span>
                   <span>
-                    {item.last_modified ? new Date(item.last_modified).toLocaleDateString() : "\u2014"}
+                    {item.last_modified
+                      ? new Date(item.last_modified).toLocaleDateString()
+                      : "\u2014"}
                   </span>
                 </div>
               </Link>

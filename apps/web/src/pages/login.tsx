@@ -32,10 +32,7 @@ function LoginFormPage({ bannerText }: { bannerText?: string }) {
   }
 
   return (
-    <LoginLayout
-      title="Sign in"
-      subtitle="Sign in with your Hanover account."
-    >
+    <LoginLayout title="Sign in" subtitle="Sign in with your Hanover account.">
       <div className="rounded-2xl border border-white/25 bg-card/95 p-8 text-card-foreground shadow-2xl shadow-black/20 backdrop-blur-md dark:border-white/10 dark:shadow-black/35">
         {bannerText ? (
           <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
