@@ -38,11 +38,11 @@ function LoginFormPage({
   const [password, setPassword] = useState("");
 
   const login = trpc.login.login.useMutation({
-    async onSuccess(session) {
-      if (!session) return;
+    async onSuccess(data) {
+      if (!data?.session) return;
       const { error } = await supabase.auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
       });
       if (error) {
         console.error("[login] setSession:", error);
