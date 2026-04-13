@@ -587,6 +587,7 @@ function ContentFormFields({
     employees?.find((e) => e.id === ownerId)?.name ?? (ownerId ? ownerId : "Unassigned");
 
   const mutationError = createError?.message || updateError?.message || "Something went wrong.";
+  //const deleteLabel = "Delete Content"
   const submitLabel = isUploading ? "Uploading..." : isEditing ? "Update Content" : "Save Content";
   const acceptTypes = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.svg";
 
@@ -704,6 +705,8 @@ function ContentFormPage() {
   const [expirationDate, setExpirationDate] = useState("");
   const [contentType, setContentType] = useState("");
   const [documentStatus, setDocumentStatus] = useState("");
+  const [askConfirmation, setAskConfirmation] = useState(false);
+  const [pendingData, setPendingData] = useState<Parameters<typeof update.mutate>[0] | null>(null);
 
   const handleUploadSuccess = useCallback(
     (result: { publicUrl: string; storagePath: string; fileName: string }) => {
@@ -776,7 +779,8 @@ function ContentFormPage() {
     };
 
     if (isEditing) {
-      update.mutate({ fileID: id!, ...data });
+      data ? setPendingData({fileID: id!, ...data}) : null;
+      setAskConfirmation(true);
     } else {
       create.mutate({ fileID, ...data });
     }
@@ -792,37 +796,56 @@ function ContentFormPage() {
   }
 
   return (
+  <>
     <ContentFormFields
-      key={isEditing ? id! : fileID || "new"}
-      isEditing={isEditing}
-      fileID={fileID}
-      setFileID={setFileID}
-      filename={filename}
-      setFilename={setFilename}
-      url={url}
-      setUrl={setUrl}
-      ownerId={ownerId}
-      setOwnerId={setOwnerId}
-      jobPosition={jobPosition}
-      setJobPosition={setJobPosition}
-      lastModified={lastModified}
-      setLastModified={setLastModified}
-      expirationDate={expirationDate}
-      setExpirationDate={setExpirationDate}
-      contentType={contentType}
-      setContentType={setContentType}
-      documentStatus={documentStatus}
-      setDocumentStatus={setDocumentStatus}
-      employees={employees.data}
-      upload={upload}
-      isUploading={isUploading}
-      uploadProgress={uploadProgress}
-      uploadError={uploadError}
-      createError={create.error}
-      updateError={update.error}
-      isSaving={isSaving}
-      onSubmit={handleSubmit}
+        key={isEditing ? id! : fileID || "new"}
+        isEditing={isEditing}
+        fileID={fileID}
+        setFileID={setFileID}
+        filename={filename}
+        setFilename={setFilename}
+        url={url}
+        setUrl={setUrl}
+        ownerId={ownerId}
+        setOwnerId={setOwnerId}
+        jobPosition={jobPosition}
+        setJobPosition={setJobPosition}
+        lastModified={lastModified}
+        setLastModified={setLastModified}
+        expirationDate={expirationDate}
+        setExpirationDate={setExpirationDate}
+        contentType={contentType}
+        setContentType={setContentType}
+        documentStatus={documentStatus}
+        setDocumentStatus={setDocumentStatus}
+        employees={employees.data}
+        upload={upload}
+        isUploading={isUploading}
+        uploadProgress={uploadProgress}
+        uploadError={uploadError}
+        createError={create.error}
+        updateError={update.error}
+        isSaving={isSaving}
+        onSubmit={handleSubmit}
     />
+    {askConfirmation &&
+    <div>
+      <p>Are you sure you want to (operation) this content?</p>
+      <br/>
+      <button type="button" onClick={() => navigate("hero/content")}>
+        no
+      </button>
+      <button type="button" onClick={() => {
+
+        setAskConfirmation(false)
+        if (pendingData) update.mutate(pendingData);
+
+      }
+      }>
+        yes
+      </button>
+    </div>}
+  </>
   );
 }
 
