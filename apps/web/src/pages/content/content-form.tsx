@@ -587,7 +587,6 @@ function ContentFormFields({
     employees?.find((e) => e.id === ownerId)?.name ?? (ownerId ? ownerId : "Unassigned");
 
   const mutationError = createError?.message || updateError?.message || "Something went wrong.";
-  //const deleteLabel = "Delete Content"
   const submitLabel = isUploading ? "Uploading..." : isEditing ? "Update Content" : "Save Content";
   const acceptTypes = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.svg";
 
@@ -707,6 +706,7 @@ function ContentFormPage() {
   const [documentStatus, setDocumentStatus] = useState("");
   const [askConfirmation, setAskConfirmation] = useState(false);
   const [pendingData, setPendingData] = useState<Parameters<typeof update.mutate>[0] | null>(null);
+  const [operation, setOperation] = useState("")
 
   const handleUploadSuccess = useCallback(
     (result: { publicUrl: string; storagePath: string; fileName: string }) => {
@@ -781,6 +781,7 @@ function ContentFormPage() {
     if (isEditing) {
       data ? setPendingData({fileID: id!, ...data}) : null;
       setAskConfirmation(true);
+      setOperation("update")
     } else {
       create.mutate({ fileID, ...data });
     }
@@ -829,22 +830,27 @@ function ContentFormPage() {
         onSubmit={handleSubmit}
     />
     {askConfirmation &&
-    <div>
-      <p>Are you sure you want to (operation) this content?</p>
-      <br/>
-      <button type="button" onClick={() => navigate("hero/content")}>
-        no
-      </button>
-      <button type="button" onClick={() => {
+    <div className="bg-black/50 fixed inset-0 flex items-center justify-center">
+      <div className="bg-white dark:bg-zinc-800 px-10 py-5 rounded-xl">
+        <p>Are you sure you want to {operation} this content?</p>
+        <br/>
+        <div className="flex w-full justify-between">
+          <button className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60" type="button" onClick={() => setAskConfirmation(false)}>
+            No.
+          </button>
+          <button className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-6 py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60" type="button" onClick={() => {
 
-        setAskConfirmation(false)
-        if (pendingData) update.mutate(pendingData);
+            setAskConfirmation(false)
+            if (pendingData && operation == "update") update.mutate(pendingData);
 
+          }
+          }>
+            Yes.
+          </button>
+        </div>
+      </div>
+    </div>
       }
-      }>
-        yes
-      </button>
-    </div>}
   </>
   );
 }
