@@ -1,13 +1,12 @@
+import DocViewer, { DocViewerRenderers } from "@iamjariwala/react-doc-viewer";
 import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
+import "@iamjariwala/react-doc-viewer/dist/index.css";
 import { ArrowLeft, FileText, Loader2, Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { type RouterOutputs, trpc } from "@/lib/trpc.ts";
-
-import DocViewer, { DocViewerRenderers } from "@iamjariwala/react-doc-viewer";
-import "@iamjariwala/react-doc-viewer/dist/index.css";
 
 function formatDateField(date: Date | string | null | undefined): string {
   if (!date) return "";
@@ -221,9 +220,7 @@ function ContentFormSummarySection({
   mutationError: string;
   submitLabel: string;
 }) {
-  const docs = [
-    { uri: url },
-  ];
+  const docs = [{ uri: url }];
 
   return (
     <>
