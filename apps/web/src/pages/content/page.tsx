@@ -21,10 +21,12 @@ function getStatusBadge(status: string | null) {
 function ContentListPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [type, setType] = useState("");
 
   const contents = trpc.content.list.useQuery({
     search,
     document_status: status || undefined,
+    content_type: (type as "Reference" | "Workflow") || undefined,
   });
 
   return (
@@ -59,6 +61,17 @@ function ContentListPage() {
             <Plus className="h-4 w-4" />
             New Content
           </Link>
+        </div>
+        <div>
+          <select
+            className="mb-5 rounded border border-border bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green sm:min-w-40"
+            value={type}
+            onChange={(click) => setType(click.target.value)}
+          >
+            <option value="">No Filter</option>
+            <option value="Reference">Reference</option>
+            <option value="Workflow">Workflow</option>
+          </select>
         </div>
 
         {contents.isLoading ? (
