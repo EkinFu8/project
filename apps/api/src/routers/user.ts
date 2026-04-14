@@ -65,7 +65,7 @@ export const userRouter = router({
   myAccess: protectedProcedure.query(async ({ ctx }) => {
     const profile = await ctx.prisma.userProfile.findUnique({
       where: { id: ctx.user.id },
-      select: { portal: true, role: true },
+      select: { portal: true, role: true, photo_url: true },
     });
     if (!profile) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Profile not found." });
