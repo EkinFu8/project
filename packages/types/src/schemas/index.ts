@@ -8,6 +8,10 @@ export {
   createContentSchema,
   type UpdateContent,
   updateContentSchema,
+  type TagId,
+  type CreateTag,
+  tagIdSchema,
+  createTagSchema,
 } from "./content";
 export {
   type DirectoryEntryId,

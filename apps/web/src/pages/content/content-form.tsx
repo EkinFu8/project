@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { type RouterOutputs, trpc } from "@/lib/trpc.ts";
+import { TagInput } from "./tag-input";
 
 function formatDateField(date: Date | string | null | undefined): string {
   if (!date) return "";
@@ -24,6 +25,8 @@ function displayDateLabel(value: string): string {
   const d = new Date(`${value}T12:00:00`);
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString();
 }
+
+type TagShape = { id: number; name: string };
 
 type ContentFormFieldsProps = {
   isEditing: boolean;
@@ -45,6 +48,8 @@ type ContentFormFieldsProps = {
   setContentType: (v: string) => void;
   documentStatus: string;
   setDocumentStatus: (v: string) => void;
+  selectedTags: TagShape[];
+  setSelectedTags: (tags: TagShape[]) => void;
   employees: RouterOutputs["employee"]["list"] | undefined;
   upload: (file: File) => void;
   isUploading: boolean;
@@ -66,6 +71,7 @@ function ContentMetadataReadonlyTable({
   expirationDate,
   contentType,
   documentStatus,
+  selectedTags,
 }: {
   fileID: string;
   filename: string;
@@ -76,6 +82,7 @@ function ContentMetadataReadonlyTable({
   expirationDate: string;
   contentType: string;
   documentStatus: string;
+  selectedTags: TagShape[];
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
@@ -171,6 +178,30 @@ function ContentMetadataReadonlyTable({
             </th>
             <td className="px-4 py-3 text-foreground">{documentStatus || "—"}</td>
           </tr>
+          <tr className="border-b border-border last:border-b-0">
+            <th
+              scope="row"
+              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
+            >
+              Tags
+            </th>
+            <td className="px-4 py-3">
+              {selectedTags.length === 0 ? (
+                <span className="text-muted-foreground">—</span>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedTags.map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="inline-flex items-center rounded-full bg-hanover-green/10 px-2.5 py-0.5 text-xs font-medium text-hanover-green ring-1 ring-hanover-green/30"
+                    >
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -187,6 +218,7 @@ function ContentFormSummarySection({
   expirationDate,
   contentType,
   documentStatus,
+  selectedTags,
   upload,
   acceptTypes,
   isUploading,
@@ -207,6 +239,7 @@ function ContentFormSummarySection({
   expirationDate: string;
   contentType: string;
   documentStatus: string;
+  selectedTags: TagShape[];
   upload: (file: File) => void;
   acceptTypes: string;
   isUploading: boolean;
@@ -270,6 +303,7 @@ function ContentFormSummarySection({
         expirationDate={expirationDate}
         contentType={contentType}
         documentStatus={documentStatus}
+        selectedTags={selectedTags}
       />
 
       {(createError || updateError) && (
@@ -391,6 +425,8 @@ function ContentFormMetadataSection({
   setContentType,
   documentStatus,
   setDocumentStatus,
+  selectedTags,
+  setSelectedTags,
   employees,
   metadataEditMode,
   setMetadataEditMode,
@@ -420,6 +456,8 @@ function ContentFormMetadataSection({
   setContentType: (v: string) => void;
   documentStatus: string;
   setDocumentStatus: (v: string) => void;
+  selectedTags: TagShape[];
+  setSelectedTags: (tags: TagShape[]) => void;
   employees: ContentFormFieldsProps["employees"];
   metadataEditMode: boolean;
   setMetadataEditMode: (v: boolean) => void;
@@ -522,6 +560,8 @@ function ContentFormMetadataSection({
         </select>
       </div>
 
+      <TagInput selectedTags={selectedTags} onChange={setSelectedTags} />
+
       {(createError || updateError) && (
         <div className="rounded border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {mutationError}
@@ -571,6 +611,8 @@ function ContentFormFields({
   setContentType,
   documentStatus,
   setDocumentStatus,
+  selectedTags,
+  setSelectedTags,
   employees,
   upload,
   isUploading,
@@ -618,6 +660,7 @@ function ContentFormFields({
                 expirationDate={expirationDate}
                 contentType={contentType}
                 documentStatus={documentStatus}
+                selectedTags={selectedTags}
                 upload={upload}
                 acceptTypes={acceptTypes}
                 isUploading={isUploading}
@@ -669,6 +712,8 @@ function ContentFormFields({
                 setContentType={setContentType}
                 documentStatus={documentStatus}
                 setDocumentStatus={setDocumentStatus}
+                selectedTags={selectedTags}
+                setSelectedTags={setSelectedTags}
                 employees={employees}
                 metadataEditMode={metadataEditMode}
                 setMetadataEditMode={setMetadataEditMode}
@@ -704,6 +749,7 @@ function ContentFormPage() {
   const [expirationDate, setExpirationDate] = useState("");
   const [contentType, setContentType] = useState("");
   const [documentStatus, setDocumentStatus] = useState("");
+  const [selectedTags, setSelectedTags] = useState<{ id: number; name: string }[]>([]);
 
   const handleUploadSuccess = useCallback(
     (result: { publicUrl: string; storagePath: string; fileName: string }) => {
@@ -738,6 +784,7 @@ function ContentFormPage() {
     setExpirationDate(formatDateField(d.expiration_date));
     setContentType(d.content_type ?? "");
     setDocumentStatus(d.document_status ?? "");
+    setSelectedTags(d.content_tags?.map((ct) => ct.tag) ?? []);
   }, [existing.data]);
 
   const utils = trpc.useUtils();
@@ -773,6 +820,7 @@ function ContentFormPage() {
       document_status: toNullable<"Created" | "in-progress" | "Finalized" | "Archived">(
         documentStatus as "Created" | "in-progress" | "Finalized" | "Archived",
       ),
+      tagIds: selectedTags.map((t) => t.id),
     };
 
     if (isEditing) {
@@ -813,6 +861,8 @@ function ContentFormPage() {
       setContentType={setContentType}
       documentStatus={documentStatus}
       setDocumentStatus={setDocumentStatus}
+      selectedTags={selectedTags}
+      setSelectedTags={setSelectedTags}
       employees={employees.data}
       upload={upload}
       isUploading={isUploading}
