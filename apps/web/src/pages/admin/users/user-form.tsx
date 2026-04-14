@@ -1,8 +1,9 @@
-import type { AccountRole, UserPortal } from "@myapp/types/schemas";
+import type { AccountRole } from "@myapp/types/schemas";
 import { TextInput } from "@myapp/ui/components/text-input";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowLeft, Camera, Loader2, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { useFileUpload } from "@/hooks/use-file-upload";
 import { trpc } from "@/lib/trpc";
 
 const ROLES: AccountRole[] = ["admin", "underwriter", "business-analyst"];
@@ -13,11 +14,12 @@ const ROLE_LABELS: Record<AccountRole, string> = {
   "business-analyst": "Business Analyst",
 };
 
-const PORTALS: UserPortal[] = ["employee", "admin"];
-const PORTAL_LABELS: Record<UserPortal, string> = {
-  employee: "Employee portal (web app)",
-  admin: "Admin portal",
-};
+/** Derive portal from role — admin role gets admin portal, everyone else gets employee. */
+function portalForRole(role: AccountRole): "admin" | "employee" {
+  return role === "admin" ? "admin" : "employee";
+}
+
+const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
 
 function userFormValidationError(
   emailRaw: string,
@@ -33,17 +35,18 @@ function userFormValidationError(
 
 function sharedUserPayload(
   nameRaw: string,
-  portal: UserPortal,
   role: AccountRole,
   employeeCodeRaw: string,
   jobDescRaw: string,
+  photoUrl: string | null,
 ) {
   return {
     name: nameRaw.trim(),
-    portal,
+    portal: portalForRole(role),
     role,
     employee_code: employeeCodeRaw.trim() || null,
     job_desc: jobDescRaw.trim() || null,
+    photo_url: photoUrl || null,
   };
 }
 
@@ -56,11 +59,22 @@ function UserFormPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [portal, setPortal] = useState<UserPortal>("employee");
   const [role, setRole] = useState<AccountRole>("underwriter");
   const [employeeCode, setEmployeeCode] = useState("");
   const [jobDesc, setJobDesc] = useState("");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadSuccess = useCallback((result: { publicUrl: string }) => {
+    setPhotoUrl(result.publicUrl);
+  }, []);
+
+  const { upload, isUploading, uploadProgress, uploadError } = useFileUpload({
+    bucket: "employee-photos",
+    onSuccess: handleUploadSuccess,
+  });
 
   const existingUser = trpc.user.adminGetById.useQuery({ id: id! }, { enabled: isEditing });
 
@@ -69,10 +83,10 @@ function UserFormPage() {
       setEmail(existingUser.data.email);
       setPassword("");
       setName(existingUser.data.name);
-      setPortal(existingUser.data.portal as UserPortal);
       setRole(existingUser.data.role as AccountRole);
       setEmployeeCode(existingUser.data.employee_code ?? "");
       setJobDesc(existingUser.data.job_desc ?? "");
+      setPhotoUrl(existingUser.data.photo_url ?? null);
     }
   }, [existingUser.data]);
 
@@ -94,6 +108,18 @@ function UserFormPage() {
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Photo must be under 5 MB.");
+      return;
+    }
+    void upload(file);
+    // Reset so the same file can be re-selected
+    e.target.value = "";
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -102,7 +128,7 @@ function UserFormPage() {
       setError(validationError);
       return;
     }
-    const fields = sharedUserPayload(name, portal, role, employeeCode, jobDesc);
+    const fields = sharedUserPayload(name, role, employeeCode, jobDesc, photoUrl);
     if (isEditing && id) {
       updateMutation.mutate({
         id,
@@ -164,6 +190,56 @@ function UserFormPage() {
 
         <div className="rounded bg-card p-8 shadow-md">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Photo upload */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative">
+                {photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt="Employee avatar"
+                    className="h-24 w-24 rounded-full border-2 border-border object-cover"
+                  />
+                ) : (
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-border bg-muted text-muted-foreground">
+                    <Camera className="h-8 w-8" />
+                  </div>
+                )}
+                {isUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
+                    <span className="text-xs font-semibold text-white">{uploadProgress}%</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="rounded border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                >
+                  {photoUrl ? "Change photo" : "Upload photo"}
+                </button>
+                {photoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setPhotoUrl(null)}
+                    className="flex items-center gap-1 rounded border border-border bg-background px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Remove
+                  </button>
+                )}
+              </div>
+              {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED_IMAGE_TYPES}
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </div>
+
             <TextInput
               label="Email"
               type="email"
@@ -189,24 +265,6 @@ function UserFormPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="portal" className="text-sm font-medium text-foreground">
-                Portal access
-              </label>
-              <select
-                id="portal"
-                value={portal}
-                onChange={(e) => setPortal(e.target.value as UserPortal)}
-                className="rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
-              >
-                {PORTALS.map((p) => (
-                  <option key={p} value={p}>
-                    {PORTAL_LABELS[p]}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="role" className="text-sm font-medium text-foreground">
@@ -249,7 +307,7 @@ function UserFormPage() {
 
             <button
               type="submit"
-              disabled={isPending}
+              disabled={isPending || isUploading}
               className="flex w-full items-center justify-center gap-2 rounded bg-hanover-green py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-50"
             >
               {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
