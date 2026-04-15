@@ -547,19 +547,23 @@ model webauthn_credentials {
 }
 
 model ContentManagement {
-  fileID          String    @id @map("fileid") @db.Char(64)
-  filename        String?   @db.VarChar(100)
-  url             String?   @db.VarChar(500)
-  job_position    String?   @db.VarChar(20)
-  last_modified   DateTime? @db.Date
-  expiration_date DateTime? @db.Date
-  content_type    String?   @db.VarChar(20)
-  document_status String?   @db.VarChar(20)
-  owner_id        String?   @map("owner_id") @db.Uuid
-  is_favorited    Boolean   @default(false)
+  fileID          String       @id @map("fileid") @db.Char(64)
+  filename        String?      @db.VarChar(100)
+  url             String?      @db.VarChar(500)
+  job_position    String?      @db.VarChar(20)
+  last_modified   DateTime?    @db.Date
+  expiration_date DateTime?    @db.Date
+  content_type    String?      @db.VarChar(20)
+  document_status String?      @db.VarChar(20)
+  is_favorited    Boolean      @default(false)
+  is_checked_out  Boolean      @default(false)
+  checked_out_by  String?      @db.Uuid
+  checked_out_at  DateTime?    @db.Timestamptz(6)
+  owner_id        String?      @map("owner_id") @db.Uuid
 
-  owner        UserProfile? @relation(fields: [owner_id], references: [id], onUpdate: NoAction)
-  content_tags ContentTag[]
+  owner           UserProfile? @relation(fields: [owner_id], references: [id], onUpdate: NoAction)
+  
+  content_tags    ContentTag[]
 
   @@map("content_management")
   @@schema("public")
