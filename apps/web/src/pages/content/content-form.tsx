@@ -1,5 +1,7 @@
+import DocViewer, { DocViewerRenderers } from "@iamjariwala/react-doc-viewer";
 import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
+import "@iamjariwala/react-doc-viewer/dist/index.css";
 import { ArrowLeft, FileText, Loader2, Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -218,19 +220,13 @@ function ContentFormSummarySection({
   mutationError: string;
   submitLabel: string;
 }) {
+  const docs = [{ uri: url }];
+
   return (
     <>
       <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
-        <div className="flex min-h-[200px] max-h-80 items-center justify-center bg-muted/50">
-          {isImageFilename(filename) && url ? (
-            <img src={url} alt="" className="max-h-80 max-w-full object-contain" />
-          ) : (
-            <div className="flex flex-col items-center gap-3 px-8 py-12 text-muted-foreground">
-              <FileText className="h-16 w-16 opacity-35" strokeWidth={1.25} />
-              <span className="text-sm font-medium text-foreground/80">Preview</span>
-              {filename ? <span className="max-w-full truncate text-xs">{filename}</span> : null}
-            </div>
-          )}
+        <div className="h-[1500px] w-full items-center justify-center bg-muted/50">
+          <DocViewer documents={docs} pluginRenderers={DocViewerRenderers} />
         </div>
       </div>
 
