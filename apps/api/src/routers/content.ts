@@ -4,14 +4,8 @@ import {
   createContentSchema,
   updateContentSchema,
 } from "@myapp/types/schemas";
+import type { Prisma } from "@prisma/client";
 import { publicProcedure, router } from "../lib/trpc";
-
-function assertCanEdit(file: any, userId: string) {
-  if (!file) throw new Error("File not found");
-  if (file.is_checked_out && file.checked_out_by !== userId) {
-    throw new Error("This file is checked out by another user");
-  }
-}
 
 const ownerSelect = {
   id: true,
@@ -27,6 +21,16 @@ const tagsInclude = {
     },
   },
 } as const;
+
+function assertCanEdit(
+  file: { is_checked_out: boolean; checked_out_by: string | null } | null,
+  userId: string,
+) {
+  if (!file) throw new Error("File not found");
+  if (file.is_checked_out && file.checked_out_by !== userId) {
+    throw new Error("This file is checked out by another user");
+  }
+}
 
 export const contentRouter = router({
   checkout: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
@@ -155,14 +159,18 @@ export const contentRouter = router({
 
   create: publicProcedure.input(createContentSchema).mutation(async ({ ctx, input }) => {
     const { tagIds, owner_id, ...rest } = input;
+    const data: Prisma.ContentManagementUncheckedCreateInput = {
+      ...rest,
+      owner_id: owner_id ?? null,
+    };
     return ctx.prisma.contentManagement.create({
-      data: {
-        ...rest,
-        owner_id,
-        ...(tagIds && tagIds.length > 0
-          ? { content_tags: { create: tagIds.map((id) => ({ tagId: id })) } }
-          : {}),
-      },
+      data:
+        tagIds && tagIds.length > 0
+          ? ({
+              ...data,
+              content_tags: { create: tagIds.map((id) => ({ tagId: id })) },
+            } as Prisma.ContentManagementCreateInput)
+          : data,
       include: {
         owner: { select: ownerSelect },
         ...tagsInclude,
@@ -195,7 +203,7 @@ export const contentRouter = router({
               deleteMany: {},
               create: tagIds.map((id) => ({ tagId: id })),
             },
-          },
+          } as Prisma.ContentManagementUpdateInput,
           include: {
             owner: { select: ownerSelect },
             ...tagsInclude,
@@ -212,7 +220,7 @@ export const contentRouter = router({
 
       return ctx.prisma.contentManagement.update({
         where: { fileID },
-        data: { ...data, owner_id },
+        data: { ...data, owner_id } as Prisma.ContentManagementUncheckedUpdateInput,
         include: {
           owner: { select: ownerSelect },
           ...tagsInclude,

@@ -506,6 +506,7 @@ model ContentManagement {
   expiration_date DateTime? @db.Date
   content_type    String?   @db.VarChar(20)
   document_status String?   @db.VarChar(20)
+  is_favorited    Boolean   @default(false)
   is_checked_out  Boolean   @default(false)
   checked_out_by  String?   @db.Uuid
   checked_out_at  DateTime? @db.Timestamptz(6)
