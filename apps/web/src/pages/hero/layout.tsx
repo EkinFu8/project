@@ -16,6 +16,10 @@ function HeroLayout() {
         {isHeroHome && !isAdmin ? <HeroQuickLinks /> : null}
         <Outlet />
       </div>
+      <footer className="py-3 text-center text-xs text-muted-foreground border-t">
+        This website has been created for WPI's CS 3733 Software Engineering as a class project and
+        is not in use by Hanover Insurance.
+      </footer>
     </div>
   );
 }

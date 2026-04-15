@@ -1,10 +1,14 @@
+import DocViewer, { DocViewerRenderers } from "@iamjariwala/react-doc-viewer";
 import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
-import { ArrowLeft, FileText, Loader2, Pencil } from "lucide-react";
+import "@iamjariwala/react-doc-viewer/dist/index.css";
+import { ArrowLeft, FileText, Loader2, Lock, Pencil, Unlock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { useSession } from "@/auth/session-context";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { type RouterOutputs, trpc } from "@/lib/trpc.ts";
+import { TagInput } from "./tag-input";
 
 function formatDateField(date: Date | string | null | undefined): string {
   if (!date) return "";
@@ -24,6 +28,8 @@ function displayDateLabel(value: string): string {
   const d = new Date(`${value}T12:00:00`);
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString();
 }
+
+type TagShape = { id: number; name: string };
 
 type ContentFormFieldsProps = {
   isEditing: boolean;
@@ -45,6 +51,8 @@ type ContentFormFieldsProps = {
   setContentType: (v: string) => void;
   documentStatus: string;
   setDocumentStatus: (v: string) => void;
+  selectedTags: TagShape[];
+  setSelectedTags: (tags: TagShape[]) => void;
   employees: RouterOutputs["employee"]["list"] | undefined;
   upload: (file: File) => void;
   isUploading: boolean;
@@ -66,6 +74,7 @@ function ContentMetadataReadonlyTable({
   expirationDate,
   contentType,
   documentStatus,
+  selectedTags,
 }: {
   fileID: string;
   filename: string;
@@ -76,6 +85,7 @@ function ContentMetadataReadonlyTable({
   expirationDate: string;
   contentType: string;
   documentStatus: string;
+  selectedTags: TagShape[];
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
@@ -171,6 +181,30 @@ function ContentMetadataReadonlyTable({
             </th>
             <td className="px-4 py-3 text-foreground">{documentStatus || "—"}</td>
           </tr>
+          <tr className="border-b border-border last:border-b-0">
+            <th
+              scope="row"
+              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
+            >
+              Tags
+            </th>
+            <td className="px-4 py-3">
+              {selectedTags.length === 0 ? (
+                <span className="text-muted-foreground">—</span>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedTags.map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="inline-flex items-center rounded-full bg-hanover-green/10 px-2.5 py-0.5 text-xs font-medium text-hanover-green ring-1 ring-hanover-green/30"
+                    >
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -187,6 +221,7 @@ function ContentFormSummarySection({
   expirationDate,
   contentType,
   documentStatus,
+  selectedTags,
   upload,
   acceptTypes,
   isUploading,
@@ -207,6 +242,7 @@ function ContentFormSummarySection({
   expirationDate: string;
   contentType: string;
   documentStatus: string;
+  selectedTags: TagShape[];
   upload: (file: File) => void;
   acceptTypes: string;
   isUploading: boolean;
@@ -220,20 +256,6 @@ function ContentFormSummarySection({
 }) {
   return (
     <>
-      <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
-        <div className="flex min-h-[200px] max-h-80 items-center justify-center bg-muted/50">
-          {isImageFilename(filename) && url ? (
-            <img src={url} alt="" className="max-h-80 max-w-full object-contain" />
-          ) : (
-            <div className="flex flex-col items-center gap-3 px-8 py-12 text-muted-foreground">
-              <FileText className="h-16 w-16 opacity-35" strokeWidth={1.25} />
-              <span className="text-sm font-medium text-foreground/80">Preview</span>
-              {filename ? <span className="max-w-full truncate text-xs">{filename}</span> : null}
-            </div>
-          )}
-        </div>
-      </div>
-
       <FileUpload
         label="Replace file"
         onFileSelect={upload}
@@ -270,6 +292,7 @@ function ContentFormSummarySection({
         expirationDate={expirationDate}
         contentType={contentType}
         documentStatus={documentStatus}
+        selectedTags={selectedTags}
       />
 
       {(createError || updateError) && (
@@ -391,6 +414,8 @@ function ContentFormMetadataSection({
   setContentType,
   documentStatus,
   setDocumentStatus,
+  selectedTags,
+  setSelectedTags,
   employees,
   metadataEditMode,
   setMetadataEditMode,
@@ -420,6 +445,8 @@ function ContentFormMetadataSection({
   setContentType: (v: string) => void;
   documentStatus: string;
   setDocumentStatus: (v: string) => void;
+  selectedTags: TagShape[];
+  setSelectedTags: (tags: TagShape[]) => void;
   employees: ContentFormFieldsProps["employees"];
   metadataEditMode: boolean;
   setMetadataEditMode: (v: boolean) => void;
@@ -522,6 +549,8 @@ function ContentFormMetadataSection({
         </select>
       </div>
 
+      <TagInput selectedTags={selectedTags} onChange={setSelectedTags} />
+
       {(createError || updateError) && (
         <div className="rounded border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {mutationError}
@@ -571,6 +600,8 @@ function ContentFormFields({
   setContentType,
   documentStatus,
   setDocumentStatus,
+  selectedTags,
+  setSelectedTags,
   employees,
   upload,
   isUploading,
@@ -589,6 +620,7 @@ function ContentFormFields({
   const mutationError = createError?.message || updateError?.message || "Something went wrong.";
   const submitLabel = isUploading ? "Uploading..." : isEditing ? "Update Content" : "Save Content";
   const acceptTypes = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.svg";
+  const docs = [{ uri: url }];
 
   return (
     <div className="border-t border-border/60 py-8 sm:py-10">
@@ -606,6 +638,11 @@ function ContentFormFields({
         </h1>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
+          <div className="overflow-hidden rounded-xl bg-black text-black border border-border ">
+            <div className="w-full items-center justify-center">
+              <DocViewer documents={docs} pluginRenderers={DocViewerRenderers} />
+            </div>
+          </div>
           <form className="space-y-6" onSubmit={onSubmit}>
             {showFileSummary ? (
               <ContentFormSummarySection
@@ -618,6 +655,7 @@ function ContentFormFields({
                 expirationDate={expirationDate}
                 contentType={contentType}
                 documentStatus={documentStatus}
+                selectedTags={selectedTags}
                 upload={upload}
                 acceptTypes={acceptTypes}
                 isUploading={isUploading}
@@ -669,6 +707,8 @@ function ContentFormFields({
                 setContentType={setContentType}
                 documentStatus={documentStatus}
                 setDocumentStatus={setDocumentStatus}
+                selectedTags={selectedTags}
+                setSelectedTags={setSelectedTags}
                 employees={employees}
                 metadataEditMode={metadataEditMode}
                 setMetadataEditMode={setMetadataEditMode}
@@ -704,6 +744,10 @@ function ContentFormPage() {
   const [expirationDate, setExpirationDate] = useState("");
   const [contentType, setContentType] = useState("");
   const [documentStatus, setDocumentStatus] = useState("");
+  const [selectedTags, setSelectedTags] = useState<{ id: number; name: string }[]>([]);
+  const [askConfirmation, setAskConfirmation] = useState(false);
+  const [pendingData, setPendingData] = useState<Parameters<typeof update.mutate>[0] | null>(null);
+  const [operation, setOperation] = useState("");
 
   const handleUploadSuccess = useCallback(
     (result: { publicUrl: string; storagePath: string; fileName: string }) => {
@@ -738,6 +782,7 @@ function ContentFormPage() {
     setExpirationDate(formatDateField(d.expiration_date));
     setContentType(d.content_type ?? "");
     setDocumentStatus(d.document_status ?? "");
+    setSelectedTags(d.content_tags?.map((ct) => ct.tag) ?? []);
   }, [existing.data]);
 
   const utils = trpc.useUtils();
@@ -757,6 +802,35 @@ function ContentFormPage() {
     },
   });
 
+  const { session } = useSession();
+  const currentUserId = session?.user?.id;
+
+  const checkout = trpc.content.checkout.useMutation({
+    onSuccess: () => {
+      utils.content.getById.invalidate({ fileID: id! });
+      utils.content.list.invalidate();
+    },
+  });
+
+  const checkin = trpc.content.checkin.useMutation({
+    onSuccess: () => {
+      utils.content.getById.invalidate({ fileID: id! });
+      utils.content.list.invalidate();
+    },
+  });
+
+  const forceUnlock = trpc.content.forceUnlock.useMutation({
+    onSuccess: () => {
+      utils.content.getById.invalidate({ fileID: id! });
+      utils.content.list.invalidate();
+    },
+  });
+
+  const isCheckedOut = existing.data?.is_checked_out ?? false;
+  const checkedOutBy = existing.data?.checked_out_by ?? null;
+  const isCheckedOutByMe = isCheckedOut && checkedOutBy === currentUserId;
+  const isLockedByOther = isCheckedOut && !isCheckedOutByMe;
+
   const isSaving = create.isPending || update.isPending;
 
   function handleSubmit(e: React.FormEvent) {
@@ -773,10 +847,13 @@ function ContentFormPage() {
       document_status: toNullable<"Created" | "in-progress" | "Finalized" | "Archived">(
         documentStatus as "Created" | "in-progress" | "Finalized" | "Archived",
       ),
+      tagIds: selectedTags.map((t) => t.id),
     };
 
     if (isEditing) {
-      update.mutate({ fileID: id!, ...data });
+      data ? setPendingData({ fileID: id!, ...data }) : null;
+      setAskConfirmation(true);
+      setOperation("update");
     } else {
       create.mutate({ fileID, ...data });
     }
@@ -791,38 +868,151 @@ function ContentFormPage() {
     );
   }
 
+  const checkoutError = checkout.error || checkin.error || forceUnlock.error;
+
   return (
-    <ContentFormFields
-      key={isEditing ? id! : fileID || "new"}
-      isEditing={isEditing}
-      fileID={fileID}
-      setFileID={setFileID}
-      filename={filename}
-      setFilename={setFilename}
-      url={url}
-      setUrl={setUrl}
-      ownerId={ownerId}
-      setOwnerId={setOwnerId}
-      jobPosition={jobPosition}
-      setJobPosition={setJobPosition}
-      lastModified={lastModified}
-      setLastModified={setLastModified}
-      expirationDate={expirationDate}
-      setExpirationDate={setExpirationDate}
-      contentType={contentType}
-      setContentType={setContentType}
-      documentStatus={documentStatus}
-      setDocumentStatus={setDocumentStatus}
-      employees={employees.data}
-      upload={upload}
-      isUploading={isUploading}
-      uploadProgress={uploadProgress}
-      uploadError={uploadError}
-      createError={create.error}
-      updateError={update.error}
-      isSaving={isSaving}
-      onSubmit={handleSubmit}
-    />
+    <>
+      {isEditing && (
+        <div className="mx-auto max-w-4xl px-4 pt-4 sm:px-6 lg:px-8">
+          {isLockedByOther && (
+            <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950">
+              <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-200">
+                <Lock className="h-4 w-4" />
+                This file is checked out by another user. Editing is disabled.
+              </div>
+              {session?.user?.user_metadata?.role === "admin" && (
+                <button
+                  type="button"
+                  onClick={() => forceUnlock.mutate({ fileID: id! })}
+                  disabled={forceUnlock.isPending}
+                  className="inline-flex items-center gap-1.5 rounded bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-700 disabled:opacity-60"
+                >
+                  {forceUnlock.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Unlock className="h-3 w-3" />
+                  )}
+                  Force Unlock
+                </button>
+              )}
+            </div>
+          )}
+          {!isLockedByOther && (
+            <div className="mb-4 flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {isCheckedOutByMe ? (
+                  <>
+                    <Lock className="h-4 w-4 text-hanover-green" />
+                    <span className="font-medium text-hanover-green">
+                      You have this file checked out
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="h-4 w-4" />
+                    <span>File is available</span>
+                  </>
+                )}
+              </div>
+              {isCheckedOutByMe ? (
+                <button
+                  type="button"
+                  onClick={() => checkin.mutate({ fileID: id! })}
+                  disabled={checkin.isPending}
+                  className="inline-flex items-center gap-1.5 rounded bg-muted px-3 py-1.5 text-xs font-semibold text-foreground ring-1 ring-border transition-colors hover:bg-muted/80 disabled:opacity-60"
+                >
+                  {checkin.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Unlock className="h-3 w-3" />
+                  )}
+                  Check In
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => checkout.mutate({ fileID: id! })}
+                  disabled={checkout.isPending}
+                  className="inline-flex items-center gap-1.5 rounded bg-hanover-green px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
+                >
+                  {checkout.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Lock className="h-3 w-3" />
+                  )}
+                  Check Out
+                </button>
+              )}
+            </div>
+          )}
+          {checkoutError && (
+            <div className="mb-4 rounded border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {checkoutError.message}
+            </div>
+          )}
+        </div>
+      )}
+      <ContentFormFields
+        key={isEditing ? id! : fileID || "new"}
+        isEditing={isEditing}
+        fileID={fileID}
+        setFileID={setFileID}
+        filename={filename}
+        setFilename={setFilename}
+        url={url}
+        setUrl={setUrl}
+        ownerId={ownerId}
+        setOwnerId={setOwnerId}
+        jobPosition={jobPosition}
+        setJobPosition={setJobPosition}
+        lastModified={lastModified}
+        setLastModified={setLastModified}
+        expirationDate={expirationDate}
+        setExpirationDate={setExpirationDate}
+        contentType={contentType}
+        setContentType={setContentType}
+        documentStatus={documentStatus}
+        setDocumentStatus={setDocumentStatus}
+        selectedTags={selectedTags}
+        setSelectedTags={setSelectedTags}
+        employees={employees.data}
+        upload={upload}
+        isUploading={isUploading}
+        uploadProgress={uploadProgress}
+        uploadError={uploadError}
+        createError={create.error}
+        updateError={update.error}
+        isSaving={isSaving}
+        onSubmit={handleSubmit}
+      />
+      {askConfirmation && (
+        <div className="bg-black/50 fixed inset-0 flex items-center justify-center">
+          <div className="bg-white dark:bg-zinc-800 px-10 py-5 rounded-xl">
+            <p>Are you sure you want to {operation} this content?</p>
+            <br />
+            <div className="flex w-full justify-between">
+              <button
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+                type="button"
+                onClick={() => setAskConfirmation(false)}
+              >
+                No.
+              </button>
+              <button
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-6 py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
+                type="button"
+                onClick={() => {
+                  setAskConfirmation(false);
+                  if (pendingData && operation === "update") update.mutate(pendingData);
+                }}
+              >
+                Yes.
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
