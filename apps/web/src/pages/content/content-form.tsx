@@ -254,7 +254,6 @@ function ContentFormSummarySection({
   mutationError: string;
   submitLabel: string;
 }) {
-
   return (
     <>
       <FileUpload
