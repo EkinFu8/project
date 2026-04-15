@@ -40,10 +40,7 @@ export const contentRouter = router({
     const result = await ctx.prisma.contentManagement.updateMany({
       where: {
         fileID: input.fileID,
-        OR: [
-          { is_checked_out: false },
-          { checked_out_by: userId }, // allows re-checkout by same user
-        ],
+        OR: [{ is_checked_out: false }, { checked_out_by: userId }],
       },
       data: {
         is_checked_out: true,
@@ -62,9 +59,8 @@ export const contentRouter = router({
   forceUnlock: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     const userId = ctx.user?.id;
     if (!userId) throw new Error("Not authenticated");
-    const userRole = ctx.user?.role;
-    if (!userRole) throw new Error("Role is required");
 
+    const userRole = ctx.user?.role;
     if (userRole !== "admin") {
       throw new Error("Only admins can force unlock files");
     }
@@ -73,9 +69,7 @@ export const contentRouter = router({
       where: { fileID: input.fileID },
     });
 
-    if (!file) {
-      throw new Error("File not found");
-    }
+    if (!file) throw new Error("File not found");
 
     return ctx.prisma.contentManagement.update({
       where: { fileID: input.fileID },
@@ -117,7 +111,9 @@ export const contentRouter = router({
       where.document_status = input.document_status;
     }
 
-    if (input.content_type) where.content_type = input.content_type;
+    if (input.content_type) {
+      where.content_type = input.content_type;
+    }
 
     if (input.owner_id) {
       where.owner_id = input.owner_id;
@@ -158,12 +154,17 @@ export const contentRouter = router({
   }),
 
   create: publicProcedure.input(createContentSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user?.id;
+    if (!userId) throw new Error("Unauthorized");
+
     const { tagIds, owner_id, ...rest } = input;
+
     const data: Prisma.ContentManagementUncheckedCreateInput = {
       ...rest,
       owner_id: owner_id ?? null,
     };
-    return ctx.prisma.contentManagement.create({
+
+    const result = await ctx.prisma.contentManagement.create({
       data:
         tagIds && tagIds.length > 0
           ? ({
@@ -176,12 +177,24 @@ export const contentRouter = router({
         ...tagsInclude,
       },
     });
+
+    await ctx.prisma.auditEvent.create({
+      data: {
+        userId,
+        action: "upload",
+        documentId: result.fileID,
+        fileName: result.filename,
+      },
+    });
+
+    return result;
   }),
 
   update: publicProcedure
     .input(contentIdSchema.merge(updateContentSchema))
     .mutation(async ({ ctx, input }) => {
       const { fileID, tagIds, owner_id, ...data } = input;
+
       const userId = ctx.user?.id;
       if (!userId) throw new Error("Not authenticated");
 
@@ -191,41 +204,45 @@ export const contentRouter = router({
 
       assertCanEdit(file, userId);
 
-      // If tagIds is provided, replace all tags for this content item.
-      // After replacing, clean up any tags that are now orphaned.
-      if (tagIds !== undefined) {
-        const result = await ctx.prisma.contentManagement.update({
-          where: { fileID },
-          data: {
-            ...data,
-            owner_id,
-            content_tags: {
-              deleteMany: {},
-              create: tagIds.map((id) => ({ tagId: id })),
-            },
-          } as Prisma.ContentManagementUpdateInput,
-          include: {
-            owner: { select: ownerSelect },
-            ...tagsInclude,
-          },
-        });
+      const result =
+        tagIds !== undefined
+          ? await ctx.prisma.contentManagement.update({
+              where: { fileID },
+              data: {
+                ...data,
+                owner_id,
+                content_tags: {
+                  deleteMany: {},
+                  create: tagIds.map((id) => ({ tagId: id })),
+                },
+              } as Prisma.ContentManagementUpdateInput,
+              include: {
+                owner: { select: ownerSelect },
+                ...tagsInclude,
+              },
+            })
+          : await ctx.prisma.contentManagement.update({
+              where: { fileID },
+              data: {
+                ...data,
+                owner_id,
+              } as Prisma.ContentManagementUncheckedUpdateInput,
+              include: {
+                owner: { select: ownerSelect },
+                ...tagsInclude,
+              },
+            });
 
-        // Clean up orphaned tags (tags with no content items)
-        await ctx.prisma.tag.deleteMany({
-          where: { content_tags: { none: {} } },
-        });
-
-        return result;
-      }
-
-      return ctx.prisma.contentManagement.update({
-        where: { fileID },
-        data: { ...data, owner_id } as Prisma.ContentManagementUncheckedUpdateInput,
-        include: {
-          owner: { select: ownerSelect },
-          ...tagsInclude,
+      await ctx.prisma.auditEvent.create({
+        data: {
+          userId,
+          action: "edit",
+          documentId: fileID,
+          fileName: result.filename,
         },
       });
+
+      return result;
     }),
 
   delete: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
@@ -243,9 +260,16 @@ export const contentRouter = router({
       where: { fileID: input.fileID },
     });
 
-    // Clean up orphaned tags after content deletion
     await ctx.prisma.tag.deleteMany({
       where: { content_tags: { none: {} } },
+    });
+
+    await ctx.prisma.auditEvent.create({
+      data: {
+        userId,
+        action: "delete",
+        documentId: input.fileID,
+      },
     });
 
     return result;

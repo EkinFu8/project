@@ -1,4 +1,5 @@
 import type { CreateHTTPContextOptions } from "@trpc/server/adapters/standalone";
+import { createAudit } from "./lib/audit";
 import { prisma } from "./lib/prisma";
 import { createSupabaseClient } from "./lib/supabase";
 
@@ -7,8 +8,10 @@ import { createSupabaseClient } from "./lib/supabase";
  */
 async function createContextInner(authToken: string | null) {
   const supabase = createSupabaseClient();
+  const audit = createAudit(prisma);
 
   let user = null;
+  let profile: unknown = null;
 
   if (authToken) {
     try {
@@ -17,13 +20,29 @@ async function createContextInner(authToken: string | null) {
         console.warn("[context] auth.getUser:", error.message);
       } else {
         user = data.user;
+
+        profile = await prisma.userProfile.findUnique({
+          where: { id: data.user.id },
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            portal: true,
+          },
+        });
       }
     } catch (err) {
       console.warn("[context] auth.getUser failed:", err);
     }
   }
 
-  return { supabase, prisma, user };
+  return {
+    supabase,
+    prisma,
+    audit,
+    user,
+    profile,
+  };
 }
 
 /**

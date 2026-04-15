@@ -1,4 +1,4 @@
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Plus, Search } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/lib/trpc";
@@ -93,6 +93,13 @@ function AdminContentPage() {
               <option value="Finalized">Finalized</option>
               <option value="Archived">Archived</option>
             </select>
+            <Link
+              to="/hero/content/new"
+              className="flex shrink-0 items-center justify-center gap-2 rounded bg-hanover-green px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-hanover-green/90"
+            >
+              <Plus className="h-4 w-4" />
+              New Content
+            </Link>
           </div>
         </div>
 
@@ -104,7 +111,7 @@ function AdminContentPage() {
         ) : contents.isError ? (
           <div className="mx-auto max-w-lg px-4 py-16 text-center">
             <p className="font-medium text-red-600">Could not load content.</p>
-            <p className="mt-2 break-words text-sm text-muted-foreground">
+            <p className="mt-2 wrap-break-word text-sm text-muted-foreground">
               {contents.error instanceof Error ? contents.error.message : String(contents.error)}
             </p>
           </div>
