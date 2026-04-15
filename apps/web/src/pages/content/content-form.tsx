@@ -348,7 +348,7 @@ function ContentFormDraftSection({
 
       {isEditing && url ? (
         <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
-          <div className="flex min-h-[140px] max-h-48 items-center justify-center bg-muted/50">
+          <div className="flex min-h-35 max-h-48 items-center justify-center bg-muted/50">
             {isImageFilename(filename) && url ? (
               <img src={url} alt="" className="max-h-48 max-w-full object-contain" />
             ) : (
