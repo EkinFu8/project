@@ -204,38 +204,34 @@ export const contentRouter = router({
 
       assertCanEdit(file, userId);
 
-      let result;
-
-      if (tagIds !== undefined) {
-        result = await ctx.prisma.contentManagement.update({
-          where: { fileID },
-          data: {
-            ...data,
-            owner_id,
-            content_tags: {
-              deleteMany: {},
-              create: tagIds.map((id) => ({ tagId: id })),
-            },
-          } as Prisma.ContentManagementUpdateInput,
-          include: {
-            owner: { select: ownerSelect },
-            ...tagsInclude,
-          },
-        });
-
-        await ctx.prisma.tag.deleteMany({
-          where: { content_tags: { none: {} } },
-        });
-      } else {
-        result = await ctx.prisma.contentManagement.update({
-          where: { fileID },
-          data: { ...data, owner_id } as Prisma.ContentManagementUncheckedUpdateInput,
-          include: {
-            owner: { select: ownerSelect },
-            ...tagsInclude,
-          },
-        });
-      }
+      const result =
+        tagIds !== undefined
+          ? await ctx.prisma.contentManagement.update({
+              where: { fileID },
+              data: {
+                ...data,
+                owner_id,
+                content_tags: {
+                  deleteMany: {},
+                  create: tagIds.map((id) => ({ tagId: id })),
+                },
+              } as Prisma.ContentManagementUpdateInput,
+              include: {
+                owner: { select: ownerSelect },
+                ...tagsInclude,
+              },
+            })
+          : await ctx.prisma.contentManagement.update({
+              where: { fileID },
+              data: {
+                ...data,
+                owner_id,
+              } as Prisma.ContentManagementUncheckedUpdateInput,
+              include: {
+                owner: { select: ownerSelect },
+                ...tagsInclude,
+              },
+            });
 
       await ctx.prisma.auditEvent.create({
         data: {
