@@ -98,6 +98,7 @@ function DashboardLoaded({
                 <tr className="border-b border-border">
                   <th className="px-2 py-3 text-left font-semibold text-foreground">File</th>
                   <th className="px-2 py-3 text-left font-semibold text-foreground">Owner</th>
+                  <th className="px-2 py-3 text-left font-semibold text-foreground">Tags</th>
                   <th className="px-2 py-3 text-left font-semibold text-foreground">Status</th>
                 </tr>
               </thead>
@@ -114,6 +115,22 @@ function DashboardLoaded({
                     </td>
                     <td className="px-2 py-3 text-muted-foreground">
                       {item.owner?.name ?? "Unassigned"}
+                    </td>
+                    <td className="px-2 py-3">
+                      {item.content_tags && item.content_tags.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {item.content_tags.map((ct) => (
+                            <span
+                              key={ct.tag.id}
+                              className="inline-flex items-center rounded-full bg-hanover-green/10 px-2 py-0.5 text-xs font-medium text-hanover-green ring-1 ring-hanover-green/30"
+                            >
+                              {ct.tag.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-2 py-3">
                       <span

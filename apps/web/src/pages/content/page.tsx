@@ -21,10 +21,17 @@ function getStatusBadge(status: string | null) {
 function ContentListPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [type, setType] = useState("");
+
+  const utils = trpc.useUtils();
+  const toggleFavorite = trpc.content.update.useMutation({
+    onSuccess: () => utils.content.list.invalidate(),
+  });
 
   const contents = trpc.content.list.useQuery({
     search,
     document_status: status || undefined,
+    content_type: (type as "Reference" | "Workflow") || undefined,
   });
 
   return (
@@ -60,6 +67,17 @@ function ContentListPage() {
             New Content
           </Link>
         </div>
+        <div>
+          <select
+            className="mb-5 rounded border border-border bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green sm:min-w-40"
+            value={type}
+            onChange={(click) => setType(click.target.value)}
+          >
+            <option value="">No Filter</option>
+            <option value="Reference">Reference</option>
+            <option value="Workflow">Workflow</option>
+          </select>
+        </div>
 
         {contents.isLoading ? (
           <div className="flex items-center justify-center py-16">
@@ -92,15 +110,42 @@ function ContentListPage() {
                   <h3 className="text-base font-semibold text-foreground group-hover:text-hanover-green">
                     {item.filename ?? "Untitled"}
                   </h3>
-                  <span
-                    className={`ml-2 shrink-0 rounded px-2 py-0.5 text-xs font-semibold ${getStatusBadge(item.document_status)}`}
-                  >
-                    {item.document_status ?? "—"}
-                  </span>
+                  <div className="ml-2 flex shrink-0 items-center gap-1">
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs font-semibold ${getStatusBadge(item.document_status)}`}
+                    >
+                      {item.document_status ?? "—"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleFavorite.mutate({
+                          fileID: item.fileID,
+                          is_favorited: !item.is_favorited,
+                        });
+                      }}
+                      className="text-yellow-400 hover:text-yellow-500"
+                    >
+                      {item.is_favorited ? "★" : "☆"}
+                    </button>
+                  </div>
                 </div>
                 <p className="mb-1 text-xs text-muted-foreground">
                   {item.content_type ?? "—"} · {item.job_position ?? "—"}
                 </p>
+                {item.content_tags && item.content_tags.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1">
+                    {item.content_tags.map((ct) => (
+                      <span
+                        key={ct.tag.id}
+                        className="inline-flex items-center rounded-full bg-hanover-green/10 px-2 py-0.5 text-xs font-medium text-hanover-green ring-1 ring-hanover-green/30"
+                      >
+                        {ct.tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>{item.owner?.name ?? "Unassigned"}</span>
                   <span>
