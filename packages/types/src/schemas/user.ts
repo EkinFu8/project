@@ -32,6 +32,7 @@ export const adminCreateUserSchema = z.object({
   role: accountRoleSchema,
   employee_code: z.string().min(1).max(10).optional().nullable(),
   job_desc: z.string().max(200).optional().nullable(),
+  photo_url: z.string().url().optional().nullable(),
 });
 
 export const adminUpdateUserSchema = z.object({
@@ -42,6 +43,7 @@ export const adminUpdateUserSchema = z.object({
   role: accountRoleSchema.optional(),
   employee_code: z.string().min(1).max(10).nullable().optional(),
   job_desc: z.string().max(200).nullable().optional(),
+  photo_url: z.string().url().nullable().optional(),
 });
 
 export type UserId = z.infer<typeof userIdSchema>;
