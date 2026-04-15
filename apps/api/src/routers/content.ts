@@ -4,6 +4,7 @@ import {
   createContentSchema,
   updateContentSchema,
 } from "@myapp/types/schemas";
+import type { Prisma } from "@prisma/client";
 import { publicProcedure, router } from "../lib/trpc";
 
 const ownerSelect = {
@@ -44,7 +45,7 @@ export const contentRouter = router({
 
     return ctx.prisma.contentManagement.findMany({
       where,
-      orderBy: { last_modified: "desc" },
+      orderBy: [{ is_favorited: "desc" }, { last_modified: "desc" }],
       include: {
         owner: { select: ownerSelect },
         ...tagsInclude,
@@ -70,14 +71,19 @@ export const contentRouter = router({
   }),
 
   create: publicProcedure.input(createContentSchema).mutation(async ({ ctx, input }) => {
-    const { tagIds, ...rest } = input;
+    const { tagIds, owner_id, ...rest } = input;
+    const data: Prisma.ContentManagementUncheckedCreateInput = {
+      ...rest,
+      owner_id: owner_id ?? null,
+    };
     return ctx.prisma.contentManagement.create({
-      data: {
-        ...rest,
-        ...(tagIds && tagIds.length > 0
-          ? { content_tags: { create: tagIds.map((id) => ({ tagId: id })) } }
-          : {}),
-      },
+      data:
+        tagIds && tagIds.length > 0
+          ? ({
+              ...data,
+              content_tags: { create: tagIds.map((id) => ({ tagId: id })) },
+            } as Prisma.ContentManagementCreateInput)
+          : data,
       include: {
         owner: { select: ownerSelect },
         ...tagsInclude,
@@ -88,7 +94,7 @@ export const contentRouter = router({
   update: publicProcedure
     .input(contentIdSchema.merge(updateContentSchema))
     .mutation(async ({ ctx, input }) => {
-      const { fileID, tagIds, ...data } = input;
+      const { fileID, tagIds, owner_id, ...data } = input;
 
       // If tagIds is provided, replace all tags for this content item.
       // After replacing, clean up any tags that are now orphaned.
@@ -97,11 +103,12 @@ export const contentRouter = router({
           where: { fileID },
           data: {
             ...data,
+            owner_id,
             content_tags: {
               deleteMany: {},
               create: tagIds.map((id) => ({ tagId: id })),
             },
-          },
+          } as Prisma.ContentManagementUpdateInput,
           include: {
             owner: { select: ownerSelect },
             ...tagsInclude,
@@ -118,7 +125,7 @@ export const contentRouter = router({
 
       return ctx.prisma.contentManagement.update({
         where: { fileID },
-        data,
+        data: { ...data, owner_id } as Prisma.ContentManagementUncheckedUpdateInput,
         include: {
           owner: { select: ownerSelect },
           ...tagsInclude,
