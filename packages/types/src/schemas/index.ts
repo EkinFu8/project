@@ -3,9 +3,13 @@ export {
   type ContentId,
   type ContentListQuery,
   type CreateContent,
+  type CreateTag,
   contentIdSchema,
   contentListQuerySchema,
   createContentSchema,
+  createTagSchema,
+  type TagId,
+  tagIdSchema,
   type UpdateContent,
   updateContentSchema,
 } from "./content";
