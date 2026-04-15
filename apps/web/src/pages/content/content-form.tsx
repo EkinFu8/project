@@ -2,9 +2,10 @@ import DocViewer, { DocViewerRenderers } from "@iamjariwala/react-doc-viewer";
 import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
 import "@iamjariwala/react-doc-viewer/dist/index.css";
-import { ArrowLeft, FileText, Loader2, Pencil } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, Lock, Pencil, Unlock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { useSession } from "@/auth/session-context";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { type RouterOutputs, trpc } from "@/lib/trpc.ts";
 import { TagInput } from "./tag-input";
@@ -803,6 +804,35 @@ function ContentFormPage() {
     },
   });
 
+  const { session } = useSession();
+  const currentUserId = session?.user?.id;
+
+  const checkout = trpc.content.checkout.useMutation({
+    onSuccess: () => {
+      utils.content.getById.invalidate({ fileID: id! });
+      utils.content.list.invalidate();
+    },
+  });
+
+  const checkin = trpc.content.checkin.useMutation({
+    onSuccess: () => {
+      utils.content.getById.invalidate({ fileID: id! });
+      utils.content.list.invalidate();
+    },
+  });
+
+  const forceUnlock = trpc.content.forceUnlock.useMutation({
+    onSuccess: () => {
+      utils.content.getById.invalidate({ fileID: id! });
+      utils.content.list.invalidate();
+    },
+  });
+
+  const isCheckedOut = existing.data?.is_checked_out ?? false;
+  const checkedOutBy = existing.data?.checked_out_by ?? null;
+  const isCheckedOutByMe = isCheckedOut && checkedOutBy === currentUserId;
+  const isLockedByOther = isCheckedOut && !isCheckedOutByMe;
+
   const isSaving = create.isPending || update.isPending;
 
   function handleSubmit(e: React.FormEvent) {
@@ -840,8 +870,90 @@ function ContentFormPage() {
     );
   }
 
+  const checkoutError = checkout.error || checkin.error || forceUnlock.error;
+
   return (
     <>
+      {isEditing && (
+        <div className="mx-auto max-w-4xl px-4 pt-4 sm:px-6 lg:px-8">
+          {isLockedByOther && (
+            <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950">
+              <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-200">
+                <Lock className="h-4 w-4" />
+                This file is checked out by another user. Editing is disabled.
+              </div>
+              {session?.user?.user_metadata?.role === "admin" && (
+                <button
+                  type="button"
+                  onClick={() => forceUnlock.mutate({ fileID: id! })}
+                  disabled={forceUnlock.isPending}
+                  className="inline-flex items-center gap-1.5 rounded bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-700 disabled:opacity-60"
+                >
+                  {forceUnlock.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Unlock className="h-3 w-3" />
+                  )}
+                  Force Unlock
+                </button>
+              )}
+            </div>
+          )}
+          {!isLockedByOther && (
+            <div className="mb-4 flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {isCheckedOutByMe ? (
+                  <>
+                    <Lock className="h-4 w-4 text-hanover-green" />
+                    <span className="font-medium text-hanover-green">
+                      You have this file checked out
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="h-4 w-4" />
+                    <span>File is available</span>
+                  </>
+                )}
+              </div>
+              {isCheckedOutByMe ? (
+                <button
+                  type="button"
+                  onClick={() => checkin.mutate({ fileID: id! })}
+                  disabled={checkin.isPending}
+                  className="inline-flex items-center gap-1.5 rounded bg-muted px-3 py-1.5 text-xs font-semibold text-foreground ring-1 ring-border transition-colors hover:bg-muted/80 disabled:opacity-60"
+                >
+                  {checkin.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Unlock className="h-3 w-3" />
+                  )}
+                  Check In
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => checkout.mutate({ fileID: id! })}
+                  disabled={checkout.isPending}
+                  className="inline-flex items-center gap-1.5 rounded bg-hanover-green px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
+                >
+                  {checkout.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Lock className="h-3 w-3" />
+                  )}
+                  Check Out
+                </button>
+              )}
+            </div>
+          )}
+          {checkoutError && (
+            <div className="mb-4 rounded border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {checkoutError.message}
+            </div>
+          )}
+        </div>
+      )}
       <ContentFormFields
         key={isEditing ? id! : fileID || "new"}
         isEditing={isEditing}

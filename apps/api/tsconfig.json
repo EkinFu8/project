@@ -6,6 +6,7 @@
     "lib": ["ES2023"],
     "types": ["node"],
     "baseUrl": ".",
+    "esModuleInterop": true,
     "paths": {
       "@/*": ["./src/*"]
     }

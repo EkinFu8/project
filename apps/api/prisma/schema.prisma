@@ -507,6 +507,9 @@ model ContentManagement {
   content_type    String?   @db.VarChar(20)
   document_status String?   @db.VarChar(20)
   is_favorited    Boolean   @default(false)
+  is_checked_out  Boolean   @default(false)
+  checked_out_by  String?   @db.Uuid
+  checked_out_at  DateTime? @db.Timestamptz(6)
   owner_id        String?   @map("owner_id") @db.Uuid
   owner           UserProfile? @relation(fields: [owner_id], references: [id], onUpdate: NoAction)
   content_tags    ContentTag[]
