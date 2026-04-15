@@ -1,4 +1,4 @@
-import { Loader2, Plus, Search } from "lucide-react";
+import { Loader2, Lock, Plus, Search } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/lib/trpc.ts";
@@ -144,6 +144,12 @@ function ContentListPage() {
                         {ct.tag.name}
                       </span>
                     ))}
+                  </div>
+                )}
+                {item.is_checked_out && (
+                  <div className="mb-2 flex items-center gap-1.5 rounded bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:ring-amber-800">
+                    <Lock className="h-3 w-3" />
+                    Checked out
                   </div>
                 )}
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
