@@ -33,7 +33,6 @@ function assertCanEdit(
 }
 
 export const contentRouter = router({
-  
   checkout: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     const userId = ctx.user?.id;
     if (!userId) throw new Error("Not authenticated");
@@ -105,7 +104,6 @@ export const contentRouter = router({
     return { success: true };
   }),
 
-  
   list: publicProcedure.input(contentListQuerySchema).query(async ({ ctx, input }) => {
     const where: Record<string, unknown> = {};
 
@@ -138,7 +136,6 @@ export const contentRouter = router({
     });
   }),
 
-
   getById: publicProcedure.input(contentIdSchema).query(async ({ ctx, input }) => {
     return ctx.prisma.contentManagement.findUniqueOrThrow({
       where: { fileID: input.fileID },
@@ -156,7 +153,6 @@ export const contentRouter = router({
     });
   }),
 
-  
   create: publicProcedure.input(createContentSchema).mutation(async ({ ctx, input }) => {
     const userId = ctx.user?.id;
     if (!userId) throw new Error("Unauthorized");
@@ -194,7 +190,6 @@ export const contentRouter = router({
     return result;
   }),
 
-  
   update: publicProcedure
     .input(contentIdSchema.merge(updateContentSchema))
     .mutation(async ({ ctx, input }) => {
@@ -253,7 +248,6 @@ export const contentRouter = router({
 
       return result;
     }),
-
 
   delete: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     const userId = ctx.user?.id;

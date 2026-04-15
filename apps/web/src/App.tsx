@@ -14,6 +14,7 @@ import { useSession } from "@/auth/session-context";
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
 import AccountPage from "@/pages/account/page.tsx";
+import MetricsPage from "@/pages/admin/metrics/page.tsx";
 import UsersPage from "@/pages/admin/users/page.tsx";
 import UserFormPage from "@/pages/admin/users/user-form.tsx";
 import BusinessAnalystPage from "@/pages/business-analyst/page.tsx";
@@ -24,7 +25,6 @@ import HeroLayout from "@/pages/hero/layout.tsx";
 import RoleAwareContentPage from "@/pages/hero/role-content.tsx";
 import LoginFormPage from "@/pages/login.tsx";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
-import MetricsPage from "@/pages/admin/metrics/page.tsx";
 
 function LegacyContentEditRedirect() {
   const { id } = useParams<{ id: string }>();

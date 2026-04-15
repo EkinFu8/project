@@ -1,11 +1,11 @@
 import { router } from "../lib/trpc";
+import { auditRouter } from "./audit";
 import { contentRouter } from "./content";
 import { employeeRouter } from "./employee";
 import { loginRouter } from "./login";
+import { metricsRouter } from "./metrics";
 import { tagRouter } from "./tag";
 import { userRouter } from "./user";
-import { metricsRouter } from "./metrics";
-import { auditRouter } from "./audit";
 
 export const appRouter = router({
   login: loginRouter,

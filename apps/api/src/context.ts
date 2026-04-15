@@ -11,7 +11,7 @@ async function createContextInner(authToken: string | null) {
   const audit = createAudit(prisma);
 
   let user = null;
-  let profile: any = null;
+  let profile: unknown = null;
 
   if (authToken) {
     try {
