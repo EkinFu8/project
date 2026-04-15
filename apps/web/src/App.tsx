@@ -14,7 +14,6 @@ import { useSession } from "@/auth/session-context";
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
 import AccountPage from "@/pages/account/page.tsx";
-import MetricsPage from "@/pages/admin/metrics/page.tsx";
 import UsersPage from "@/pages/admin/users/page.tsx";
 import UserFormPage from "@/pages/admin/users/user-form.tsx";
 import BusinessAnalystPage from "@/pages/business-analyst/page.tsx";
@@ -25,6 +24,7 @@ import HeroLayout from "@/pages/hero/layout.tsx";
 import RoleAwareContentPage from "@/pages/hero/role-content.tsx";
 import LoginFormPage from "@/pages/login.tsx";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
+import DashboardPage from "@/pages/dashboard/page.tsx";
 
 function LegacyContentEditRedirect() {
   const { id } = useParams<{ id: string }>();
@@ -69,7 +69,7 @@ function adminNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
     { label: "User Management", to: "/users" },
-    { label: "Metrics", to: "/admin/metrics" },
+    { label: "Dashboard", to: "/dashboard" },
   ];
 }
 
@@ -170,10 +170,10 @@ function App() {
             <Route path="/users" element={<UsersPage />} />
             <Route path="/users/new" element={<UserFormPage />} />
             <Route path="/users/:id" element={<UserFormPage />} />
-            <Route path="/admin/metrics" element={<MetricsPage />} />
           </Route>
 
           {/* Shared */}
+          <Route path="/dashboard/" element={<DashboardPage />} />
           <Route path="/account" element={<AccountPage />} />
 
           {/* Legacy redirects */}
@@ -182,6 +182,7 @@ function App() {
           <Route path="/content/:id/edit" element={<LegacyContentEditRedirect />} />
           <Route path="/businessAnalyst" element={<Navigate to="/business-analyst" replace />} />
           <Route path="/dashboard" element={<Navigate to="/hero" replace />} />
+          <Route path="/admin/metrics" element={<Navigate to="/dashboard/" replace />} />
           <Route path="*" element={<Navigate to="/hero" replace />} />
         </Route>
       </Routes>

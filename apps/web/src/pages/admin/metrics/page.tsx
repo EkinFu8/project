@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 function formatAction(action: string) {
@@ -11,7 +12,7 @@ function formatAction(action: string) {
   return map[action] ?? action;
 }
 
-export default function MetricsPage() {
+export function MetricsView() {
   const metrics = trpc.metrics.getOverview.useQuery(undefined, {
     refetchInterval: 5000,
   });
@@ -29,120 +30,151 @@ export default function MetricsPage() {
   });
 
   if (metrics.isLoading || auditSummary.isLoading) {
-    return <div className="p-6 text-foreground">Loading dashboard...</div>;
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
+        <span className="ml-2 text-muted-foreground">Loading metrics...</span>
+      </div>
+    );
   }
 
   if (!metrics.data) {
-    return <div className="p-6 text-red-500">Failed to load metrics</div>;
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <p className="font-medium text-red-600">Failed to load metrics.</p>
+      </div>
+    );
   }
 
   const errorRate = metrics.data.errorRate ?? 0;
 
   return (
-    <div className="p-6 space-y-10 text-foreground">
-      {/* HEADER */}
-      <div>
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground">
-          Metrics + audit tracking for system & document activity
-        </p>
-      </div>
-
+    <>
       {/* METRICS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 border rounded-lg bg-background">
-          <p className="text-muted-foreground text-sm">Requests</p>
-          <p className="text-xl font-bold">{metrics.data.totalRequests ?? 0}</p>
-        </div>
-
-        <div className="p-4 border rounded-lg bg-background">
-          <p className="text-muted-foreground text-sm">Errors</p>
-          <p className="text-xl font-bold text-red-500">{metrics.data.errors ?? 0}</p>
-        </div>
-
-        <div className="p-4 border rounded-lg bg-background">
-          <p className="text-muted-foreground text-sm">Active Users</p>
-          <p className="text-xl font-bold text-green-600">{metrics.data.activeUsers ?? 0}</p>
-        </div>
-
-        <div className="p-4 border rounded-lg bg-background">
-          <p className="text-muted-foreground text-sm">Error Rate</p>
-          <p className="text-xl font-bold">{(errorRate * 100).toFixed(2)}%</p>
-        </div>
-      </div>
-
-      {/* AUDIT SUMMARY */}
-      <div>
-        <h2 className="text-xl font-semibold mb-3">Document Activity</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="p-4 border rounded-lg bg-background">
-            <p className="text-sm text-muted-foreground">Uploads</p>
-            <p className="text-xl font-bold">{auditSummary.data?.uploads ?? 0}</p>
+      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="rounded border border-border bg-card p-4 shadow-sm">
+            <p className="text-sm text-muted-foreground">Requests</p>
+            <p className="text-xl font-bold text-foreground">
+              {metrics.data.totalRequests ?? 0}
+            </p>
           </div>
 
-          <div className="p-4 border rounded-lg bg-background">
-            <p className="text-sm text-muted-foreground">Downloads</p>
-            <p className="text-xl font-bold">{auditSummary.data?.downloads ?? 0}</p>
+          <div className="rounded border border-border bg-card p-4 shadow-sm">
+            <p className="text-sm text-muted-foreground">Errors</p>
+            <p className="text-xl font-bold text-red-600">{metrics.data.errors ?? 0}</p>
           </div>
 
-          <div className="p-4 border rounded-lg bg-background">
-            <p className="text-sm text-muted-foreground">Edits</p>
-            <p className="text-xl font-bold">{auditSummary.data?.edits ?? 0}</p>
+          <div className="rounded border border-border bg-card p-4 shadow-sm">
+            <p className="text-sm text-muted-foreground">Active Users</p>
+            <p className="text-xl font-bold text-hanover-green">
+              {metrics.data.activeUsers ?? 0}
+            </p>
           </div>
 
-          <div className="p-4 border rounded-lg bg-background">
-            <p className="text-sm text-muted-foreground">Deletes</p>
-            <p className="text-xl font-bold">{auditSummary.data?.deletes ?? 0}</p>
+          <div className="rounded border border-border bg-card p-4 shadow-sm">
+            <p className="text-sm text-muted-foreground">Error Rate</p>
+            <p className="text-xl font-bold text-foreground">
+              {(errorRate * 100).toFixed(2)}%
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* RECENT AUDIT LOG */}
-      <div>
-        <h2 className="text-xl font-semibold mb-3">Recent Activity</h2>
+        {/* AUDIT SUMMARY */}
+        <div className="mb-8">
+          <h2 className="mb-3 text-xl font-semibold text-foreground">Document Activity</h2>
 
-        <div className="border rounded-lg bg-background divide-y">
-          {auditRecent.data?.slice(0, 10).map((a) => (
-            <div
-              key={a.id}
-              className="p-3 text-sm flex flex-col md:flex-row md:justify-between gap-1"
-            >
-              <div>
-                <span className="font-medium">{a.user?.name ?? "Unknown User"}</span>{" "}
-                <span className="text-muted-foreground">
-                  {a.user?.employee_code ? `(${a.user.employee_code})` : ""}
-                </span>{" "}
-                {formatAction(a.action)}{" "}
-                <span className="text-muted-foreground">{a.fileName ?? "a document"}</span>
-              </div>
-
-              <div className="text-xs text-muted-foreground md:text-right">
-                {new Date(a.createdAt).toLocaleString()}
-              </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div className="rounded border border-border bg-card p-4 shadow-sm">
+              <p className="text-sm text-muted-foreground">Uploads</p>
+              <p className="text-xl font-bold text-foreground">
+                {auditSummary.data?.uploads ?? 0}
+              </p>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* SYSTEM PERFORMANCE */}
-      <div>
-        <h2 className="text-xl font-semibold mb-3">System Performance</h2>
-
-        <div className="border rounded-lg bg-background divide-y">
-          {recentMetrics.data?.slice(0, 10).map((r) => (
-            <div key={r.id} className="flex justify-between p-3 text-sm">
-              <span className="font-mono">{r.route}</span>
-
-              <span className="text-muted-foreground uppercase">{r.method}</span>
-
-              <span>{r.status}</span>
-
-              <span className="text-muted-foreground">{r.durationMs}ms</span>
+            <div className="rounded border border-border bg-card p-4 shadow-sm">
+              <p className="text-sm text-muted-foreground">Downloads</p>
+              <p className="text-xl font-bold text-foreground">
+                {auditSummary.data?.downloads ?? 0}
+              </p>
             </div>
-          ))}
+
+            <div className="rounded border border-border bg-card p-4 shadow-sm">
+              <p className="text-sm text-muted-foreground">Edits</p>
+              <p className="text-xl font-bold text-foreground">
+                {auditSummary.data?.edits ?? 0}
+              </p>
+            </div>
+
+            <div className="rounded border border-border bg-card p-4 shadow-sm">
+              <p className="text-sm text-muted-foreground">Deletes</p>
+              <p className="text-xl font-bold text-foreground">
+                {auditSummary.data?.deletes ?? 0}
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+
+        {/* RECENT AUDIT LOG */}
+        <div className="mb-8">
+          <h2 className="mb-3 text-xl font-semibold text-foreground">Recent Activity</h2>
+
+          <div className="divide-y divide-border rounded border border-border bg-card shadow-sm">
+            {auditRecent.data?.slice(0, 10).map((a) => (
+              <div
+                key={a.id}
+                className="flex flex-col gap-1 p-3 text-sm md:flex-row md:justify-between"
+              >
+                <div>
+                  <span className="font-medium text-foreground">
+                    {a.user?.name ?? "Unknown User"}
+                  </span>{" "}
+                  <span className="text-muted-foreground">
+                    {a.user?.employee_code ? `(${a.user.employee_code})` : ""}
+                  </span>{" "}
+                  {formatAction(a.action)}{" "}
+                  <span className="text-muted-foreground">
+                    {a.fileName ?? "a document"}
+                  </span>
+                </div>
+
+                <div className="text-xs text-muted-foreground md:text-right">
+                  {new Date(a.createdAt).toLocaleString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* SYSTEM PERFORMANCE */}
+        <div>
+          <h2 className="mb-3 text-xl font-semibold text-foreground">System Performance</h2>
+
+          <div className="divide-y divide-border rounded border border-border bg-card shadow-sm">
+            <div className="grid grid-cols-[1fr_80px_80px_100px] gap-4 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <span>Route</span>
+              <span>Method</span>
+              <span className="text-right">Status</span>
+              <span className="text-right">Duration</span>
+            </div>
+            {recentMetrics.data?.slice(0, 10).map((r) => (
+              <div
+                key={r.id}
+                className="grid grid-cols-[1fr_80px_80px_100px] items-center gap-4 p-3 text-sm"
+              >
+                <span className="truncate font-mono text-foreground">{r.route}</span>
+                <span className="uppercase text-muted-foreground">{r.method}</span>
+                <span
+                  className={`text-right font-medium ${
+                    r.status === "OK" ? "text-hanover-green" : "text-red-600"
+                  }`}
+                >
+                  {r.status}
+                </span>
+                <span className="text-right text-muted-foreground">{r.durationMs}ms</span>
+              </div>
+            ))}
+          </div>
+        </div>
+    </>
   );
 }
