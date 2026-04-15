@@ -704,6 +704,9 @@ function ContentFormPage() {
   const [expirationDate, setExpirationDate] = useState("");
   const [contentType, setContentType] = useState("");
   const [documentStatus, setDocumentStatus] = useState("");
+  const [askConfirmation, setAskConfirmation] = useState(false);
+  const [pendingData, setPendingData] = useState<Parameters<typeof update.mutate>[0] | null>(null);
+  const [operation, setOperation] = useState("");
 
   const handleUploadSuccess = useCallback(
     (result: { publicUrl: string; storagePath: string; fileName: string }) => {
@@ -776,7 +779,9 @@ function ContentFormPage() {
     };
 
     if (isEditing) {
-      update.mutate({ fileID: id!, ...data });
+      data ? setPendingData({ fileID: id!, ...data }) : null;
+      setAskConfirmation(true);
+      setOperation("update");
     } else {
       create.mutate({ fileID, ...data });
     }
@@ -792,37 +797,66 @@ function ContentFormPage() {
   }
 
   return (
-    <ContentFormFields
-      key={isEditing ? id! : fileID || "new"}
-      isEditing={isEditing}
-      fileID={fileID}
-      setFileID={setFileID}
-      filename={filename}
-      setFilename={setFilename}
-      url={url}
-      setUrl={setUrl}
-      ownerId={ownerId}
-      setOwnerId={setOwnerId}
-      jobPosition={jobPosition}
-      setJobPosition={setJobPosition}
-      lastModified={lastModified}
-      setLastModified={setLastModified}
-      expirationDate={expirationDate}
-      setExpirationDate={setExpirationDate}
-      contentType={contentType}
-      setContentType={setContentType}
-      documentStatus={documentStatus}
-      setDocumentStatus={setDocumentStatus}
-      employees={employees.data}
-      upload={upload}
-      isUploading={isUploading}
-      uploadProgress={uploadProgress}
-      uploadError={uploadError}
-      createError={create.error}
-      updateError={update.error}
-      isSaving={isSaving}
-      onSubmit={handleSubmit}
-    />
+    <>
+      <ContentFormFields
+        key={isEditing ? id! : fileID || "new"}
+        isEditing={isEditing}
+        fileID={fileID}
+        setFileID={setFileID}
+        filename={filename}
+        setFilename={setFilename}
+        url={url}
+        setUrl={setUrl}
+        ownerId={ownerId}
+        setOwnerId={setOwnerId}
+        jobPosition={jobPosition}
+        setJobPosition={setJobPosition}
+        lastModified={lastModified}
+        setLastModified={setLastModified}
+        expirationDate={expirationDate}
+        setExpirationDate={setExpirationDate}
+        contentType={contentType}
+        setContentType={setContentType}
+        documentStatus={documentStatus}
+        setDocumentStatus={setDocumentStatus}
+        employees={employees.data}
+        upload={upload}
+        isUploading={isUploading}
+        uploadProgress={uploadProgress}
+        uploadError={uploadError}
+        createError={create.error}
+        updateError={update.error}
+        isSaving={isSaving}
+        onSubmit={handleSubmit}
+      />
+      {askConfirmation && (
+        <div className="bg-black/50 fixed inset-0 flex items-center justify-center">
+          <div className="bg-white dark:bg-zinc-800 px-10 py-5 rounded-xl">
+            <p>Are you sure you want to {operation} this content?</p>
+            <br />
+            <div className="flex w-full justify-between">
+              <button
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+                type="button"
+                onClick={() => setAskConfirmation(false)}
+              >
+                No.
+              </button>
+              <button
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-6 py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
+                type="button"
+                onClick={() => {
+                  setAskConfirmation(false);
+                  if (pendingData && operation === "update") update.mutate(pendingData);
+                }}
+              >
+                Yes.
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
