@@ -111,7 +111,7 @@ function AdminContentPage() {
         ) : contents.isError ? (
           <div className="mx-auto max-w-lg px-4 py-16 text-center">
             <p className="font-medium text-red-600">Could not load content.</p>
-            <p className="mt-2 break-words text-sm text-muted-foreground">
+            <p className="mt-2 wrap-break-word text-sm text-muted-foreground">
               {contents.error instanceof Error ? contents.error.message : String(contents.error)}
             </p>
           </div>
