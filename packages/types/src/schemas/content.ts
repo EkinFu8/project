@@ -14,6 +14,7 @@ export const createContentSchema = z.object({
   expiration_date: z.coerce.date().nullish(),
   content_type: z.enum(["Reference", "Workflow"]).nullish(),
   document_status: z.enum(["Created", "in-progress", "Finalized", "Archived"]).nullish(),
+  tagIds: z.array(z.number().int()).optional(),
 });
 
 export const updateContentSchema = createContentSchema.omit({ fileID: true }).partial();
@@ -25,7 +26,17 @@ export const contentListQuerySchema = z.object({
   search: z.string().optional(),
 });
 
+export const tagIdSchema = z.object({
+  id: z.number().int(),
+});
+
+export const createTagSchema = z.object({
+  name: z.string().min(1).max(100),
+});
+
 export type ContentId = z.infer<typeof contentIdSchema>;
 export type CreateContent = z.infer<typeof createContentSchema>;
 export type UpdateContent = z.infer<typeof updateContentSchema>;
 export type ContentListQuery = z.infer<typeof contentListQuerySchema>;
+export type TagId = z.infer<typeof tagIdSchema>;
+export type CreateTag = z.infer<typeof createTagSchema>;

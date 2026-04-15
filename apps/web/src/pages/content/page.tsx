@@ -114,6 +114,18 @@ function ContentListPage() {
                 <p className="mb-1 text-xs text-muted-foreground">
                   {item.content_type ?? "—"} · {item.job_position ?? "—"}
                 </p>
+                {item.content_tags && item.content_tags.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1">
+                    {item.content_tags.map((ct) => (
+                      <span
+                        key={ct.tag.id}
+                        className="inline-flex items-center rounded-full bg-hanover-green/10 px-2 py-0.5 text-xs font-medium text-hanover-green ring-1 ring-hanover-green/30"
+                      >
+                        {ct.tag.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>{item.owner?.name ?? "Unassigned"}</span>
                   <span>
