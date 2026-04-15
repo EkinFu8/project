@@ -111,15 +111,21 @@ function ContentListPage() {
                     {item.filename ?? "Untitled"}
                   </h3>
                   <div className="ml-2 flex shrink-0 items-center gap-1">
-                    <span className={`rounded px-2 py-0.5 text-xs font-semibold ${getStatusBadge(item.document_status)}`}>
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs font-semibold ${getStatusBadge(item.document_status)}`}
+                    >
                       {item.document_status ?? "—"}
                     </span>
                     <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          toggleFavorite.mutate({ fileID: item.fileID, is_favorited: !item.is_favorited });
-                        }}
-                        className="text-yellow-400 hover:text-yellow-500"
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleFavorite.mutate({
+                          fileID: item.fileID,
+                          is_favorited: !item.is_favorited,
+                        });
+                      }}
+                      className="text-yellow-400 hover:text-yellow-500"
                     >
                       {item.is_favorited ? "★" : "☆"}
                     </button>
