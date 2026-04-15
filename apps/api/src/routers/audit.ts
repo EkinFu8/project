@@ -8,6 +8,13 @@ export const auditRouter = router({
         action: true,
         fileName: true,
         createdAt: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            employee_code: true,
+          }
+        }
       },
       orderBy: { createdAt: "desc" },
       take: 50,
