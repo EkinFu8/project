@@ -1,4 +1,4 @@
-import { Loader2, Pencil, Plus, Search, Trash2, Users } from "lucide-react";
+import { Loader2, Pencil, Plus, Search, Trash2, User, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/lib/trpc";
@@ -10,8 +10,6 @@ const ROLE_LABELS: Record<UserRole, string> = {
   underwriter: "Underwriter",
   "business-analyst": "Business Analyst",
 };
-
-const PORTAL_LABELS = { employee: "Employee app", admin: "Admin app" } as const;
 
 function UsersPage() {
   const [search, setSearch] = useState("");
@@ -82,9 +80,9 @@ function UsersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/80">
+                    <th className="w-12 px-4 py-3" />
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Email</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Portal</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Role</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Code</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Actions</th>
@@ -96,11 +94,21 @@ function UsersPage() {
                       key={user.id}
                       className="border-b border-border transition-colors hover:bg-muted/80"
                     >
+                      <td className="px-4 py-3">
+                        {user.photo_url ? (
+                          <img
+                            src={user.photo_url}
+                            alt={user.name}
+                            className="h-8 w-8 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                            <User className="h-4 w-4" />
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
                       <td className="px-4 py-3 font-medium text-foreground">{user.name}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {PORTAL_LABELS[user.portal as "employee" | "admin"] ?? user.portal}
-                      </td>
                       <td className="px-4 py-3">
                         <RoleBadge role={user.role} />
                       </td>

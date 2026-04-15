@@ -1,5 +1,5 @@
-import { X, Plus, Tag } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { Plus, Tag, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc.ts";
 
 type TagShape = { id: number; name: string };
@@ -80,12 +80,12 @@ export function TagInput({ selectedTags, onChange }: TagInputProps) {
 
   return (
     <div>
-      <label className="mb-2 block text-sm font-semibold text-foreground">
+      <span className="mb-2 block text-sm font-semibold text-foreground">
         <span className="inline-flex items-center gap-1.5">
           <Tag className="h-3.5 w-3.5" />
           Meta Tags
         </span>
-      </label>
+      </span>
 
       {/* Selected tag pills */}
       {selectedTags.length > 0 && (
@@ -123,8 +123,11 @@ export function TagInput({ selectedTags, onChange }: TagInputProps) {
           {showDropdown && (
             <div className="absolute z-10 mt-1 w-full rounded border border-border bg-background shadow-lg">
               <div className="border-b border-border p-2">
+                <label className="sr-only" htmlFor="tag-search">
+                  Search tags
+                </label>
                 <input
-                  autoFocus
+                  id="tag-search"
                   type="text"
                   placeholder="Search tags..."
                   value={dropdownQuery}

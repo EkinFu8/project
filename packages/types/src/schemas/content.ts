@@ -21,6 +21,7 @@ export const updateContentSchema = createContentSchema.omit({ fileID: true }).pa
 
 export const contentListQuerySchema = z.object({
   document_status: z.string().optional(),
+  content_type: z.enum(["Reference", "Workflow"]).optional(),
   owner_id: z.string().uuid().optional(),
   search: z.string().optional(),
 });

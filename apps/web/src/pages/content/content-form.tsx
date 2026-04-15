@@ -1,5 +1,7 @@
+import DocViewer, { DocViewerRenderers } from "@iamjariwala/react-doc-viewer";
 import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
+import "@iamjariwala/react-doc-viewer/dist/index.css";
 import { ArrowLeft, FileText, Loader2, Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -251,19 +253,13 @@ function ContentFormSummarySection({
   mutationError: string;
   submitLabel: string;
 }) {
+  const docs = [{ uri: url }];
+
   return (
     <>
       <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
-        <div className="flex min-h-[200px] max-h-80 items-center justify-center bg-muted/50">
-          {isImageFilename(filename) && url ? (
-            <img src={url} alt="" className="max-h-80 max-w-full object-contain" />
-          ) : (
-            <div className="flex flex-col items-center gap-3 px-8 py-12 text-muted-foreground">
-              <FileText className="h-16 w-16 opacity-35" strokeWidth={1.25} />
-              <span className="text-sm font-medium text-foreground/80">Preview</span>
-              {filename ? <span className="max-w-full truncate text-xs">{filename}</span> : null}
-            </div>
-          )}
+        <div className="h-[1500px] w-full items-center justify-center bg-muted/50">
+          <DocViewer documents={docs} pluginRenderers={DocViewerRenderers} />
         </div>
       </div>
 
@@ -750,6 +746,9 @@ function ContentFormPage() {
   const [contentType, setContentType] = useState("");
   const [documentStatus, setDocumentStatus] = useState("");
   const [selectedTags, setSelectedTags] = useState<{ id: number; name: string }[]>([]);
+  const [askConfirmation, setAskConfirmation] = useState(false);
+  const [pendingData, setPendingData] = useState<Parameters<typeof update.mutate>[0] | null>(null);
+  const [operation, setOperation] = useState("");
 
   const handleUploadSuccess = useCallback(
     (result: { publicUrl: string; storagePath: string; fileName: string }) => {
@@ -824,7 +823,9 @@ function ContentFormPage() {
     };
 
     if (isEditing) {
-      update.mutate({ fileID: id!, ...data });
+      data ? setPendingData({ fileID: id!, ...data }) : null;
+      setAskConfirmation(true);
+      setOperation("update");
     } else {
       create.mutate({ fileID, ...data });
     }
@@ -840,39 +841,68 @@ function ContentFormPage() {
   }
 
   return (
-    <ContentFormFields
-      key={isEditing ? id! : fileID || "new"}
-      isEditing={isEditing}
-      fileID={fileID}
-      setFileID={setFileID}
-      filename={filename}
-      setFilename={setFilename}
-      url={url}
-      setUrl={setUrl}
-      ownerId={ownerId}
-      setOwnerId={setOwnerId}
-      jobPosition={jobPosition}
-      setJobPosition={setJobPosition}
-      lastModified={lastModified}
-      setLastModified={setLastModified}
-      expirationDate={expirationDate}
-      setExpirationDate={setExpirationDate}
-      contentType={contentType}
-      setContentType={setContentType}
-      documentStatus={documentStatus}
-      setDocumentStatus={setDocumentStatus}
-      selectedTags={selectedTags}
-      setSelectedTags={setSelectedTags}
-      employees={employees.data}
-      upload={upload}
-      isUploading={isUploading}
-      uploadProgress={uploadProgress}
-      uploadError={uploadError}
-      createError={create.error}
-      updateError={update.error}
-      isSaving={isSaving}
-      onSubmit={handleSubmit}
-    />
+    <>
+      <ContentFormFields
+        key={isEditing ? id! : fileID || "new"}
+        isEditing={isEditing}
+        fileID={fileID}
+        setFileID={setFileID}
+        filename={filename}
+        setFilename={setFilename}
+        url={url}
+        setUrl={setUrl}
+        ownerId={ownerId}
+        setOwnerId={setOwnerId}
+        jobPosition={jobPosition}
+        setJobPosition={setJobPosition}
+        lastModified={lastModified}
+        setLastModified={setLastModified}
+        expirationDate={expirationDate}
+        setExpirationDate={setExpirationDate}
+        contentType={contentType}
+        setContentType={setContentType}
+        documentStatus={documentStatus}
+        setDocumentStatus={setDocumentStatus}
+        selectedTags={selectedTags}
+        setSelectedTags={setSelectedTags}
+        employees={employees.data}
+        upload={upload}
+        isUploading={isUploading}
+        uploadProgress={uploadProgress}
+        uploadError={uploadError}
+        createError={create.error}
+        updateError={update.error}
+        isSaving={isSaving}
+        onSubmit={handleSubmit}
+      />
+      {askConfirmation && (
+        <div className="bg-black/50 fixed inset-0 flex items-center justify-center">
+          <div className="bg-white dark:bg-zinc-800 px-10 py-5 rounded-xl">
+            <p>Are you sure you want to {operation} this content?</p>
+            <br />
+            <div className="flex w-full justify-between">
+              <button
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+                type="button"
+                onClick={() => setAskConfirmation(false)}
+              >
+                No.
+              </button>
+              <button
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-6 py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
+                type="button"
+                onClick={() => {
+                  setAskConfirmation(false);
+                  if (pendingData && operation === "update") update.mutate(pendingData);
+                }}
+              >
+                Yes.
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

@@ -118,7 +118,11 @@ function ProtectedLayout() {
       <TopNav
         items={navItems}
         brandTo="/hero"
-        accountMenu={{ settingsTo: "/account", onSignOut: handleSignOut }}
+        accountMenu={{
+          settingsTo: "/account",
+          onSignOut: handleSignOut,
+          photoUrl: accessQuery.data?.photo_url,
+        }}
       />
       <Outlet />
     </div>

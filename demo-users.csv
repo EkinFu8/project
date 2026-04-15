@@ -1,0 +1,4 @@
+email,password,name,portal,role,employee_code,job_desc
+admin@local.demo,admin123,Admin Account,admin,admin,ADM010,Administrator
+emp1@local.demo,emp1pass1,Employee One,employee,underwriter,EMP101,Employee
+emp2@local.demo,emp2pass2,Employee Two,employee,underwriter,EMP102,Employee

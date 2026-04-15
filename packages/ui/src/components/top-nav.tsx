@@ -17,6 +17,7 @@ interface TopNavProps {
   accountMenu?: {
     settingsTo: string;
     onSignOut: () => void | Promise<void>;
+    photoUrl?: string | null;
   };
 }
 
@@ -83,14 +84,22 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
                 )}
                 aria-label="Account menu"
               >
-                <span
-                  className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/10",
-                    "transition-colors hover:border-white/40 hover:bg-white/15",
-                  )}
-                >
-                  <UserRound className="size-4" aria-hidden strokeWidth={2} />
-                </span>
+                {accountMenu.photoUrl ? (
+                  <img
+                    src={accountMenu.photoUrl}
+                    alt=""
+                    className="size-8 shrink-0 rounded-full border border-white/25 object-cover transition-colors hover:border-white/40"
+                  />
+                ) : (
+                  <span
+                    className={cn(
+                      "flex size-8 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/10",
+                      "transition-colors hover:border-white/40 hover:bg-white/15",
+                    )}
+                  >
+                    <UserRound className="size-4" aria-hidden strokeWidth={2} />
+                  </span>
+                )}
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.Content
