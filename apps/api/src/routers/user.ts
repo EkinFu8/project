@@ -17,6 +17,7 @@ type AdminProfilePatch = {
   role?: string;
   employee_code?: string | null;
   job_desc?: string | null;
+  photo_url?: string | null;
 };
 
 async function applyAdminAuthCredentialUpdates(
@@ -43,6 +44,7 @@ function buildProfileUpdateData(patch: AdminProfilePatch) {
     role?: string;
     employee_code?: string | null;
     job_desc?: string | null;
+    photo_url?: string | null;
   } = {};
   if (patch.email !== undefined) data.email = patch.email;
   if (patch.name !== undefined) data.name = patch.name;
@@ -50,6 +52,7 @@ function buildProfileUpdateData(patch: AdminProfilePatch) {
   if (patch.role !== undefined) data.role = patch.role;
   if (patch.employee_code !== undefined) data.employee_code = patch.employee_code;
   if (patch.job_desc !== undefined) data.job_desc = patch.job_desc;
+  if (patch.photo_url !== undefined) data.photo_url = patch.photo_url;
   return data;
 }
 
@@ -62,7 +65,7 @@ export const userRouter = router({
   myAccess: protectedProcedure.query(async ({ ctx }) => {
     const profile = await ctx.prisma.userProfile.findUnique({
       where: { id: ctx.user.id },
-      select: { portal: true, role: true },
+      select: { portal: true, role: true, photo_url: true },
     });
     if (!profile) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Profile not found." });
@@ -129,7 +132,7 @@ export const userRouter = router({
     .input(adminCreateUserSchema)
     .mutation(async ({ ctx, input }) => {
       const admin = createSupabaseAdmin();
-      const { employee_code, job_desc, ...rest } = input;
+      const { employee_code, job_desc, photo_url, ...rest } = input;
       const { data, error } = await admin.auth.admin.createUser({
         email: rest.email,
         password: rest.password,
@@ -157,6 +160,7 @@ export const userRouter = router({
         role: rest.role,
         employee_code: employee_code ?? null,
         job_desc: job_desc ?? null,
+        photo_url: photo_url ?? null,
       };
 
       // Supabase trigger `handle_new_user` normally inserts `public.users`. If prod DB is missing that
