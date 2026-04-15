@@ -14,6 +14,8 @@ export const contentRouter = router({
       where.document_status = input.document_status;
     }
 
+    if (input.content_type) where.content_type = input.content_type;
+
     if (input.owner_id) {
       where.owner_id = input.owner_id;
     }
