@@ -254,16 +254,8 @@ function ContentFormSummarySection({
   mutationError: string;
   submitLabel: string;
 }) {
-  const docs = [{ uri: url }];
-
   return (
     <>
-      <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
-        <div className="h-[1500px] w-full items-center justify-center bg-muted/50">
-          <DocViewer documents={docs} pluginRenderers={DocViewerRenderers} />
-        </div>
-      </div>
-
       <FileUpload
         label="Replace file"
         onFileSelect={upload}
@@ -628,6 +620,7 @@ function ContentFormFields({
   const mutationError = createError?.message || updateError?.message || "Something went wrong.";
   const submitLabel = isUploading ? "Uploading..." : isEditing ? "Update Content" : "Save Content";
   const acceptTypes = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.svg";
+  const docs = [{ uri: url }];
 
   return (
     <div className="border-t border-border/60 py-8 sm:py-10">
@@ -645,6 +638,11 @@ function ContentFormFields({
         </h1>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
+          <div className="overflow-hidden rounded-xl bg-black text-black border border-border ">
+            <div className="w-full items-center justify-center">
+              <DocViewer documents={docs} pluginRenderers={DocViewerRenderers} />
+            </div>
+          </div>
           <form className="space-y-6" onSubmit={onSubmit}>
             {showFileSummary ? (
               <ContentFormSummarySection
