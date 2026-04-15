@@ -7,14 +7,19 @@ const t = initTRPC.context<Context>().create();
 export const router = t.router;
 
 /**
- * PUBLIC: metrics only (no auth required)
+ * Always track metrics FIRST
  */
-export const publicProcedure = t.procedure.use(metricsMiddleware);
+const baseProcedure = t.procedure.use(metricsMiddleware);
 
 /**
- * AUTH middleware (runs after metrics)
+ * PUBLIC (tracked)
  */
-const authMiddleware = t.middleware(async ({ ctx, next }) => {
+export const publicProcedure = baseProcedure;
+
+/**
+ * AUTH middleware
+ */
+const authMiddleware = t.middleware(({ ctx, next }) => {
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
@@ -28,28 +33,21 @@ const authMiddleware = t.middleware(async ({ ctx, next }) => {
 });
 
 /**
- * PROTECTED: auth + metrics
+ * PROTECTED = metrics + auth
  */
-export const protectedProcedure = t.procedure
-    .use(authMiddleware)
-    .use(metricsMiddleware);
+export const protectedProcedure = baseProcedure.use(authMiddleware);
 
 /**
- * ADMIN: auth + metrics + role check
+ * ADMIN = metrics + auth + role check
  */
 export const adminPortalProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const profile = await ctx.prisma.userProfile.findUnique({
-    where: { id: ctx.user!.id },
+    where: { id: ctx.user.id },
     select: { id: true, portal: true },
   });
 
-  const role = profile?.portal;
-
-  if (!profile || (role !== "admin" && role !== "employee")) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Admin application access only.",
-    });
+  if (!profile || !["admin", "employee"].includes(profile.portal)) {
+    throw new TRPCError({ code: "FORBIDDEN" });
   }
 
   return next({

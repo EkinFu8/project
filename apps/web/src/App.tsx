@@ -24,6 +24,7 @@ import HeroLayout from "@/pages/hero/layout.tsx";
 import RoleAwareContentPage from "@/pages/hero/role-content.tsx";
 import LoginFormPage from "@/pages/login.tsx";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
+import MetricsPage from "@/pages/admin/metrics/page.tsx";
 
 function LegacyContentEditRedirect() {
   const { id } = useParams<{ id: string }>();
@@ -68,6 +69,7 @@ function adminNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
     { label: "User Management", to: "/users" },
+    { label: "Metrics", to: "/admin/metrics" },
   ];
 }
 
@@ -164,6 +166,7 @@ function App() {
             <Route path="/users" element={<UsersPage />} />
             <Route path="/users/new" element={<UserFormPage />} />
             <Route path="/users/:id" element={<UserFormPage />} />
+            <Route path="/admin/metrics" element={<MetricsPage />} />
           </Route>
 
           {/* Shared */}

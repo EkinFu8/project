@@ -4,6 +4,7 @@ import { employeeRouter } from "./employee";
 import { loginRouter } from "./login";
 import { userRouter } from "./user";
 import { metricsRouter } from "./metrics";
+import { auditRouter } from "./audit";
 
 export const appRouter = router({
   login: loginRouter,
@@ -11,6 +12,7 @@ export const appRouter = router({
   employee: employeeRouter,
   content: contentRouter,
   metrics: metricsRouter,
+  audit: auditRouter,
 });
 
 export type AppRouter = typeof appRouter;
