@@ -13,8 +13,8 @@ export const auditRouter = router({
             id: true,
             name: true,
             employee_code: true,
-          }
-        }
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: 50,
