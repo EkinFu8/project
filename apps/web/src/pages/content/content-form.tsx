@@ -61,6 +61,7 @@ type ContentFormFieldsProps = {
   createError: ReturnType<typeof trpc.content.create.useMutation>["error"];
   updateError: ReturnType<typeof trpc.content.update.useMutation>["error"];
   isSaving: boolean;
+  onDelete: () => void;
   onSubmit: (e: React.FormEvent) => void;
 };
 
@@ -232,6 +233,7 @@ function ContentFormSummarySection({
   updateError,
   mutationError,
   submitLabel,
+  onDelete,
 }: {
   filename: string;
   url: string;
@@ -253,8 +255,8 @@ function ContentFormSummarySection({
   updateError: unknown;
   mutationError: string;
   submitLabel: string;
+  onDelete: () => void;
 }) {
-
   return (
     <>
       <FileUpload
@@ -302,7 +304,16 @@ function ContentFormSummarySection({
         </div>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex justify-between">
+        <button
+          type="button"
+          onClick={() => onDelete()}
+          disabled={isSaving || isUploading}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-500/90 disabled:opacity-60"
+        >
+          {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+          Delete Content
+        </button>
         <button
           type="submit"
           disabled={isSaving || isUploading}
@@ -611,6 +622,7 @@ function ContentFormFields({
   createError,
   updateError,
   isSaving,
+  onDelete,
   onSubmit,
 }: ContentFormFieldsProps) {
   const [metadataEditMode, setMetadataEditMode] = useState(false);
@@ -639,11 +651,13 @@ function ContentFormFields({
         </h1>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
-          <div className="overflow-hidden rounded-xl bg-black text-black border border-border ">
-            <div className="w-full items-center justify-center">
-              <DocViewer documents={docs} pluginRenderers={DocViewerRenderers} />
+          {isEditing && url && (
+            <div className="overflow-hidden rounded-xl bg-black text-black border border-border">
+              <div className="w-full items-center justify-center">
+                <DocViewer documents={docs} pluginRenderers={DocViewerRenderers} />
+              </div>
             </div>
-          </div>
+          )}
           <form className="space-y-6" onSubmit={onSubmit}>
             {showFileSummary ? (
               <ContentFormSummarySection
@@ -667,6 +681,7 @@ function ContentFormFields({
                 updateError={updateError}
                 mutationError={mutationError}
                 submitLabel={submitLabel}
+                onDelete={onDelete}
               />
             ) : (
               <ContentFormDraftSection
@@ -802,6 +817,18 @@ function ContentFormPage() {
       navigate("/hero/content");
     },
   });
+
+  const remove = trpc.content.delete.useMutation({
+    onSuccess: () => {
+      utils.content.list.invalidate();
+      navigate("/hero/content");
+    },
+  });
+
+  function handleDelete() {
+    setOperation("delete");
+    setAskConfirmation(true);
+  }
 
   const { session } = useSession();
   const currentUserId = session?.user?.id;
@@ -954,7 +981,7 @@ function ContentFormPage() {
         </div>
       )}
       <ContentFormFields
-        key={isEditing ? id! : fileID || "new"}
+        key={id ?? "new"}
         isEditing={isEditing}
         fileID={fileID}
         setFileID={setFileID}
@@ -984,6 +1011,7 @@ function ContentFormPage() {
         createError={create.error}
         updateError={update.error}
         isSaving={isSaving}
+        onDelete={handleDelete}
         onSubmit={handleSubmit}
       />
       {askConfirmation && (
@@ -1005,6 +1033,7 @@ function ContentFormPage() {
                 onClick={() => {
                   setAskConfirmation(false);
                   if (pendingData && operation === "update") update.mutate(pendingData);
+                  if (operation === "delete") remove.mutate({ fileID: id! });
                 }}
               >
                 Yes.
