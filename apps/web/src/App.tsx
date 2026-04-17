@@ -18,6 +18,7 @@ import UsersPage from "@/pages/admin/users/page.tsx";
 import UserFormPage from "@/pages/admin/users/user-form.tsx";
 import BusinessAnalystPage from "@/pages/business-analyst/page.tsx";
 import ContentFormPage from "@/pages/content/content-form.tsx";
+import DashboardPage from "@/pages/dashboard/page.tsx";
 import EmployeeDetailPage from "@/pages/employees/employee-detail.tsx";
 import EmployeesPage from "@/pages/employees/page.tsx";
 import HeroLayout from "@/pages/hero/layout.tsx";
@@ -68,6 +69,7 @@ function adminNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
     { label: "User Management", to: "/users" },
+    { label: "Dashboard", to: "/dashboard" },
   ];
 }
 
@@ -171,6 +173,7 @@ function App() {
           </Route>
 
           {/* Shared */}
+          <Route path="/dashboard/" element={<DashboardPage />} />
           <Route path="/account" element={<AccountPage />} />
 
           {/* Legacy redirects */}
@@ -179,6 +182,7 @@ function App() {
           <Route path="/content/:id/edit" element={<LegacyContentEditRedirect />} />
           <Route path="/businessAnalyst" element={<Navigate to="/business-analyst" replace />} />
           <Route path="/dashboard" element={<Navigate to="/hero" replace />} />
+          <Route path="/admin/metrics" element={<Navigate to="/dashboard/" replace />} />
           <Route path="*" element={<Navigate to="/hero" replace />} />
         </Route>
       </Routes>

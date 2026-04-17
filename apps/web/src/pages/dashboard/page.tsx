@@ -1,7 +1,11 @@
-import { LayoutGrid, Loader2 } from "lucide-react";
+import { Activity, LayoutGrid, Loader2 } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router";
 import type { RouterOutputs } from "@/lib/trpc.ts";
 import { trpc } from "@/lib/trpc.ts";
+import { MetricsView } from "@/pages/admin/metrics/page.tsx";
+
+type DashboardTab = "overview" | "metrics";
 
 type EmployeeRow = RouterOutputs["employee"]["list"][number];
 type ContentRow = RouterOutputs["content"]["list"][number];
@@ -151,25 +155,67 @@ function DashboardLoaded({
 }
 
 function DashboardPage() {
-  const employees = trpc.employee.list.useQuery({});
-  const allContent = trpc.content.list.useQuery({});
+  const [tab, setTab] = useState<DashboardTab>("overview");
 
-  const isLoading = employees.isLoading || allContent.isLoading;
-  const loadError = employees.error ?? allContent.error;
+  const access = trpc.user.myAccess.useQuery();
+  const isAdmin = access.data?.role === "admin";
+
+  const employees = trpc.employee.list.useQuery({}, { enabled: tab === "overview" });
+  const allContent = trpc.content.list.useQuery({}, { enabled: tab === "overview" });
+
+  const isLoading = tab === "overview" && (employees.isLoading || allContent.isLoading);
+  const loadError = tab === "overview" ? (employees.error ?? allContent.error) : null;
+
+  const activeTab: DashboardTab = tab === "metrics" && !isAdmin ? "overview" : tab;
+
+  const tabs: { key: DashboardTab; label: string; icon: typeof LayoutGrid }[] = [
+    { key: "overview", label: "Overview", icon: LayoutGrid },
+    ...(isAdmin ? [{ key: "metrics" as const, label: "Metrics", icon: Activity }] : []),
+  ];
 
   return (
     <div className="min-h-screen bg-muted">
       <div className="py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
+          <div className="mb-6">
             <h1 className="flex items-center gap-3 text-3xl font-bold text-foreground">
               <LayoutGrid className="h-8 w-8 text-hanover-green" />
               Dashboard
             </h1>
-            <p className="mt-1 text-muted-foreground">Overview of employees and content</p>
+            <p className="mt-1 text-muted-foreground">
+              {activeTab === "metrics"
+                ? "System and document activity metrics"
+                : "Overview of employees and content"}
+            </p>
           </div>
 
-          {isLoading ? (
+          {tabs.length > 1 && (
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+              {tabs.map((t) => {
+                const Icon = t.icon;
+                const isActive = activeTab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setTab(t.key)}
+                    className={`flex items-center gap-2 rounded px-4 py-1.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-hanover-deepblue text-white"
+                        : "border border-border bg-card text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {activeTab === "metrics" ? (
+            <MetricsView />
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
               <span className="ml-2 text-muted-foreground">Loading dashboard...</span>

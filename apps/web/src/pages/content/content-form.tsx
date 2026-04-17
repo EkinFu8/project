@@ -360,7 +360,7 @@ function ContentFormDraftSection({
 
       {isEditing && url ? (
         <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
-          <div className="flex min-h-[140px] max-h-48 items-center justify-center bg-muted/50">
+          <div className="flex min-h-35 max-h-48 items-center justify-center bg-muted/50">
             {isImageFilename(filename) && url ? (
               <img src={url} alt="" className="max-h-48 max-w-full object-contain" />
             ) : (
@@ -652,14 +652,14 @@ function ContentFormFields({
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
           {url ? (
-              <div className="mb-6 overflow-hidden rounded-lg border border-border bg-muted">
-                <DocViewer
-                    documents={docs}
-                    pluginRenderers={DocViewerRenderers}
-                    config={{ header: { disableHeader: true, disableFileName: true } }}
-                    style={{ height: "70vh", minHeight: 800, width: "100%" }}
-                />
-              </div>
+            <div className="mb-6 overflow-hidden rounded-lg border border-border bg-muted">
+              <DocViewer
+                documents={docs}
+                pluginRenderers={DocViewerRenderers}
+                config={{ header: { disableHeader: true, disableFileName: true } }}
+                style={{ height: "70vh", minHeight: 800, width: "100%" }}
+              />
+            </div>
           ) : null}
           <form className="space-y-6" onSubmit={onSubmit}>
             {showFileSummary ? (
