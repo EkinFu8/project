@@ -18,11 +18,11 @@ import UsersPage from "@/pages/admin/users/page.tsx";
 import UserFormPage from "@/pages/admin/users/user-form.tsx";
 import BusinessAnalystPage from "@/pages/business-analyst/page.tsx";
 import ContentFormPage from "@/pages/content/content-form.tsx";
+import ContentPage from "@/pages/content/page.tsx";
 import DashboardPage from "@/pages/dashboard/page.tsx";
 import EmployeeDetailPage from "@/pages/employees/employee-detail.tsx";
 import EmployeesPage from "@/pages/employees/page.tsx";
 import HeroLayout from "@/pages/hero/layout.tsx";
-import RoleAwareContentPage from "@/pages/hero/role-content.tsx";
 import LoginFormPage from "@/pages/login.tsx";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
 
@@ -151,9 +151,9 @@ function App() {
           {/* Main hero page — content view adapts to role */}
           <Route path="/" element={<Navigate to="/hero" replace />} />
           <Route path="/hero" element={<HeroLayout />}>
-            <Route index element={<RoleAwareContentPage />} />
+            <Route index element={<ContentPage />} />
             <Route path="content">
-              <Route index element={<RoleAwareContentPage />} />
+              <Route index element={<ContentPage />} />
               <Route path="new" element={<ContentFormPage />} />
               <Route path=":id/edit" element={<ContentFormPage />} />
             </Route>
