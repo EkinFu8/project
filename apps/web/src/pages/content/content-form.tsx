@@ -651,13 +651,16 @@ function ContentFormFields({
         </h1>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
-          {isEditing && url && (
-            <div className="overflow-hidden rounded-xl bg-black text-black border border-border">
-              <div className="w-full items-center justify-center">
-                <DocViewer documents={docs} pluginRenderers={DocViewerRenderers} />
+          {url ? (
+              <div className="mb-6 overflow-hidden rounded-lg border border-border bg-muted">
+                <DocViewer
+                    documents={docs}
+                    pluginRenderers={DocViewerRenderers}
+                    config={{ header: { disableHeader: true, disableFileName: true } }}
+                    style={{ height: "70vh", minHeight: 800, width: "100%" }}
+                />
               </div>
-            </div>
-          )}
+          ) : null}
           <form className="space-y-6" onSubmit={onSubmit}>
             {showFileSummary ? (
               <ContentFormSummarySection
