@@ -58,6 +58,7 @@ type ContentFormFieldsProps = {
   isUploading: boolean;
   uploadProgress: number;
   uploadError: string | null;
+  canEdit: boolean;
   createError: ReturnType<typeof trpc.content.create.useMutation>["error"];
   updateError: ReturnType<typeof trpc.content.update.useMutation>["error"];
   isSaving: boolean;
@@ -228,6 +229,7 @@ function ContentFormSummarySection({
   uploadProgress,
   isSaving,
   setMetadataEditMode,
+  canEdit,
   createError,
   updateError,
   mutationError,
@@ -249,6 +251,7 @@ function ContentFormSummarySection({
   uploadProgress: number;
   isSaving: boolean;
   setMetadataEditMode: (v: boolean) => void;
+  canEdit: boolean;
   createError: unknown;
   updateError: unknown;
   mutationError: string;
@@ -272,14 +275,16 @@ function ContentFormSummarySection({
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Metadata
         </h2>
-        <button
-          type="button"
-          onClick={() => setMetadataEditMode(true)}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Pencil className="h-3.5 w-3.5" aria-hidden />
-          Edit details
-        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setMetadataEditMode(true)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Pencil className="h-3.5 w-3.5" aria-hidden />
+            Edit details
+          </button>
+        )}
       </div>
 
       <ContentMetadataReadonlyTable
@@ -496,12 +501,22 @@ function ContentFormMetadataSection({
         </select>
       </div>
 
-      <TextInput
-        label="Job Position"
-        type="text"
-        value={jobPosition}
-        onChange={(e) => setJobPosition(e.target.value)}
-      />
+      <div>
+        <label htmlFor="job-position" className="mb-2 block text-sm font-semibold text-foreground">
+          Job Position
+        </label>
+        <select
+          id="job-position"
+          value={jobPosition}
+          onChange={(e) => setJobPosition(e.target.value)}
+          className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-hanover-green"
+        >
+          <option value="">None</option>
+          <option value="admin">Admin</option>
+          <option value="business-analyst">Business Analyst</option>
+          <option value="underwriter">Underwriter</option>
+        </select>
+      </div>
       <TextInput
         label="Last Modified"
         type="date"
@@ -607,6 +622,7 @@ function ContentFormFields({
   isUploading,
   uploadProgress,
   uploadError,
+  canEdit,
   createError,
   updateError,
   isSaving,
@@ -667,6 +683,7 @@ function ContentFormFields({
                 uploadProgress={uploadProgress}
                 isSaving={isSaving}
                 setMetadataEditMode={setMetadataEditMode}
+                canEdit={canEdit}
                 createError={createError}
                 updateError={updateError}
                 mutationError={mutationError}
@@ -810,6 +827,20 @@ function ContentFormPage() {
   const { session } = useSession();
   const currentUserId = session?.user?.id;
 
+  const { data: myAccess } = trpc.user.myAccess.useQuery();
+  const userRole = myAccess?.role;
+
+  function normalizeRole(value: string | null | undefined): string {
+    return (value ?? "").toLowerCase().replace(/\s+/g, "-");
+  }
+
+  const contentJobPosition = existing.data?.job_position;
+  const canEdit =
+    !isEditing ||
+    userRole === "admin" ||
+    !contentJobPosition?.trim() ||
+    (!!userRole && normalizeRole(userRole) === normalizeRole(contentJobPosition));
+
   const checkout = trpc.content.checkout.useMutation({
     onSuccess: () => {
       utils.content.getById.invalidate({ fileID: id! });
@@ -879,7 +910,14 @@ function ContentFormPage() {
     <>
       {isEditing && (
         <div className="mx-auto max-w-4xl px-4 pt-4 sm:px-6 lg:px-8">
-          {isLockedByOther && (
+          {!canEdit && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+              <Lock className="h-4 w-4 shrink-0" />
+              You do not have permission to edit this content. Only the assigned employee type can
+              make changes.
+            </div>
+          )}
+          {canEdit && isLockedByOther && (
             <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950">
               <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-200">
                 <Lock className="h-4 w-4" />
@@ -902,7 +940,7 @@ function ContentFormPage() {
               )}
             </div>
           )}
-          {!isLockedByOther && (
+          {canEdit && !isLockedByOther && (
             <div className="mb-4 flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 {isCheckedOutByMe ? (
@@ -985,6 +1023,7 @@ function ContentFormPage() {
         isUploading={isUploading}
         uploadProgress={uploadProgress}
         uploadError={uploadError}
+        canEdit={canEdit}
         createError={create.error}
         updateError={update.error}
         isSaving={isSaving}
