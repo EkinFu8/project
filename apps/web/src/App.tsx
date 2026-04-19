@@ -73,15 +73,10 @@ function adminNavItems() {
   ];
 }
 
-/** Nav items for employee roles (underwriter / business-analyst). */
-function employeeNavItems(role: string | undefined) {
-  const jobNav =
-    role === "business-analyst"
-      ? ({ label: "Business Analyst", to: "/business-analyst" } as const)
-      : ({ label: "Underwriter", to: "/underwriter" } as const);
+/** Nav items for employee roles. */
+function employeeNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
-    { label: jobNav.label, to: jobNav.to },
     { label: "Coworkers", to: "/employees" },
   ];
 }
@@ -108,7 +103,7 @@ function ProtectedLayout() {
 
   const role = accessQuery.data?.role;
   const isAdmin = role === "admin";
-  const navItems = isAdmin ? adminNavItems() : employeeNavItems(role);
+  const navItems = isAdmin ? adminNavItems() : employeeNavItems();
 
   async function handleSignOut() {
     await supabase.auth.signOut();
