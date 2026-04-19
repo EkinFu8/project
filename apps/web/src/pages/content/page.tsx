@@ -61,19 +61,19 @@ export default function ContentPage() {
 
   const allItems = contents.data ?? [];
 
-  const filtered = isAdmin
-      ? allItems.filter((item) => matchesOwnerRole(item.owner, roleFilter))
-      : allItems;
+  const filtered = allItems.filter((item) =>
+      matchesOwnerRole(item.owner, roleFilter)
+  );
 
   return (
       <div className="border-t border-border/60 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
-          {/* TOP BAR — FIXED (LONGER SEARCH) */}
+
           <div className="mb-6 flex justify-end">
             <div className="flex w-full max-w-4xl items-center gap-3">
 
-              {/* SEARCH (LONGER NOW) */}
+
               <div className="relative flex-[2]">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
@@ -106,11 +106,11 @@ export default function ContentPage() {
 
           <div className="flex gap-6">
 
-            {/* SIDEBAR (UNCHANGED LOGIC) */}
+            {/* SIDEBAR */}
             <aside className="w-64 shrink-0 rounded border border-border bg-card p-4 h-fit sticky top-4">
 
               {/* ROLE */}
-              {isAdmin && (
+              {(
                   <div className="mb-4">
                     <button
                         onClick={() => setOpenRole(!openRole)}
@@ -249,7 +249,7 @@ export default function ContentPage() {
 
             </aside>
 
-            {/* MAIN GRID — YOUR ORIGINAL CARD STRUCTURE RESTORED */}
+            {/* Card view */}
             <main className="flex-1">
 
               {contents.isLoading ? (
