@@ -32,10 +32,37 @@ function assertCanEdit(
   }
 }
 
+function normalizeRole(value: string | null | undefined): string {
+  return (value ?? "").toLowerCase().replace(/\s+/g, "-");
+}
+
+function canEditForRole(
+  userRole: string | null | undefined,
+  jobPosition: string | null | undefined,
+): boolean {
+  if (!userRole) return false;
+  if (userRole === "admin") return true;
+  if (!jobPosition?.trim()) return true;
+  return normalizeRole(userRole) === normalizeRole(jobPosition);
+}
+
 export const contentRouter = router({
   checkout: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     const userId = ctx.user?.id;
     if (!userId) throw new Error("Not authenticated");
+
+    const profile = ctx.profile as { role: string | null } | null;
+    const userRole = profile?.role;
+
+    const file = await ctx.prisma.contentManagement.findUnique({
+      where: { fileID: input.fileID },
+      select: { is_checked_out: true, checked_out_by: true, job_position: true },
+    });
+    if (!file) throw new Error("File not found");
+
+    if (!canEditForRole(userRole, file.job_position)) {
+      throw new Error("You do not have permission to edit this content");
+    }
 
     const result = await ctx.prisma.contentManagement.updateMany({
       where: {
@@ -198,11 +225,18 @@ export const contentRouter = router({
       const userId = ctx.user?.id;
       if (!userId) throw new Error("Not authenticated");
 
+      const profile = ctx.profile as { role: string | null } | null;
+      const userRole = profile?.role;
+
       const file = await ctx.prisma.contentManagement.findUnique({
         where: { fileID },
       });
 
       assertCanEdit(file, userId);
+
+      if (!canEditForRole(userRole, file?.job_position)) {
+        throw new Error("You do not have permission to edit this content");
+      }
 
       const result =
         tagIds !== undefined
