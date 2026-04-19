@@ -8,6 +8,8 @@ const ROLE_TABS = [
   { key: "all", label: "All Users" },
   { key: "underwriter", label: "Underwriter" },
   { key: "business-analyst", label: "Business Analyst" },
+  { key: "actuarial-analyst", label: "Actuarial Analyst" },
+  { key: "exl-operations", label: "EXL Operations" },
 ];
 
 function getStatusBadge(status: string | null) {
@@ -30,6 +32,8 @@ function matchesOwnerRole(owner: { role: string } | null | undefined, role: stri
   const r = owner?.role ?? "";
   if (role === "underwriter") return r === "underwriter";
   if (role === "business-analyst") return r === "business-analyst";
+  if (role === "actuarial-analyst") return r === "actuarial-analyst";
+  if (role === "exl-operations") return r === "exl-operations";
   return false;
 }
 
