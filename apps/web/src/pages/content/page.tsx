@@ -84,13 +84,20 @@ export default function ContentPage() {
                 />
               </div>
 
-              <button
-                  type="button"
-                  onClick={() => setViewMode((v) => (v === "grid" ? "list" : "grid"))}
-                  className="rounded border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted"
-              >
-                {viewMode === "grid" ? "List View" : "Card View"}
-              </button>
+              <div className="relative">
+                <select
+                    value={viewMode}
+                    onChange={(e) => setViewMode(e.target.value as "grid" | "list")}
+                    className="appearance-none rounded border border-border bg-background px-3 py-2 pr-8 text-sm font-medium hover:bg-muted"
+                >
+                  <option value="grid">Card View</option>
+                  <option value="list">List View</option>
+                </select>
+
+                <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  ▾
+                </div>
+              </div>
 
               {/* NEW CONTENT */}
               <Link
@@ -108,6 +115,7 @@ export default function ContentPage() {
 
             {/* SIDEBAR */}
             <aside className="w-64 shrink-0 rounded border border-border bg-card p-4 h-fit sticky top-4">
+              Filters<hr></hr>
 
               {/* ROLE */}
               {(
@@ -153,7 +161,7 @@ export default function ContentPage() {
                     </AnimatePresence>
                   </div>
               )}
-
+              <hr></hr>
               {/* STATUS */}
               <div className="mb-4">
                 <button
@@ -203,7 +211,7 @@ export default function ContentPage() {
                   )}
                 </AnimatePresence>
               </div>
-
+              <hr></hr>
               {/* TYPE */}
               <div>
                 <button
