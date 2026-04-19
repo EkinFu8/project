@@ -515,6 +515,8 @@ function ContentFormMetadataSection({
           <option value="admin">Admin</option>
           <option value="business-analyst">Business Analyst</option>
           <option value="underwriter">Underwriter</option>
+          <option value="actuarial-analyst">Actuarial Analyst</option>
+          <option value="exl-operations">EXL Operations</option>
         </select>
       </div>
       <TextInput
