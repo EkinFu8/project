@@ -62,7 +62,10 @@ type ContentFormFieldsProps = {
   createError: ReturnType<typeof trpc.content.create.useMutation>["error"];
   updateError: ReturnType<typeof trpc.content.update.useMutation>["error"];
   isSaving: boolean;
+  onDelete: () => void;
   onSubmit: (e: React.FormEvent) => void;
+  isCheckedOut: boolean;
+  isCheckedOutByMe: boolean;
 };
 
 function ContentMetadataReadonlyTable({
@@ -234,6 +237,9 @@ function ContentFormSummarySection({
   updateError,
   mutationError,
   submitLabel,
+  onDelete,
+  isCheckedOut,
+  isCheckedOutByMe,
 }: {
   filename: string;
   url: string;
@@ -256,6 +262,9 @@ function ContentFormSummarySection({
   updateError: unknown;
   mutationError: string;
   submitLabel: string;
+  onDelete: () => void;
+  isCheckedOut: boolean;
+  isCheckedOutByMe: boolean;
 }) {
   return (
     <>
@@ -306,7 +315,16 @@ function ContentFormSummarySection({
         </div>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex justify-between">
+        <button
+          type="button"
+          onClick={() => onDelete()}
+          disabled={isSaving || isUploading || isCheckedOut || isCheckedOutByMe}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-500/90 disabled:opacity-60"
+        >
+          {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+          Delete Content
+        </button>
         <button
           type="submit"
           disabled={isSaving || isUploading}
@@ -626,7 +644,10 @@ function ContentFormFields({
   createError,
   updateError,
   isSaving,
+  onDelete,
   onSubmit,
+  isCheckedOut,
+  isCheckedOutByMe,
 }: ContentFormFieldsProps) {
   const [metadataEditMode, setMetadataEditMode] = useState(false);
   const showFileSummary = isEditing && Boolean(url) && !metadataEditMode;
@@ -637,6 +658,10 @@ function ContentFormFields({
   const submitLabel = isUploading ? "Uploading..." : isEditing ? "Update Content" : "Save Content";
   const acceptTypes = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.svg";
   const docs = [{ uri: url }];
+  const acceptedTypesSet = new Set(acceptTypes.split(","));
+  const fileExtension = (fileID: string): string => {
+    return fileID.slice(fileID.lastIndexOf(".")).toLowerCase().trim();
+  };
 
   return (
     <div className="border-t border-border/60 py-8 sm:py-10">
@@ -654,7 +679,7 @@ function ContentFormFields({
         </h1>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
-          {url ? (
+          {acceptedTypesSet.has(fileExtension(fileID)) ? (
             <div className="mb-6 overflow-hidden rounded-lg border border-border bg-muted">
               <DocViewer
                 documents={docs}
@@ -688,6 +713,9 @@ function ContentFormFields({
                 updateError={updateError}
                 mutationError={mutationError}
                 submitLabel={submitLabel}
+                onDelete={onDelete}
+                isCheckedOut={isCheckedOut}
+                isCheckedOutByMe={isCheckedOutByMe}
               />
             ) : (
               <ContentFormDraftSection
@@ -823,6 +851,18 @@ function ContentFormPage() {
       navigate("/hero/content");
     },
   });
+
+  const remove = trpc.content.delete.useMutation({
+    onSuccess: () => {
+      utils.content.list.invalidate();
+      navigate("/hero/content");
+    },
+  });
+
+  function handleDelete() {
+    setOperation("delete");
+    setAskConfirmation(true);
+  }
 
   const { session } = useSession();
   const currentUserId = session?.user?.id;
@@ -996,7 +1036,7 @@ function ContentFormPage() {
         </div>
       )}
       <ContentFormFields
-        key={isEditing ? id! : fileID || "new"}
+        key={id ?? "new"}
         isEditing={isEditing}
         fileID={fileID}
         setFileID={setFileID}
@@ -1027,6 +1067,9 @@ function ContentFormPage() {
         createError={create.error}
         updateError={update.error}
         isSaving={isSaving}
+        onDelete={handleDelete}
+        isCheckedOut={isCheckedOut}
+        isCheckedOutByMe={isCheckedOutByMe}
         onSubmit={handleSubmit}
       />
       {askConfirmation && (
@@ -1048,6 +1091,8 @@ function ContentFormPage() {
                 onClick={() => {
                   setAskConfirmation(false);
                   if (pendingData && operation === "update") update.mutate(pendingData);
+                  if ((!isCheckedOut || isCheckedOutByMe) && operation === "delete")
+                    remove.mutate({ fileID: id! });
                 }}
               >
                 Yes.
