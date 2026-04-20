@@ -6,6 +6,7 @@ import { ContentFilters } from "./components/ContentFilters";
 import { ContentGrid } from "./components/ContentGrid";
 import { useContentFilters } from "./hooks/useContentFilters";
 import { useDebouncedValue } from "./hooks/useDebouncedValue";
+import {normalizeContent} from "@/utils/normalizeContent.ts";
 
 const ROLE_TABS = [
   { key: "all", label: "All Users" },
@@ -15,7 +16,7 @@ const ROLE_TABS = [
   { key: "exl-operations", label: "EXL Operations" },
 ];
 
-function getStatusBadge(status: string | null) {
+function getStatusBadge(status?: string | null) {
   switch (status) {
     case "Finalized":
       return "bg-hanover-green text-white";
@@ -30,9 +31,7 @@ function getStatusBadge(status: string | null) {
   }
 }
 export default function ContentPage() {
-  const { data: access } = trpc.user.myAccess.useQuery();
-  const isAdmin = access?.role === "admin";
-
+  trpc.user.myAccess.useQuery();
   const filters = useContentFilters();
   const debouncedSearch = useDebouncedValue(filters.search, 300);
 
@@ -53,7 +52,8 @@ export default function ContentPage() {
     role: filters.role === "all" ? undefined : filters.role,
   });
 
-  const allItems = contents.data ?? [];
+  const allItems =
+      contents.data?.map(normalizeContent) ?? [];
 
   const filtered = allItems;
 
