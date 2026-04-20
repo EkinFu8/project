@@ -135,16 +135,6 @@ export const contentRouter = router({
   }),
 
   list: publicProcedure.input(contentListQuerySchema).query(async ({ ctx, input }) => {
-    console.log("ROLE FILTER INPUT:", input.role);
-
-    console.log(
-        "DB SAMPLE JOB POSITIONS:",
-        (await ctx.prisma.contentManagement.findMany({
-          select: { job_position: true },
-          take: 20,
-        })).map(r => r.job_position)
-    );
-
     const where: Record<string, unknown> = {};
 
     if (input.document_status) {

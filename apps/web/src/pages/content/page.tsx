@@ -30,37 +30,6 @@ function getStatusBadge(status: string | null) {
       return "bg-muted text-muted-foreground";
   }
 }
-
-function normalizeRole(role?: string | null) {
-  return (role ?? "").toLowerCase().trim();
-}
-
-function matchesOwnerRole(
-    owner: { role: string } | null | undefined,
-    role: string
-) {
-  if (role === "all") return true;
-
-  const ownerRole = normalizeRole(owner?.role);
-
-  switch (role) {
-    case "underwriter":
-      return ownerRole === "underwriter";
-
-    case "business-analyst":
-      return ownerRole === "business-analyst";
-
-    case "actuarial-analyst":
-      return ownerRole === "actuarial-analyst";
-
-    case "exl-operations":
-      return ownerRole === "exl-operations";
-
-    default:
-      return false;
-  }
-}
-
 export default function ContentPage() {
   const { data: access } = trpc.user.myAccess.useQuery();
   const isAdmin = access?.role === "admin";
