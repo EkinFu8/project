@@ -2,7 +2,7 @@ import DocViewer, { DocViewerRenderers } from "@iamjariwala/react-doc-viewer";
 import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
 import "@iamjariwala/react-doc-viewer/dist/index.css";
-import { ArrowLeft, FileText, Loader2, Lock, Pencil, Unlock } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, Pencil, Unlock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useSession } from "@/auth/session-context";
@@ -17,10 +17,6 @@ function formatDateField(date: Date | string | null | undefined): string {
 
 function toNullable<T extends string>(value: T | ""): T | null {
   return (value || null) as T | null;
-}
-
-function isImageFilename(name: string): boolean {
-  return /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
 }
 
 function displayDateLabel(value: string): string {
@@ -223,10 +219,7 @@ function ContentFormSummarySection({
   contentType,
   documentStatus,
   selectedTags,
-  upload,
-  acceptTypes,
   isUploading,
-  uploadProgress,
   isSaving,
   setMetadataEditMode,
   canEdit,
@@ -259,23 +252,11 @@ function ContentFormSummarySection({
 }) {
   return (
     <>
-      <FileUpload
-        label="Replace file"
-        onFileSelect={upload}
-        accept={acceptTypes}
-        isUploading={isUploading}
-        progress={uploadProgress}
-        currentFileName={url ? filename : undefined}
-        disabled={isSaving}
-        compact
-        hideFileNameRow
-      />
-
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Metadata
         </h2>
-        {canEdit && (
+        {canEdit ? (
           <button
             type="button"
             onClick={() => setMetadataEditMode(true)}
@@ -284,7 +265,7 @@ function ContentFormSummarySection({
             <Pencil className="h-3.5 w-3.5" aria-hidden />
             Edit details
           </button>
-        )}
+        ) : null}
       </div>
 
       <ContentMetadataReadonlyTable
@@ -306,16 +287,16 @@ function ContentFormSummarySection({
         </div>
       )}
 
-      <div className="flex justify-end">
+      {canEdit ? (<div className="flex justify-end">
         <button
-          type="submit"
-          disabled={isSaving || isUploading}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-6 py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
+            type="submit"
+            disabled={isSaving || isUploading}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-6 py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
         >
-          {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+          {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin"/>}
           {submitLabel}
         </button>
-      </div>
+      </div>) : null}
     </>
   );
 }
@@ -351,35 +332,6 @@ function ContentFormDraftSection({
         disabled={isSaving}
       />
 
-      {isEditing && url ? (
-        <div className="overflow-hidden rounded-xl border border-border bg-muted/30">
-          <div className="flex min-h-35 max-h-48 items-center justify-center bg-muted/50">
-            {isImageFilename(filename) && url ? (
-              <img src={url} alt="" className="max-h-48 max-w-full object-contain" />
-            ) : (
-              <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
-                <FileText className="h-10 w-10 opacity-35" strokeWidth={1.25} />
-                <span className="text-xs">Preview</span>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : null}
-
-      {isEditing && url ? (
-        <FileUpload
-          label="Replace file"
-          onFileSelect={upload}
-          accept={acceptTypes}
-          isUploading={isUploading}
-          progress={uploadProgress}
-          currentFileName={url ? filename : undefined}
-          disabled={isSaving}
-          compact
-          hideFileNameRow
-        />
-      ) : null}
-
       {url && !isEditing ? (
         <div className="flex items-center gap-2 text-sm">
           <span className="font-medium text-foreground">Uploaded to:</span>
@@ -402,7 +354,6 @@ function ContentFormDraftSection({
 function ContentFormMetadataSection({
   isEditing,
   fileID,
-  setFileID,
   filename,
   setFilename,
   url,
@@ -464,21 +415,8 @@ function ContentFormMetadataSection({
 }) {
   return (
     <>
-      <TextInput
-        label="File ID"
-        type="text"
-        required
-        maxLength={64}
-        disabled={isEditing}
-        value={fileID}
-        onChange={(e) => setFileID(e.target.value)}
-      />
-      <TextInput
-        label="Filename"
-        type="text"
-        value={filename}
-        onChange={(e) => setFilename(e.target.value)}
-      />
+      {fileID ? (<p>File ID: {fileID}</p>) : null}
+      <TextInput label="Content Name" type="text" value={filename} onChange={(e) => setFilename(e.target.value)} />
       <TextInput label="URL" type="text" value={url} onChange={(e) => setUrl(e.target.value)} />
 
       <div>
@@ -597,6 +535,20 @@ function ContentFormMetadataSection({
   );
 }
 
+const SUPPORTED_EXTENSIONS = [
+  'bmp', 'csv', 'odt', 'doc', 'docx', 'gif', 'htm', 'html',
+  'jpg', 'jpeg', 'pdf', 'png', 'ppt', 'pptx', 'tiff', 'txt',
+  'xls', 'xlsx', 'mp4', 'webp'
+];
+
+const canDisplayDocument = (url: string | undefined | null): boolean => {
+  if (!url) return false;
+
+  const extension = url.split(/[#?]/)[0].split('.').pop()?.toLowerCase();
+  if (!extension) return false;
+  return SUPPORTED_EXTENSIONS.includes(extension);
+};
+
 function ContentFormFields({
   isEditing,
   fileID,
@@ -656,7 +608,7 @@ function ContentFormFields({
         </h1>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
-          {url ? (
+          {url && canDisplayDocument(url) ? (
             <div className="mb-6 overflow-hidden rounded-lg border border-border bg-muted">
               <DocViewer
                 documents={docs}
@@ -836,12 +788,14 @@ function ContentFormPage() {
     return (value ?? "").toLowerCase().replace(/\s+/g, "-");
   }
 
+  const isCheckedOut = existing.data?.is_checked_out ?? false;
+  const checkedOutBy = existing.data?.checked_out_by ?? null;
   const contentJobPosition = existing.data?.job_position;
   const canEdit =
     !isEditing ||
     userRole === "admin" ||
-    !contentJobPosition?.trim() ||
-    (!!userRole && normalizeRole(userRole) === normalizeRole(contentJobPosition));
+    (!isCheckedOut &&
+    (!contentJobPosition?.trim() || (!!userRole && normalizeRole(userRole) === normalizeRole(contentJobPosition))));
 
   const checkout = trpc.content.checkout.useMutation({
     onSuccess: () => {
@@ -864,8 +818,7 @@ function ContentFormPage() {
     },
   });
 
-  const isCheckedOut = existing.data?.is_checked_out ?? false;
-  const checkedOutBy = existing.data?.checked_out_by ?? null;
+
   const isCheckedOutByMe = isCheckedOut && checkedOutBy === currentUserId;
   const isLockedByOther = isCheckedOut && !isCheckedOutByMe;
 
@@ -873,6 +826,13 @@ function ContentFormPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    let finalID  = fileID;
+    if (!fileID){
+      finalID = url.slice(-64);
+      finalID = finalID.replace(/[^a-z0-9]/gi, '');
+      setFileID(finalID);
+    }
 
     const data = {
       filename: toNullable(filename),
@@ -889,11 +849,11 @@ function ContentFormPage() {
     };
 
     if (isEditing) {
-      data ? setPendingData({ fileID: id!, ...data }) : null;
+      data ? setPendingData({ fileID: finalID || id!, ...data }) : null;
       setAskConfirmation(true);
       setOperation("update");
     } else {
-      create.mutate({ fileID, ...data });
+      create.mutate({ fileID: finalID, ...data });
     }
   }
 
