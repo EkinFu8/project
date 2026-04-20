@@ -7,7 +7,6 @@ import { useDebouncedValue } from "./hooks/useDebouncedValue";
 import { ContentFilters } from "./components/ContentFilters";
 import { ContentGrid } from "./components/ContentGrid";
 
-
 const ROLE_TABS = [
   { key: "all", label: "All Users" },
   { key: "underwriter", label: "Underwriter" },
@@ -59,76 +58,69 @@ export default function ContentPage() {
   const filtered = allItems;
 
   return (
-      <div className="border-t border-border/60 py-6 sm:py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-
-
-          <div className="mb-6 flex justify-end">
-            <div className="flex w-full max-w-4xl items-center gap-3">
-
-
-              <div className="relative flex-[2]">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                    value={filters.search}
-                    onChange={(e) => filters.setSearch(e.target.value)}
-                    placeholder="Search by filename or URL..."
-                    className="w-full rounded border border-border bg-background py-2 pl-10 pr-4 text-sm"
-                />
-              </div>
-
-              <div className="relative">
-                <select
-                    value={filters.view}
-                    onChange={(e) => filters.setView(e.target.value as "grid" | "list")}
-                    className="appearance-none rounded border border-border bg-background px-3 py-2 pr-8 text-sm font-medium hover:bg-muted"
-                >
-                  <option value="grid">Card View</option>
-                  <option value="list">List View</option>
-                </select>
-
-                <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  ▾
-                </div>
-              </div>
-
-              {/* NEW CONTENT */}
-              <Link
-                  to="/hero/content/new"
-                  className="flex shrink-0 items-center gap-2 rounded bg-hanover-green px-4 py-2 text-sm font-semibold text-white"
-              >
-                <Plus className="h-4 w-4" />
-                New Content
-              </Link>
-
+    <div className="border-t border-border/60 py-6 sm:py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-6 flex justify-end">
+          <div className="flex w-full max-w-4xl items-center gap-3">
+            <div className="relative flex-[2]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={filters.search}
+                onChange={(e) => filters.setSearch(e.target.value)}
+                placeholder="Search by filename or URL..."
+                className="w-full rounded border border-border bg-background py-2 pl-10 pr-4 text-sm"
+              />
             </div>
-          </div>
 
-          <div className="flex gap-6">
+            <div className="relative">
+              <select
+                value={filters.view}
+                onChange={(e) => filters.setView(e.target.value as "grid" | "list")}
+                className="appearance-none rounded border border-border bg-background px-3 py-2 pr-8 text-sm font-medium hover:bg-muted"
+              >
+                <option value="grid">Card View</option>
+                <option value="list">List View</option>
+              </select>
 
-            {/* SIDEBAR */}
-            <ContentFilters
-                filters={filters}
-                openRole={openRole}
-                setOpenRole={setOpenRole}
-                openStatus={openStatus}
-                setOpenStatus={setOpenStatus}
-                openType={openType}
-                setOpenType={setOpenType}
-                ROLE_TABS={ROLE_TABS}
-            />
+              <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
+                ▾
+              </div>
+            </div>
 
-            {/* Grid view */}
-            <ContentGrid
-                contents={contents}
-                filtered={filtered}
-                filters={filters}
-                toggleFavorite={toggleFavorite}
-                getStatusBadge={getStatusBadge}
-            />
-
+            {/* NEW CONTENT */}
+            <Link
+              to="/hero/content/new"
+              className="flex shrink-0 items-center gap-2 rounded bg-hanover-green px-4 py-2 text-sm font-semibold text-white"
+            >
+              <Plus className="h-4 w-4" />
+              New Content
+            </Link>
           </div>
         </div>
+
+        <div className="flex gap-6">
+          {/* SIDEBAR */}
+          <ContentFilters
+            filters={filters}
+            openRole={openRole}
+            setOpenRole={setOpenRole}
+            openStatus={openStatus}
+            setOpenStatus={setOpenStatus}
+            openType={openType}
+            setOpenType={setOpenType}
+            ROLE_TABS={ROLE_TABS}
+          />
+
+          {/* Grid view */}
+          <ContentGrid
+            contents={contents}
+            filtered={filtered}
+            filters={filters}
+            toggleFavorite={toggleFavorite}
+            getStatusBadge={getStatusBadge}
+          />
+        </div>
       </div>
+    </div>
   );
 }

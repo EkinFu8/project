@@ -33,10 +33,7 @@ function assertCanEdit(
 }
 
 function normalizeRole(role?: string | null) {
-  return (role ?? "")
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .trim();
+  return (role ?? "").toLowerCase().replace(/\s+/g, "-").trim();
 }
 
 function canEditForRole(
