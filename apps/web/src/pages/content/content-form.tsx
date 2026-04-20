@@ -314,7 +314,7 @@ function ContentFormSummarySection({
         <button
           type="button"
           onClick={() => onDelete()}
-          disabled={isSaving || isUploading || isCheckedOut || isCheckedOutByMe}
+          disabled={isSaving || isUploading || (isCheckedOut && !isCheckedOutByMe)}
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-500/90 disabled:opacity-60"
         >
           {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -663,8 +663,8 @@ function ContentFormFields({
         </h1>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
-          {acceptedTypesSet.has(fileExtension(fileID)) ? (
-            <div className="mb-6 overflow-hidden rounded-lg border border-border bg-muted">
+          {(acceptedTypesSet.has(fileExtension(fileID)) && url) ? (
+            <div className="mb-6 text-black overflow-hidden rounded-lg border border-border bg-muted">
               <DocViewer
                 documents={docs}
                 pluginRenderers={DocViewerRenderers}
