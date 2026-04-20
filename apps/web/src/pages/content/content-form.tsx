@@ -635,6 +635,36 @@ function ContentFormFields({
   const mutationError = createError?.message || updateError?.message || "Something went wrong.";
   const submitLabel = isUploading ? "Uploading..." : isEditing ? "Update Content" : "Save Content";
   const acceptTypes = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.svg";
+
+  useEffect(() => {
+    if (!url) return;
+
+    const observer = new MutationObserver(() => {
+      const downloadBtn = document.querySelector("button.rdv-toolbar-btn[title='Download']");
+      if (!downloadBtn) return;
+
+      const newBtn = downloadBtn.cloneNode(true) as HTMLElement;
+      newBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = filename || "download";
+        a.click();
+        URL.revokeObjectURL(blobUrl);
+      });
+
+      downloadBtn.parentNode?.replaceChild(newBtn, downloadBtn);
+      observer.disconnect();
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [url, filename]);
+
   const docs = [{ uri: url }];
   return (
     <div className="border-t border-border/60 py-8 sm:py-10">
@@ -654,10 +684,13 @@ function ContentFormFields({
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
           {url && canDisplayDocument(url) ? (
             <div className="mb-6 overflow-hidden rounded-lg border border-border bg-muted">
+              <style>{`.rdv-txt-container { white-space: pre; font-family: monospace; }`}</style>
               <DocViewer
                 documents={docs}
                 pluginRenderers={DocViewerRenderers}
-                config={{ header: { disableHeader: true, disableFileName: true } }}
+                config={{
+                  header: { disableHeader: true, disableFileName: true },
+                }}
                 style={{ height: "70vh", minHeight: 800, width: "100%" }}
               />
             </div>
