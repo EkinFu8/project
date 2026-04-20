@@ -287,16 +287,18 @@ function ContentFormSummarySection({
         </div>
       )}
 
-      {canEdit ? (<div className="flex justify-end">
-        <button
+      {canEdit ? (
+        <div className="flex justify-end">
+          <button
             type="submit"
             disabled={isSaving || isUploading}
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-6 py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
-        >
-          {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin"/>}
-          {submitLabel}
-        </button>
-      </div>) : null}
+          >
+            {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+            {submitLabel}
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -415,8 +417,13 @@ function ContentFormMetadataSection({
 }) {
   return (
     <>
-      {fileID ? (<p>File ID: {fileID}</p>) : null}
-      <TextInput label="Content Name" type="text" value={filename} onChange={(e) => setFilename(e.target.value)} />
+      {fileID ? <p>File ID: {fileID}</p> : null}
+      <TextInput
+        label="Content Name"
+        type="text"
+        value={filename}
+        onChange={(e) => setFilename(e.target.value)}
+      />
       <TextInput label="URL" type="text" value={url} onChange={(e) => setUrl(e.target.value)} />
 
       <div>
@@ -536,15 +543,32 @@ function ContentFormMetadataSection({
 }
 
 const SUPPORTED_EXTENSIONS = [
-  'bmp', 'csv', 'odt', 'doc', 'docx', 'gif', 'htm', 'html',
-  'jpg', 'jpeg', 'pdf', 'png', 'ppt', 'pptx', 'tiff', 'txt',
-  'xls', 'xlsx', 'mp4', 'webp'
+  "bmp",
+  "csv",
+  "odt",
+  "doc",
+  "docx",
+  "gif",
+  "htm",
+  "html",
+  "jpg",
+  "jpeg",
+  "pdf",
+  "png",
+  "ppt",
+  "pptx",
+  "tiff",
+  "txt",
+  "xls",
+  "xlsx",
+  "mp4",
+  "webp",
 ];
 
 const canDisplayDocument = (url: string | undefined | null): boolean => {
   if (!url) return false;
 
-  const extension = url.split(/[#?]/)[0].split('.').pop()?.toLowerCase();
+  const extension = url.split(/[#?]/)[0].split(".").pop()?.toLowerCase();
   if (!extension) return false;
   return SUPPORTED_EXTENSIONS.includes(extension);
 };
@@ -795,7 +819,8 @@ function ContentFormPage() {
     !isEditing ||
     userRole === "admin" ||
     (!isCheckedOut &&
-    (!contentJobPosition?.trim() || (!!userRole && normalizeRole(userRole) === normalizeRole(contentJobPosition))));
+      (!contentJobPosition?.trim() ||
+        (!!userRole && normalizeRole(userRole) === normalizeRole(contentJobPosition))));
 
   const checkout = trpc.content.checkout.useMutation({
     onSuccess: () => {
@@ -818,7 +843,6 @@ function ContentFormPage() {
     },
   });
 
-
   const isCheckedOutByMe = isCheckedOut && checkedOutBy === currentUserId;
   const isLockedByOther = isCheckedOut && !isCheckedOutByMe;
 
@@ -827,10 +851,10 @@ function ContentFormPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    let finalID  = fileID;
-    if (!fileID){
+    let finalID = fileID;
+    if (!fileID) {
       finalID = url.slice(-64);
-      finalID = finalID.replace(/[^a-z0-9]/gi, '');
+      finalID = finalID.replace(/[^a-z0-9]/gi, "");
       setFileID(finalID);
     }
 
