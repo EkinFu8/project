@@ -663,7 +663,7 @@ function ContentFormFields({
         </h1>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
-          {(acceptedTypesSet.has(fileExtension(fileID)) && url) ? (
+          {acceptedTypesSet.has(fileExtension(fileID)) && url ? (
             <div className="mb-6 text-black overflow-hidden rounded-lg border border-border bg-muted">
               <DocViewer
                 documents={docs}

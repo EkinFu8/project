@@ -131,9 +131,7 @@ function ContentListPage() {
                     </button>
                   </div>
                 </div>
-                <p className="mb-1 truncate text-xs text-muted-foreground">
-                  {item.url}
-                </p>
+                <p className="mb-1 truncate text-xs text-muted-foreground">{item.url}</p>
                 <p className="mb-1 text-xs text-muted-foreground">
                   {item.content_type ?? "—"} · {item.job_position ?? "—"}
                 </p>

@@ -57,7 +57,8 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
         )}
 
         <p>
-          This website has been created for WPI's CS 3733 Software Engineering as a class project and is not in use by Hanover Insurance.
+          This website has been created for WPI's CS 3733 Software Engineering as a class project
+          and is not in use by Hanover Insurance.
         </p>
 
         <div className="flex h-full items-center gap-0.5 sm:gap-2">
