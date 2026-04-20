@@ -32,8 +32,11 @@ function assertCanEdit(
   }
 }
 
-function normalizeRole(value: string | null | undefined): string {
-  return (value ?? "").toLowerCase().replace(/\s+/g, "-");
+function normalizeRole(role?: string | null) {
+  return (role ?? "")
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .trim();
 }
 
 function canEditForRole(
@@ -132,6 +135,16 @@ export const contentRouter = router({
   }),
 
   list: publicProcedure.input(contentListQuerySchema).query(async ({ ctx, input }) => {
+    console.log("ROLE FILTER INPUT:", input.role);
+
+    console.log(
+        "DB SAMPLE JOB POSITIONS:",
+        (await ctx.prisma.contentManagement.findMany({
+          select: { job_position: true },
+          take: 20,
+        })).map(r => r.job_position)
+    );
+
     const where: Record<string, unknown> = {};
 
     if (input.document_status) {
@@ -144,6 +157,19 @@ export const contentRouter = router({
 
     if (input.owner_id) {
       where.owner_id = input.owner_id;
+    }
+
+    if (input.role && input.role !== "all") {
+      const role = input.role.toLowerCase();
+
+      where.job_position = {
+        in: [
+          role,
+          role.toLowerCase(),
+          role.replace(/-/g, " "),
+          role.charAt(0).toUpperCase() + role.slice(1).replace(/-/g, " "),
+        ],
+      };
     }
 
     if (input.search) {

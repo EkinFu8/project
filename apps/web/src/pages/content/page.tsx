@@ -12,6 +12,8 @@ const ROLE_TABS = [
   { key: "all", label: "All Users" },
   { key: "underwriter", label: "Underwriter" },
   { key: "business-analyst", label: "Business Analyst" },
+  { key: "actuarial-analyst", label: "Actuarial Analyst" },
+  { key: "exl-operations", label: "EXL Operations" },
 ];
 
 function getStatusBadge(status: string | null) {
@@ -29,12 +31,34 @@ function getStatusBadge(status: string | null) {
   }
 }
 
-function matchesOwnerRole(owner: { role: string } | null | undefined, role: string) {
+function normalizeRole(role?: string | null) {
+  return (role ?? "").toLowerCase().trim();
+}
+
+function matchesOwnerRole(
+    owner: { role: string } | null | undefined,
+    role: string
+) {
   if (role === "all") return true;
-  const r = owner?.role ?? "";
-  if (role === "underwriter") return r === "underwriter";
-  if (role === "business-analyst") return r === "business-analyst";
-  return false;
+
+  const ownerRole = normalizeRole(owner?.role);
+
+  switch (role) {
+    case "underwriter":
+      return ownerRole === "underwriter";
+
+    case "business-analyst":
+      return ownerRole === "business-analyst";
+
+    case "actuarial-analyst":
+      return ownerRole === "actuarial-analyst";
+
+    case "exl-operations":
+      return ownerRole === "exl-operations";
+
+    default:
+      return false;
+  }
 }
 
 export default function ContentPage() {
@@ -58,14 +82,12 @@ export default function ContentPage() {
     search: debouncedSearch,
     document_status: filters.status || undefined,
     content_type: (filters.type as "Reference" | "Workflow") || undefined,
+    role: filters.role === "all" ? undefined : filters.role,
   });
 
   const allItems = contents.data ?? [];
 
-  const filtered = allItems.filter((item) => {
-    const roleMatch = matchesOwnerRole(item.owner, filters.role);
-    return roleMatch;
-  });
+  const filtered = allItems;
 
   return (
       <div className="border-t border-border/60 py-6 sm:py-8">

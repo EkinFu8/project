@@ -25,6 +25,7 @@ export const contentListQuerySchema = z.object({
   content_type: z.enum(["Reference", "Workflow"]).optional(),
   owner_id: z.string().uuid().optional(),
   search: z.string().optional(),
+  role: z.string().optional(),
 });
 
 export const tagIdSchema = z.object({
