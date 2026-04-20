@@ -636,11 +636,6 @@ function ContentFormFields({
   const submitLabel = isUploading ? "Uploading..." : isEditing ? "Update Content" : "Save Content";
   const acceptTypes = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.svg";
   const docs = [{ uri: url }];
-  const acceptedTypesSet = new Set(acceptTypes.split(","));
-  const fileExtension = (fileID: string): string => {
-    return fileID.slice(fileID.lastIndexOf(".")).toLowerCase().trim();
-  };
-
   return (
     <div className="border-t border-border/60 py-8 sm:py-10">
       <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
