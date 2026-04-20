@@ -2,11 +2,11 @@ import { Plus, Search } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/lib/trpc.ts";
+import { normalizeContent } from "@/utils/normalizeContent.ts";
 import { ContentFilters } from "./components/ContentFilters";
 import { ContentGrid } from "./components/ContentGrid";
 import { useContentFilters } from "./hooks/useContentFilters";
 import { useDebouncedValue } from "./hooks/useDebouncedValue";
-import {normalizeContent} from "@/utils/normalizeContent.ts";
 
 const ROLE_TABS = [
   { key: "all", label: "All Users" },
@@ -52,8 +52,7 @@ export default function ContentPage() {
     role: filters.role === "all" ? undefined : filters.role,
   });
 
-  const allItems =
-      contents.data?.map(normalizeContent) ?? [];
+  const allItems = contents.data?.map(normalizeContent) ?? [];
 
   const filtered = allItems;
 
