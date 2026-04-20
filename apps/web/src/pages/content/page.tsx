@@ -1,8 +1,12 @@
-import { Loader2, Lock, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { motion, AnimatePresence } from "framer-motion";
 import { trpc } from "@/lib/trpc.ts";
+import { useContentFilters } from "./hooks/useContentFilters";
+import { useDebouncedValue } from "./hooks/useDebouncedValue";
+import { ContentFilters } from "./components/ContentFilters";
+import { ContentGrid } from "./components/ContentGrid";
+
 
 const ROLE_TABS = [
   { key: "all", label: "All Users" },
@@ -37,11 +41,8 @@ export default function ContentPage() {
   const { data: access } = trpc.user.myAccess.useQuery();
   const isAdmin = access?.role === "admin";
 
-  const [search, setSearch] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
+  const filters = useContentFilters();
+  const debouncedSearch = useDebouncedValue(filters.search, 300);
 
   const [openRole, setOpenRole] = useState(true);
   const [openStatus, setOpenStatus] = useState(true);
@@ -54,16 +55,17 @@ export default function ContentPage() {
   });
 
   const contents = trpc.content.list.useQuery({
-    search,
-    document_status: statusFilter || undefined,
-    content_type: (typeFilter as "Reference" | "Workflow") || undefined,
+    search: debouncedSearch,
+    document_status: filters.status || undefined,
+    content_type: (filters.type as "Reference" | "Workflow") || undefined,
   });
 
   const allItems = contents.data ?? [];
 
-  const filtered = allItems.filter((item) =>
-      matchesOwnerRole(item.owner, roleFilter)
-  );
+  const filtered = allItems.filter((item) => {
+    const roleMatch = matchesOwnerRole(item.owner, filters.role);
+    return roleMatch;
+  });
 
   return (
       <div className="border-t border-border/60 py-6 sm:py-8">
@@ -77,8 +79,8 @@ export default function ContentPage() {
               <div className="relative flex-[2]">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    value={filters.search}
+                    onChange={(e) => filters.setSearch(e.target.value)}
                     placeholder="Search by filename or URL..."
                     className="w-full rounded border border-border bg-background py-2 pl-10 pr-4 text-sm"
                 />
@@ -86,8 +88,8 @@ export default function ContentPage() {
 
               <div className="relative">
                 <select
-                    value={viewMode}
-                    onChange={(e) => setViewMode(e.target.value as "grid" | "list")}
+                    value={filters.view}
+                    onChange={(e) => filters.setView(e.target.value as "grid" | "list")}
                     className="appearance-none rounded border border-border bg-background px-3 py-2 pr-8 text-sm font-medium hover:bg-muted"
                 >
                   <option value="grid">Card View</option>
@@ -114,241 +116,25 @@ export default function ContentPage() {
           <div className="flex gap-6">
 
             {/* SIDEBAR */}
-            <aside className="w-64 shrink-0 rounded border border-border bg-card p-4 h-fit sticky top-4">
-              Filters<hr></hr>
+            <ContentFilters
+                filters={filters}
+                openRole={openRole}
+                setOpenRole={setOpenRole}
+                openStatus={openStatus}
+                setOpenStatus={setOpenStatus}
+                openType={openType}
+                setOpenType={setOpenType}
+                ROLE_TABS={ROLE_TABS}
+            />
 
-              {/* ROLE */}
-              {(
-                  <div className="mb-4">
-                    <button
-                        onClick={() => setOpenRole(!openRole)}
-                        className="mb-2 flex w-full justify-between text-sm font-semibold"
-                    >
-                      Role
-                      <span className="text-muted-foreground">{openRole ? "−" : "+"}</span>
-                    </button>
-
-                    <AnimatePresence initial={false}>
-                      {openRole && (
-                          <motion.div
-                              layout
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.2, ease: "easeInOut" }}
-                              className="flex flex-col overflow-hidden"
-                          >
-                            {ROLE_TABS.map((tab) => {
-                              const active = roleFilter === tab.key;
-
-                              return (
-                                  <button
-                                      key={tab.key}
-                                      onClick={() => setRoleFilter(tab.key)}
-                                      className="relative flex items-center rounded px-2 py-1 text-sm hover:bg-muted"
-                                  >
-                                    {active && (
-                                        <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded bg-hanover-green" />
-                                    )}
-                                    <span className={`ml-2 ${active ? "font-semibold" : "text-muted-foreground"}`}>
-                              {tab.label}
-                            </span>
-                                  </button>
-                              );
-                            })}
-                          </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-              )}
-              <hr></hr>
-              {/* STATUS */}
-              <div className="mb-4">
-                <button
-                    onClick={() => setOpenStatus(!openStatus)}
-                    className="mb-2 flex w-full justify-between text-sm font-semibold"
-                >
-                  Status
-                  <span className="text-muted-foreground">{openStatus ? "−" : "+"}</span>
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {openStatus && (
-                      <motion.div
-                          layout
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2, ease: "easeInOut" }}
-                          className="flex flex-col overflow-hidden"
-                      >
-                        {["", "Created", "in-progress", "Finalized", "Archived"].map((s) => {
-                          const active = statusFilter === s;
-
-                          const label =
-                              s === ""
-                                  ? "All"
-                                  : s === "in-progress"
-                                      ? "In-Progress"
-                                      : s;
-
-                          return (
-                              <button
-                                  key={s || "all"}
-                                  onClick={() => setStatusFilter(s)}
-                                  className="relative flex items-center rounded px-2 py-1 text-sm hover:bg-muted"
-                              >
-                                {active && (
-                                    <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded bg-hanover-green" />
-                                )}
-                                <span className={`ml-2 ${active ? "font-semibold" : "text-muted-foreground"}`}>
-                            {label}
-                          </span>
-                              </button>
-                          );
-                        })}
-                      </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              <hr></hr>
-              {/* TYPE */}
-              <div>
-                <button
-                    onClick={() => setOpenType(!openType)}
-                    className="mb-2 flex w-full justify-between text-sm font-semibold"
-                >
-                  Type
-                  <span className="text-muted-foreground">{openType ? "−" : "+"}</span>
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {openType && (
-                      <motion.div
-                          layout
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2, ease: "easeInOut" }}
-                          className="flex flex-col overflow-hidden"
-                      >
-                        {["", "Reference", "Workflow"].map((t) => {
-                          const active = typeFilter === t;
-
-                          return (
-                              <button
-                                  key={t || "all"}
-                                  onClick={() => setTypeFilter(t)}
-                                  className="relative flex items-center rounded px-2 py-1 text-sm hover:bg-muted"
-                              >
-                                {active && (
-                                    <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded bg-hanover-green" />
-                                )}
-                                <span className={`ml-2 ${active ? "font-semibold" : "text-muted-foreground"}`}>
-                            {t === "" ? "All" : t}
-                          </span>
-                              </button>
-                          );
-                        })}
-                      </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-            </aside>
-
-            {/* Card view */}
-            <main className="flex-1">
-
-              {contents.isLoading ? (
-                  <div className="flex items-center justify-center py-16">
-                    <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
-                  </div>
-              ) : (
-                  <div
-                      className={
-                        viewMode === "grid"
-                            ? "grid gap-4 md:grid-cols-2 lg:grid-cols-3"
-                            : "flex flex-col gap-3"
-                      }
-                  >
-
-                    {filtered.map((item) => (
-                        <Link
-                            key={item.fileID}
-                            to={`/hero/content/${item.fileID}/edit`}
-                            className={`group rounded border border-border bg-card shadow-sm transition-all hover:border-hanover-green hover:shadow-md ${
-                                viewMode === "list" ? "p-3 flex items-center gap-4" : "p-5"
-                            }`}
-                        >
-                          <div className="mb-3 flex items-start justify-between gap-2">
-                            <h3 className="text-base font-semibold leading-snug text-foreground group-hover:text-hanover-green line-clamp-2 break-words">
-                              {item.filename ?? "Untitled"}
-                            </h3>
-
-                            <div className="flex shrink-0 items-center gap-1">
-                        <span className={`rounded px-2 py-0.5 text-xs font-semibold ${getStatusBadge(item.document_status)}`}>
-                          {item.document_status ?? "—"}
-                        </span>
-
-                              <button
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    toggleFavorite.mutate({
-                                      fileID: item.fileID,
-                                      is_favorited: !item.is_favorited,
-                                    });
-                                  }}
-                                  className="text-yellow-400"
-                              >
-                                {item.is_favorited ? "★" : "☆"}
-                              </button>
-                            </div>
-                          </div>
-
-                          <p className="mb-1 text-xs text-muted-foreground">
-                            {item.content_type ?? "—"} · {item.job_position ?? "—"}
-                          </p>
-
-                          {item.content_tags?.length > 0 && (
-                              <div className="mb-2 flex flex-wrap gap-1 max-w-full overflow-hidden">
-                                {item.content_tags.map((ct) => (
-                                    <span
-                                        key={ct.tag.id}
-                                        className="inline-flex items-center rounded-full bg-hanover-green/10 px-2 py-0.5 text-xs font-medium text-hanover-green"
-                                    >
-                            {ct.tag.name}
-                          </span>
-                                ))}
-                              </div>
-                          )}
-
-                          {item.is_checked_out && (
-                              <div className="mb-2 flex items-center gap-1.5 rounded bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
-                                <Lock className="h-3 w-3" />
-                                Checked out
-                              </div>
-                          )}
-
-                          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                            <span className="truncate max-w-[60%]">
-                              {item.owner?.name ?? "Unassigned"}
-                            </span>
-
-                            <span className="shrink-0">
-                        {item.last_modified
-                            ? new Date(item.last_modified).toLocaleDateString()
-                            : "—"}
-                            </span>
-                          </div>
-
-                        </Link>
-                    ))}
-
-                  </div>
-              )}
-
-            </main>
+            {/* Grid view */}
+            <ContentGrid
+                contents={contents}
+                filtered={filtered}
+                filters={filters}
+                toggleFavorite={toggleFavorite}
+                getStatusBadge={getStatusBadge}
+            />
 
           </div>
         </div>
