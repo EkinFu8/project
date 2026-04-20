@@ -13,6 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@cyntler/react-doc-viewer": "^1.17.1",
     "@iamjariwala/react-doc-viewer": "^1.8.0",
     "@myapp/api": "workspace:*",
     "@myapp/types": "workspace:*",
