@@ -1,7 +1,7 @@
 import { Loader2 } from "lucide-react";
+import type { ContentItem } from "@/types/content";
 import { ContentCard } from "./ContentCard";
 import { ContentListItem } from "./ContentListItem";
-import type { ContentItem } from "@/types/content";
 
 type ToggleFavorite = {
   mutate: (args: { fileID: string; is_favorited: boolean }) => void;

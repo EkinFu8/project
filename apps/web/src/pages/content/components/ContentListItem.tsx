@@ -1,5 +1,5 @@
-import { Link } from "react-router";
 import { Lock } from "lucide-react";
+import { Link } from "react-router";
 import type { ContentItem } from "@/types/content";
 
 type ToggleFavorite = {
