@@ -17,6 +17,9 @@ export function normalizeContent(item: unknown): ContentItem {
     job_position: data.job_position ?? undefined,
     is_favorited: data.is_favorited ?? undefined,
     is_checked_out: data.is_checked_out ?? undefined,
+    checked_out_by: data.checked_out_by ?? null,
+    checked_out_by_user: data.checked_out_by_user ?? null,
+    checked_out_at: data.checked_out_at ?? null,
     last_modified: data.last_modified ?? undefined,
 
     owner: data.owner ?? undefined,
