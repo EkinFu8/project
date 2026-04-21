@@ -12,4 +12,5 @@ export type ContentItem = {
   last_modified?: string;
   owner?: { name?: string };
   content_tags?: { tag: { id: number; name: string } }[];
+  url?: string;
 };
