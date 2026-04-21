@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { trpc } from "@/lib/trpc.ts";
-import { renderTag } from "@/utils/tag";
+import { normalizeTag, renderTag } from "@/utils/tag";
 
 type RoleTab = {
   key: string;
@@ -255,18 +255,20 @@ export function ContentFilters({
                   <span className="px-2 py-1 text-xs text-muted-foreground">No tags yet</span>
                 )}
                 {tags.map((tag) => {
-                  const checked = filters.tagIds.includes(tag.id);
-                  const styles = renderTag(tag);
+                  const cleanTag = normalizeTag(tag);
+
+                  const checked = filters.tagIds.includes(cleanTag.id);
+                  const styles = renderTag(cleanTag);
 
                   return (
                     <label
-                      key={tag.id}
+                      key={cleanTag.id}
                       className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-muted"
                     >
                       <input
                         type="checkbox"
                         checked={checked}
-                        onChange={() => toggleTag(tag.id)}
+                        onChange={() => toggleTag(cleanTag.id)}
                         className="h-3.5 w-3.5 accent-hanover-green"
                       />
 
@@ -280,7 +282,7 @@ export function ContentFilters({
                           checked ? "ring-1" : ""
                         }`}
                       >
-                        {tag.name}
+                        {cleanTag.name}
                       </span>
                     </label>
                   );
