@@ -1,4 +1,4 @@
-import { Lock } from "lucide-react";
+import { Lock, Unlock } from "lucide-react";
 import { Link } from "react-router";
 import type { ContentItem } from "@/types/content";
 import { renderTag } from "@/utils/tag";
@@ -7,17 +7,38 @@ type ToggleFavorite = {
   mutate: (args: { fileID: string; is_favorited: boolean }) => void;
 };
 
+type CheckinMutation = {
+  mutate: (args: { fileID: string }) => void;
+};
+
 type Props = {
   item: ContentItem;
+  currentUserId?: string;
   toggleFavorite: ToggleFavorite;
+  checkin: CheckinMutation;
   getStatusBadge: (status?: string) => string;
 };
 
-export function ContentListItem({ item, toggleFavorite, getStatusBadge }: Props) {
+function checkedOutLabel(isCheckedOutByMe: boolean, name: string | undefined): string {
+  if (isCheckedOutByMe) return "Checked out by you";
+  if (name) return `Checked out by ${name}`;
+  return "Checked out";
+}
+
+export function ContentListItem({
+  item,
+  currentUserId,
+  toggleFavorite,
+  checkin,
+  getStatusBadge,
+}: Props) {
   const MAX_VISIBLE_TAGS = 3;
   const tags = item.content_tags ?? [];
   const visibleTags = tags.slice(0, MAX_VISIBLE_TAGS);
   const hiddenCount = tags.length - MAX_VISIBLE_TAGS;
+
+  const isCheckedOutByMe = item.is_checked_out && item.checked_out_by === currentUserId;
+  const checkedOutByName = item.checked_out_by_user?.name;
 
   return (
     <Link
@@ -56,9 +77,24 @@ export function ContentListItem({ item, toggleFavorite, getStatusBadge }: Props)
       {/* RIGHT SIDE */}
       <div className="flex items-center gap-2">
         {item.is_checked_out && (
-          <div className="flex items-center gap-1 rounded bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
-            <Lock className="h-3 w-3" />
-            Checked out
+          <div className="flex items-center gap-1.5 rounded bg-amber-50 px-2 py-1">
+            <div className="flex items-center gap-1 text-xs font-semibold text-amber-700">
+              <Lock className="h-3 w-3" />
+              {checkedOutLabel(isCheckedOutByMe, checkedOutByName)}
+            </div>
+            {isCheckedOutByMe && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  checkin.mutate({ fileID: item.fileID });
+                }}
+                className="inline-flex items-center gap-1 rounded bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-900 transition-colors hover:bg-amber-300"
+              >
+                <Unlock className="h-3 w-3" />
+                Check In
+              </button>
+            )}
           </div>
         )}
 

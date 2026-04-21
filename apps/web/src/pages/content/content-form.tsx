@@ -61,8 +61,6 @@ type ContentFormFieldsProps = {
   isSaving: boolean;
   onDelete: () => void;
   onSubmit: (e: React.FormEvent) => void;
-  isCheckedOut: boolean;
-  isCheckedOutByMe: boolean;
 };
 
 function ContentMetadataReadonlyTable({
@@ -240,8 +238,6 @@ function ContentFormSummarySection({
   mutationError,
   submitLabel,
   onDelete,
-  isCheckedOut,
-  isCheckedOutByMe,
 }: {
   filename: string;
   url: string;
@@ -265,8 +261,6 @@ function ContentFormSummarySection({
   mutationError: string;
   submitLabel: string;
   onDelete: () => void;
-  isCheckedOut: boolean;
-  isCheckedOutByMe: boolean;
 }) {
   return (
     <>
@@ -310,7 +304,7 @@ function ContentFormSummarySection({
           <button
             type="button"
             onClick={() => onDelete()}
-            disabled={isSaving || isUploading || isCheckedOut || isCheckedOutByMe}
+            disabled={isSaving || isUploading}
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-500/90 disabled:opacity-60"
           >
             {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -633,8 +627,6 @@ function ContentFormFields({
   isSaving,
   onDelete,
   onSubmit,
-  isCheckedOut,
-  isCheckedOutByMe,
 }: ContentFormFieldsProps) {
   const [metadataEditMode, setMetadataEditMode] = useState(false);
   const showFileSummary = isEditing && Boolean(url) && !metadataEditMode;
@@ -729,8 +721,6 @@ function ContentFormFields({
                 mutationError={mutationError}
                 submitLabel={submitLabel}
                 onDelete={onDelete}
-                isCheckedOut={isCheckedOut}
-                isCheckedOutByMe={isCheckedOutByMe}
               />
             ) : (
               <ContentFormDraftSection
@@ -892,12 +882,20 @@ function ContentFormPage() {
   const isCheckedOut = existing.data?.is_checked_out ?? false;
   const checkedOutBy = existing.data?.checked_out_by ?? null;
   const contentJobPosition = existing.data?.job_position;
-  const canEdit =
-    !isEditing ||
+  const isCheckedOutByMe = isCheckedOut && checkedOutBy === currentUserId;
+  const isLockedByOther = isCheckedOut && !isCheckedOutByMe;
+
+  // Role-based permission: does the user's role match the content's job position?
+  // This determines whether they can check out the item at all.
+  const hasRoleAccess =
     userRole === "admin" ||
-    (!isCheckedOut &&
-      (!contentJobPosition?.trim() ||
-        (!!userRole && normalizeRole(userRole) === normalizeRole(contentJobPosition))));
+    !contentJobPosition?.trim() ||
+    (!!userRole && normalizeRole(userRole) === normalizeRole(contentJobPosition));
+
+  // canEdit: may modify form fields / save / delete.
+  // Per spec: item must be checked out by this user first.
+  // Admin bypass remains so admins can recover from bad states.
+  const canEdit = !isEditing || userRole === "admin" || (hasRoleAccess && isCheckedOutByMe);
 
   const checkout = trpc.content.checkout.useMutation({
     onSuccess: () => {
@@ -919,9 +917,6 @@ function ContentFormPage() {
       utils.content.list.invalidate();
     },
   });
-
-  const isCheckedOutByMe = isCheckedOut && checkedOutBy === currentUserId;
-  const isLockedByOther = isCheckedOut && !isCheckedOutByMe;
 
   const isSaving = create.isPending || update.isPending;
 
@@ -973,18 +968,22 @@ function ContentFormPage() {
     <>
       {isEditing && (
         <div className="mx-auto max-w-4xl px-4 pt-4 sm:px-6 lg:px-8">
-          {!canEdit && (
+          {!hasRoleAccess && (
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
               <Lock className="h-4 w-4 shrink-0" />
               You do not have permission to edit this content. Only the assigned employee type can
               make changes.
             </div>
           )}
-          {canEdit && isLockedByOther && (
+          {hasRoleAccess && isLockedByOther && (
             <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950">
               <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-200">
                 <Lock className="h-4 w-4" />
-                This file is checked out by another user. Editing is disabled.
+                This file is checked out by
+                {existing.data?.checked_out_by_user?.name
+                  ? ` ${existing.data.checked_out_by_user.name}`
+                  : " another user"}
+                . Editing is disabled.
               </div>
               {session?.user?.user_metadata?.role === "admin" && (
                 <button
@@ -1003,20 +1002,20 @@ function ContentFormPage() {
               )}
             </div>
           )}
-          {canEdit && !isLockedByOther && (
+          {hasRoleAccess && !isLockedByOther && (
             <div className="mb-4 flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 {isCheckedOutByMe ? (
                   <>
                     <Lock className="h-4 w-4 text-hanover-green" />
                     <span className="font-medium text-hanover-green">
-                      You have this file checked out
+                      You have this file checked out — you may now edit or delete it
                     </span>
                   </>
                 ) : (
                   <>
                     <Unlock className="h-4 w-4" />
-                    <span>File is available</span>
+                    <span>File is available. Check it out before editing or deleting.</span>
                   </>
                 )}
               </div>
@@ -1091,8 +1090,6 @@ function ContentFormPage() {
         updateError={update.error}
         isSaving={isSaving}
         onDelete={handleDelete}
-        isCheckedOut={isCheckedOut}
-        isCheckedOutByMe={isCheckedOutByMe}
         onSubmit={handleSubmit}
       />
       {askConfirmation && (

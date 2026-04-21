@@ -14,6 +14,11 @@ const ownerSelect = {
   role: true,
 } as const;
 
+const checkedOutByUserSelect = {
+  id: true,
+  name: true,
+} as const;
+
 const tagsInclude = {
   content_tags: {
     include: {
@@ -25,10 +30,12 @@ const tagsInclude = {
 function assertCanEdit(
   file: { is_checked_out: boolean; checked_out_by: string | null } | null,
   userId: string,
+  userRole?: string | null,
 ) {
   if (!file) throw new Error("File not found");
-  if (file.is_checked_out && file.checked_out_by !== userId) {
-    throw new Error("This file is checked out by another user");
+  if (userRole === "admin") return;
+  if (!file.is_checked_out || file.checked_out_by !== userId) {
+    throw new Error("You must check out this item before modifying or deleting it");
   }
 }
 
@@ -182,6 +189,7 @@ export const contentRouter = router({
       orderBy: [{ is_favorited: "desc" }, { last_modified: "desc" }],
       include: {
         owner: { select: ownerSelect },
+        checked_out_by_user: { select: checkedOutByUserSelect },
         ...tagsInclude,
       },
     });
@@ -208,6 +216,7 @@ export const contentRouter = router({
             job_desc: true,
           },
         },
+        checked_out_by_user: { select: checkedOutByUserSelect },
         ...tagsInclude,
       },
     });
@@ -234,6 +243,7 @@ export const contentRouter = router({
           : data,
       include: {
         owner: { select: ownerSelect },
+        checked_out_by_user: { select: checkedOutByUserSelect },
         ...tagsInclude,
       },
     });
@@ -265,7 +275,7 @@ export const contentRouter = router({
         where: { fileID },
       });
 
-      assertCanEdit(file, userId);
+      assertCanEdit(file, userId, userRole);
 
       if (!canEditForRole(userRole, file?.job_position)) {
         throw new Error("You do not have permission to edit this content");
@@ -285,6 +295,7 @@ export const contentRouter = router({
               } as Prisma.ContentManagementUpdateInput,
               include: {
                 owner: { select: ownerSelect },
+                checked_out_by_user: { select: checkedOutByUserSelect },
                 ...tagsInclude,
               },
             })
@@ -296,6 +307,7 @@ export const contentRouter = router({
               } as Prisma.ContentManagementUncheckedUpdateInput,
               include: {
                 owner: { select: ownerSelect },
+                checked_out_by_user: { select: checkedOutByUserSelect },
                 ...tagsInclude,
               },
             });
@@ -316,12 +328,15 @@ export const contentRouter = router({
     const userId = ctx.user?.id;
     if (!userId) throw new Error("Not authenticated");
 
+    const profile = ctx.profile as { role: string | null } | null;
+    const userRole = profile?.role;
+
     const file = await ctx.prisma.contentManagement.findUnique({
       where: { fileID: input.fileID },
     });
 
     if (!file) throw new Error("File not found");
-    assertCanEdit(file, userId);
+    assertCanEdit(file, userId, userRole);
 
     const result = await ctx.prisma.contentManagement.delete({
       where: { fileID: input.fileID },

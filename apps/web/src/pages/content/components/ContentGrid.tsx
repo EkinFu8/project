@@ -7,6 +7,10 @@ type ToggleFavorite = {
   mutate: (args: { fileID: string; is_favorited: boolean }) => void;
 };
 
+type CheckinMutation = {
+  mutate: (args: { fileID: string }) => void;
+};
+
 type StatusFn = (status?: string) => string;
 
 type Filters = {
@@ -19,7 +23,9 @@ type Props = {
   };
   filtered: ContentItem[];
   filters: Filters;
+  currentUserId?: string;
   toggleFavorite: ToggleFavorite;
+  checkin: CheckinMutation;
   getStatusBadge: StatusFn;
 };
 
@@ -27,7 +33,9 @@ export function ContentGrid({
   contents,
   filtered,
   filters,
+  currentUserId,
   toggleFavorite,
+  checkin,
   getStatusBadge,
 }: Props) {
   return (
@@ -49,14 +57,18 @@ export function ContentGrid({
               <ContentCard
                 key={item.fileID}
                 item={item}
+                currentUserId={currentUserId}
                 toggleFavorite={toggleFavorite}
+                checkin={checkin}
                 getStatusBadge={getStatusBadge}
               />
             ) : (
               <ContentListItem
                 key={item.fileID}
                 item={item}
+                currentUserId={currentUserId}
                 toggleFavorite={toggleFavorite}
+                checkin={checkin}
                 getStatusBadge={getStatusBadge}
               />
             ),

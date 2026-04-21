@@ -1,6 +1,7 @@
 import { Plus, Search } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
+import { useSession } from "@/auth/session-context";
 import { trpc } from "@/lib/trpc.ts";
 import { normalizeContent } from "@/utils/normalizeContent.ts";
 import { ContentFilters } from "./components/ContentFilters";
@@ -34,6 +35,8 @@ export default function ContentPage() {
   trpc.user.myAccess.useQuery();
   const filters = useContentFilters();
   const debouncedSearch = useDebouncedValue(filters.search, 300);
+  const { session } = useSession();
+  const currentUserId = session?.user?.id;
 
   const [openRole, setOpenRole] = useState(true);
   const [openStatus, setOpenStatus] = useState(true);
@@ -43,6 +46,10 @@ export default function ContentPage() {
   const utils = trpc.useUtils();
 
   const toggleFavorite = trpc.content.update.useMutation({
+    onSuccess: () => utils.content.list.invalidate(),
+  });
+
+  const checkin = trpc.content.checkin.useMutation({
     onSuccess: () => utils.content.list.invalidate(),
   });
 
@@ -121,7 +128,9 @@ export default function ContentPage() {
             contents={contents}
             filtered={filtered}
             filters={filters}
+            currentUserId={currentUserId}
             toggleFavorite={toggleFavorite}
+            checkin={checkin}
             getStatusBadge={getStatusBadge}
           />
         </div>

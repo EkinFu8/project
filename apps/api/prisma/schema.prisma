@@ -556,12 +556,13 @@ model ContentManagement {
   content_type    String?      @db.VarChar(20)
   document_status String?      @db.VarChar(20)
   is_favorited    Boolean      @default(false)
-  is_checked_out  Boolean      @default(false)
-  checked_out_by  String?      @db.Uuid
-  checked_out_at  DateTime?    @db.Timestamptz(6)
-  owner_id        String?      @map("owner_id") @db.Uuid
-  owner           UserProfile? @relation(fields: [owner_id], references: [id], onUpdate: NoAction)
-  content_tags    ContentTag[]
+  is_checked_out       Boolean      @default(false)
+  checked_out_by       String?      @db.Uuid
+  checked_out_at       DateTime?    @db.Timestamptz(6)
+  owner_id             String?      @map("owner_id") @db.Uuid
+  owner                UserProfile? @relation("OwnedContent", fields: [owner_id], references: [id], onUpdate: NoAction)
+  checked_out_by_user  UserProfile? @relation("CheckedOutContent", fields: [checked_out_by], references: [id], onUpdate: NoAction)
+  content_tags         ContentTag[]
 
   @@map("content_management")
   @@schema("public")
@@ -601,8 +602,9 @@ model UserProfile {
   employee_code String?             @unique @db.VarChar(10)
   job_desc      String?             @db.VarChar(200)
   photo_url     String?             @db.VarChar(500)
-  owned_content ContentManagement[]
-  auth_user     auth_users          @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  owned_content      ContentManagement[] @relation("OwnedContent")
+  checkedOutContent  ContentManagement[] @relation("CheckedOutContent")
+  auth_user          auth_users          @relation(fields: [id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   metricsEvents MetricsEvent[]
   auditEvents   AuditEvent[]
