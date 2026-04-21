@@ -79,7 +79,6 @@ function adminNavItems() {
 function employeeNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
-    { label: "Tags", to: "/tags" },
     { label: "Coworkers", to: "/employees" },
   ];
 }
@@ -168,12 +167,12 @@ function App() {
             <Route path="/users" element={<UsersPage />} />
             <Route path="/users/new" element={<UserFormPage />} />
             <Route path="/users/:id" element={<UserFormPage />} />
+            <Route path="/tags" element={<TagsPage />} />
           </Route>
 
           {/* Shared */}
           <Route path="/dashboard/" element={<DashboardPage />} />
           <Route path="/account" element={<AccountPage />} />
-          <Route path="/tags" element={<TagsPage />} />
 
           {/* Legacy redirects */}
           <Route path="/content" element={<Navigate to="/hero/content" replace />} />

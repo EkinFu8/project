@@ -17,7 +17,7 @@ export type TagShape = {
 };
 
 export function renderTag(tag: TagShape) {
-    const color = tag.color ?? "#22c55e";
+    const color = tag.color ?? "#15803d";
 
     return {
         bg: `${color}12`,

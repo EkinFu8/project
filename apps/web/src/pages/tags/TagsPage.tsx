@@ -66,12 +66,24 @@ export default function TagsPage() {
         );
 
         if (nameTaken || colorTaken) {
+            const message = nameTaken
+                ? "Name already in use"
+                : "Color already in use";
+
             setErrorMap((prev) => ({
                 ...prev,
-                [edit.id]: nameTaken
-                    ? "Name already in use"
-                    : "Color already in use",
+                [edit.id]: message,
             }));
+
+            // auto-remove after 3s
+            setTimeout(() => {
+                setErrorMap((prev) => {
+                    const next = { ...prev };
+                    delete next[edit.id];
+                    return next;
+                });
+            }, 3000);
+
             return;
         }
 
@@ -101,6 +113,17 @@ export default function TagsPage() {
         }
 
         setErrorMap(errors);
+
+// auto-clear each error after 3s
+        Object.keys(errors).forEach((id) => {
+            setTimeout(() => {
+                setErrorMap((prev) => {
+                    const next = { ...prev };
+                    delete next[Number(id)];
+                    return next;
+                });
+            }, 3000);
+        });
         setSelectedIds(new Set());
         utils.tag.list.invalidate();
     }
