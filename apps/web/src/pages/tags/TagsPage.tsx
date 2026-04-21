@@ -95,8 +95,8 @@ export default function TagsPage() {
     for (const id of selectedIds) {
       try {
         await deleteTag.mutateAsync({ id });
-      } catch (err: any) {
-        errors[id] = err.message ?? "Failed to delete";
+      } catch (err: unknown) {
+        errors[id] = err instanceof Error ? err.message : "Failed to delete";
       }
     }
 
@@ -134,6 +134,7 @@ export default function TagsPage() {
         <p className="text-sm text-muted-foreground">{selectedIds.size} selected</p>
 
         <button
+          type="button"
           onClick={handleBulkDelete}
           disabled={selectedIds.size === 0}
           className="rounded-md bg-red-500 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
@@ -199,6 +200,7 @@ export default function TagsPage() {
               <div className="flex items-center gap-2">
                 {!isEditing ? (
                   <button
+                    type="button"
                     onClick={() =>
                       setEdit({
                         id: tag.id,
@@ -212,11 +214,11 @@ export default function TagsPage() {
                   </button>
                 ) : (
                   <>
-                    <button onClick={handleSaveEdit}>
+                    <button type="button" onClick={handleSaveEdit}>
                       <Check className="h-4 w-4 text-green-600" />
                     </button>
 
-                    <button onClick={() => setEdit(null)}>
+                    <button type="button" onClick={() => setEdit(null)}>
                       <X className="h-4 w-4 text-red-500" />
                     </button>
                   </>

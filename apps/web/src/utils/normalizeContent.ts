@@ -1,15 +1,25 @@
 import type { ContentItem } from "@/types/content";
 
-export function normalizeContent(item: any): ContentItem {
-  return {
-    ...item,
+type RawContentItem = Partial<ContentItem> & {
+  url?: string;
+  expiration_date?: string;
+};
 
-    filename: item.filename ?? undefined,
-    url: item.url ?? undefined,
-    job_position: item.job_position ?? undefined,
-    last_modified: item.last_modified ?? undefined,
-    expiration_date: item.expiration_date ?? undefined,
-    content_type: item.content_type ?? undefined,
-    document_status: item.document_status ?? undefined,
+export function normalizeContent(item: unknown): ContentItem {
+  const data = item as RawContentItem;
+
+  return {
+    fileID: data.fileID ?? "",
+
+    filename: data.filename ?? undefined,
+    document_status: data.document_status ?? undefined,
+    content_type: data.content_type ?? undefined,
+    job_position: data.job_position ?? undefined,
+    is_favorited: data.is_favorited ?? undefined,
+    is_checked_out: data.is_checked_out ?? undefined,
+    last_modified: data.last_modified ?? undefined,
+
+    owner: data.owner ?? undefined,
+    content_tags: data.content_tags ?? undefined,
   };
 }
