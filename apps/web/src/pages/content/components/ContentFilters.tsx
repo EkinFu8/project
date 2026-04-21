@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { trpc } from "@/lib/trpc.ts";
+import { renderTag } from "@/utils/tag";
 
 type RoleTab = {
   key: string;
@@ -255,21 +256,33 @@ export function ContentFilters({
                 )}
                 {tags.map((tag) => {
                   const checked = filters.tagIds.includes(tag.id);
+                  const styles = renderTag(tag);
+
                   return (
-                    <label
-                      key={tag.id}
-                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleTag(tag.id)}
-                        className="h-3.5 w-3.5 accent-hanover-green"
-                      />
-                      <span className={checked ? "font-semibold" : "text-muted-foreground"}>
-                        {tag.name}
-                      </span>
-                    </label>
+                      <label
+                          key={tag.id}
+                          className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-muted"
+                      >
+                        <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleTag(tag.id)}
+                            className="h-3.5 w-3.5 accent-hanover-green"
+                        />
+
+                        <span
+                            style={{
+                              backgroundColor: styles.bg,
+                              color: styles.text,
+                              opacity: checked ? 1 : 0.6,
+                            }}
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium transition-all ${
+                                checked ? "ring-1" : ""
+                            }`}
+                        >
+                          {tag.name}
+                        </span>
+                      </label>
                   );
                 })}
               </div>
