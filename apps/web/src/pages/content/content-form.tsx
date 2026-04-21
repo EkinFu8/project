@@ -304,7 +304,7 @@ function ContentFormSummarySection({
           <button
             type="button"
             onClick={() => onDelete()}
-            disabled={isSaving || isUploading || (isCheckedOut && !isCheckedOutByMe)}
+            disabled={isSaving || isUploading}
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-500/90 disabled:opacity-60"
           >
             {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
