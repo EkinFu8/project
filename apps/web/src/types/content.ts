@@ -8,5 +8,5 @@ export type ContentItem = {
   is_checked_out?: boolean;
   last_modified?: string;
   owner?: { name?: string };
-  content_tags?: { tag: { id: string; name: string } }[];
+  content_tags?: { tag: { id: number; name: string } }[];
 };

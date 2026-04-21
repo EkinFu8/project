@@ -25,6 +25,7 @@ import EmployeesPage from "@/pages/employees/page.tsx";
 import HeroLayout from "@/pages/hero/layout.tsx";
 import LoginFormPage from "@/pages/login.tsx";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
+import TagsPage from "@/pages/tags/TagsPage";
 
 function LegacyContentEditRedirect() {
   const { id } = useParams<{ id: string }>();
@@ -69,6 +70,7 @@ function adminNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
     { label: "User Management", to: "/users" },
+    { label: "Tags", to: "/tags" },
     { label: "Dashboard", to: "/dashboard" },
   ];
 }
@@ -77,6 +79,7 @@ function adminNavItems() {
 function employeeNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
+    { label: "Tags", to: "/tags" },
     { label: "Coworkers", to: "/employees" },
   ];
 }
@@ -170,6 +173,7 @@ function App() {
           {/* Shared */}
           <Route path="/dashboard/" element={<DashboardPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/tags" element={<TagsPage />} />
 
           {/* Legacy redirects */}
           <Route path="/content" element={<Navigate to="/hero/content" replace />} />
