@@ -166,7 +166,18 @@ export const contentRouter = router({
       ];
     }
 
-    return ctx.prisma.contentManagement.findMany({
+    if (input.tagIds && input.tagIds.length > 0) {
+      const mode = input.tagMatchMode ?? "any";
+      if (mode === "all") {
+        where.AND = input.tagIds.map((id) => ({
+          content_tags: { some: { tagId: id } },
+        }));
+      } else {
+        where.content_tags = { some: { tagId: { in: input.tagIds } } };
+      }
+    }
+
+    const results = await ctx.prisma.contentManagement.findMany({
       where,
       orderBy: [{ is_favorited: "desc" }, { last_modified: "desc" }],
       include: {
@@ -174,6 +185,15 @@ export const contentRouter = router({
         ...tagsInclude,
       },
     });
+
+    if (input.pinnedTagId !== undefined) {
+      const pinnedId = input.pinnedTagId;
+      const pinned = results.filter((r) => r.content_tags.some((ct) => ct.tagId === pinnedId));
+      const unpinned = results.filter((r) => !r.content_tags.some((ct) => ct.tagId === pinnedId));
+      return [...pinned, ...unpinned];
+    }
+
+    return results;
   }),
 
   getById: publicProcedure.input(contentIdSchema).query(async ({ ctx, input }) => {

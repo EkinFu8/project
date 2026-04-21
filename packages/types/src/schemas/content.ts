@@ -26,6 +26,9 @@ export const contentListQuerySchema = z.object({
   owner_id: z.string().uuid().optional(),
   search: z.string().optional(),
   role: z.string().optional(),
+  tagIds: z.array(z.number().int()).optional(),
+  tagMatchMode: z.enum(["any", "all"]).optional(),
+  pinnedTagId: z.number().int().optional(),
 });
 
 export const tagIdSchema = z.object({
