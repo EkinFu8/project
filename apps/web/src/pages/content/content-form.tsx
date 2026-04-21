@@ -684,7 +684,7 @@ function ContentFormFields({
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
           {url && canDisplayDocument(url) ? (
-            <div className="mb-6 overflow-hidden rounded-lg border border-border bg-muted">
+            <div className="mb-6 text-black overflow-hidden rounded-lg border border-border bg-muted">
               <style>{`.rdv-txt-container { white-space: pre; font-family: monospace; }`}</style>
               <DocViewer
                 documents={docs}

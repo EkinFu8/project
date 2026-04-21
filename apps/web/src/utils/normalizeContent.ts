@@ -24,5 +24,6 @@ export function normalizeContent(item: unknown): ContentItem {
 
     owner: data.owner ?? undefined,
     content_tags: data.content_tags ?? undefined,
+    url: data.url ?? undefined,
   };
 }
