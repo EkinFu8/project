@@ -44,8 +44,8 @@ export function ColorPicker({ value, onChange }: Props) {
             </button>
 
             {open && (
-                <div className="absolute right-0 z-30 mt-2 w-48 rounded border bg-background p-2 shadow-lg">
-                    <div className="grid grid-cols-6 gap-1">
+                <div className="absolute right-0 z-30 mt-2 w-35 rounded border bg-background p-2 shadow-lg">
+                    <div className="grid grid-cols-6 gap-.5">
                         {presetColors.map((color) => (
                             <button
                                 key={color}
