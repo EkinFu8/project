@@ -1,7 +1,14 @@
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Pencil, Check, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { renderTag, normalizeTag } from "@/utils/tag";
+import { ColorPicker } from "@/pages/tags/components/ColorPicker.tsx";
+
+type EditState = {
+    id: number;
+    name: string;
+    color: string;
+} | null;
 
 export default function TagsPage() {
     const utils = trpc.useUtils();
@@ -9,13 +16,17 @@ export default function TagsPage() {
     const tagsQuery = trpc.tag.list.useQuery();
 
     const deleteTag = trpc.tag.delete.useMutation({
-        onSuccess: () => {
-            utils.tag.list.invalidate();
-        },
+        onSuccess: () => utils.tag.list.invalidate(),
+    });
+
+    const updateTag = trpc.tag.update.useMutation({
+        onSuccess: () => utils.tag.list.invalidate(),
     });
 
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [errorMap, setErrorMap] = useState<Record<number, string>>({});
+    const [edit, setEdit] = useState<EditState>(null);
+    const [search, setSearch] = useState("");
 
     if (tagsQuery.isPending) {
         return (
@@ -25,25 +36,59 @@ export default function TagsPage() {
         );
     }
 
-    const tags = (tagsQuery.data ?? []).map(normalizeTag);
+    const tags = (tagsQuery.data ?? [])
+        .map(normalizeTag)
+        .filter((tag) =>
+            tag.name.toLowerCase().includes(search.toLowerCase()),
+        );
 
     function toggleTag(id: number) {
         setSelectedIds((prev) => {
             const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
+            next.has(id) ? next.delete(id) : next.add(id);
             return next;
         });
+    }
+
+    async function handleSaveEdit() {
+        if (!edit) return;
+
+        const trimmedName = edit.name.trim();
+
+        const nameTaken = tags.some(
+            (t) =>
+                t.id !== edit.id &&
+                t.name.toLowerCase() === trimmedName.toLowerCase(),
+        );
+
+        const colorTaken = tags.some(
+            (t) => t.id !== edit.id && (t.color ?? "") === edit.color,
+        );
+
+        if (nameTaken || colorTaken) {
+            setErrorMap((prev) => ({
+                ...prev,
+                [edit.id]: nameTaken
+                    ? "Name already in use"
+                    : "Color already in use",
+            }));
+            return;
+        }
+
+        await updateTag.mutateAsync({
+            id: edit.id,
+            name: trimmedName,
+            color: edit.color,
+        });
+
+        setEdit(null);
+        setErrorMap({});
     }
 
     async function handleBulkDelete() {
         if (selectedIds.size === 0) return;
 
-        const confirmed = confirm(
-            `Delete ${selectedIds.size} selected tag(s)?`,
-        );
-
-        if (!confirmed) return;
+        if (!confirm(`Delete ${selectedIds.size} selected tag(s)?`)) return;
 
         const errors: Record<number, string> = {};
 
@@ -57,81 +102,137 @@ export default function TagsPage() {
 
         setErrorMap(errors);
         setSelectedIds(new Set());
-
         utils.tag.list.invalidate();
     }
 
     return (
         <div className="mx-auto max-w-4xl p-6">
-            <h1 className="mb-6 text-2xl font-bold">Tag Management</h1>
+            <h1 className="mb-4 text-2xl font-bold">Tag Management</h1>
 
-            {/* BULK ACTION BAR */}
+            {/* SEARCH */}
+            <input
+                type="text"
+                placeholder="Search tags..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="mb-4 w-full rounded border px-3 py-2 text-sm"
+            />
+
+            {/* BULK BAR */}
             <div className="mb-4 flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
                     {selectedIds.size} selected
                 </p>
 
                 <button
-                    type="button"
                     onClick={handleBulkDelete}
-                    disabled={selectedIds.size === 0 || deleteTag.isPending}
-                    className="rounded-md bg-red-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                    disabled={selectedIds.size === 0}
+                    className="rounded-md bg-red-500 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
                 >
-                    <div className="flex items-center gap-1">
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete Selected
-                    </div>
+                    <Trash2 className="mr-1 inline h-3.5 w-3.5" />
+                    Delete Selected
                 </button>
             </div>
 
-            {tags.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No tags found.</p>
-            ) : (
-                <div className="grid gap-3">
-                    {tags.map((tag) => {
-                        const styles = renderTag(tag);
+            {/* TAG LIST */}
+            <div className="grid gap-3">
+                {tags.map((tag) => {
+                    const styles = renderTag(tag);
+                    const isEditing = edit?.id === tag.id;
 
-                        return (
-                            <div
-                                key={tag.id}
-                                className="flex items-center justify-between rounded-lg border border-border bg-card p-3"
-                            >
-                                {/* LEFT SIDE */}
-                                <div className="flex items-center gap-3">
-                                    {/* checkbox */}
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedIds.has(tag.id)}
-                                        onChange={() => toggleTag(tag.id)}
-                                        className="h-4 w-4"
-                                    />
+                    return (
+                        <div
+                            key={tag.id}
+                            className="flex items-center justify-between rounded-lg border border-border bg-card p-3"
+                        >
+                            <div className="flex items-center gap-3">
+                                {/* checkbox */}
+                                <input
+                                    type="checkbox"
+                                    checked={selectedIds.has(tag.id)}
+                                    onChange={() => toggleTag(tag.id)}
+                                />
 
-                                    {/* tag pill */}
+                                {/* TAG / EDIT */}
+                                {!isEditing ? (
                                     <span
                                         style={{
                                             backgroundColor: styles.bg,
                                             color: styles.text,
                                         }}
-                                        className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+                                        className="rounded-full px-3 py-1 text-xs font-medium"
                                     >
                     {tag.name}
                   </span>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            value={edit.name}
+                                            onChange={(e) =>
+                                                setEdit({ ...edit, name: e.target.value })
+                                            }
+                                            className="rounded border px-2 py-1 text-xs"
+                                        />
 
-                                    <span className="text-xs text-muted-foreground">
-                    #{tag.id}
-                  </span>
-                                </div>
+                                        <ColorPicker
+                                            value={edit.color}
+                                            onChange={(color) =>
+                                                setEdit((prev) =>
+                                                    prev ? { ...prev, color } : prev,
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                )}
 
-                                {/* RIGHT SIDE ERROR */}
+                                <span className="text-xs text-muted-foreground">
+                  #{tag.id}
+                </span>
+
                                 {errorMap[tag.id] && (
                                     <span className="text-xs text-red-500">
                     {errorMap[tag.id]}
                   </span>
                                 )}
                             </div>
-                        );
-                    })}
-                </div>
+
+                            {/* ACTIONS */}
+                            <div className="flex items-center gap-2">
+                                {!isEditing ? (
+                                    <button
+                                        onClick={() =>
+                                            setEdit({
+                                                id: tag.id,
+                                                name: tag.name,
+                                                color: tag.color ?? "#22c55e",
+                                            })
+                                        }
+                                        className="rounded border px-2 py-1 text-xs"
+                                    >
+                                        <Pencil className="h-3 w-3" />
+                                    </button>
+                                ) : (
+                                    <>
+                                        <button onClick={handleSaveEdit}>
+                                            <Check className="h-4 w-4 text-green-600" />
+                                        </button>
+
+                                        <button onClick={() => setEdit(null)}>
+                                            <X className="h-4 w-4 text-red-500" />
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* EMPTY STATE */}
+            {tags.length === 0 && (
+                <p className="mt-4 text-sm text-muted-foreground">
+                    No tags found.
+                </p>
             )}
         </div>
     );

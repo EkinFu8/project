@@ -1,7 +1,8 @@
 import { Plus, Tag, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { trpc } from "@/lib/trpc.ts";
 import {normalizeTag, renderTag } from "@/utils/tag";
+import {ColorPicker} from "@/pages/tags/components/ColorPicker.tsx";
 
 type TagShape = { id: number; name: string; color?: string };
 
@@ -16,20 +17,10 @@ export function TagInput({ selectedTags, onChange }: TagInputProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [dropdownQuery, setDropdownQuery] = useState("");
 
-  const [colorOpen, setColorOpen] = useState(false);
-  const [selectedColor, setSelectedColor] = useState("#22c55e");
+  const [selectedColor, setSelectedColor] = useState("#15803d");
 
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const colorRef = useRef<HTMLDivElement>(null);
 
-  const presetColors = [
-    "#7f1d1d", "#b91c1c", "#ef4444",
-    "#7c2d12", "#c2410c", "#f97316",
-    "#713f12", "#a16207", "#eab308",
-    "#14532d", "#15803d", "#22c55e",
-    "#1e3a8a", "#1d4ed8", "#3b82f6",
-    "#312e81", "#4338ca", "#6366f1",
-  ];
 
   const tagsQuery = trpc.tag.list.useQuery();
   const rawTags = tagsQuery.data ?? [];
@@ -38,24 +29,6 @@ export function TagInput({ selectedTags, onChange }: TagInputProps) {
     onSuccess: () => tagsQuery.refetch(),
   });
 
-  // close dropdowns on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      const target = e.target as Node;
-
-      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
-        setShowDropdown(false);
-        setDropdownQuery("");
-      }
-
-      if (colorRef.current && !colorRef.current.contains(target)) {
-        setColorOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
 
   const selectedIds = new Set(selectedTags.map((t) => t.id));
 
@@ -190,6 +163,12 @@ export function TagInput({ selectedTags, onChange }: TagInputProps) {
               className="flex-1 rounded border px-3 py-2 text-sm"
           />
 
+          {/* Color popover */}
+          <ColorPicker
+              value={selectedColor}
+              onChange={setSelectedColor}
+          />
+
           <button
               type="button"
               onClick={handleAddNewTag}
@@ -198,40 +177,6 @@ export function TagInput({ selectedTags, onChange }: TagInputProps) {
           >
             <Plus className="h-4 w-4" />
           </button>
-
-          {/* Color popover */}
-          <div className="relative" ref={colorRef}>
-            <button
-                type="button"
-                onClick={() => setColorOpen((v) => !v)}
-                className="rounded border px-3 py-2 text-sm"
-            >
-              Color
-              <span
-                  className="ml-2 inline-block h-3 w-3 rounded"
-                  style={{ backgroundColor: selectedColor }}
-              />
-            </button>
-
-            {colorOpen && (
-                <div className="absolute right-0 z-30 mt-2 w-16 rounded border bg-background p-2 shadow-lg">
-                  <div className="grid grid-cols-3 gap-1">
-                    {presetColors.map((color) => (
-                        <button
-                            key={color}
-                            type="button"
-                            onClick={() => {
-                              setSelectedColor(color);
-                              setColorOpen(false);
-                            }}
-                            className="h-4 w-4 rounded-sm border hover:scale-110 transition"
-                            style={{ backgroundColor: color }}
-                        />
-                    ))}
-                  </div>
-                </div>
-            )}
-          </div>
         </div>
       </div>
   );
