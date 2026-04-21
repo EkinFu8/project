@@ -8,6 +8,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { type RouterOutputs, trpc } from "@/lib/trpc.ts";
+import { renderTag } from "@/utils/tag";
 import { TagInput } from "./tag-input";
 
 function formatDateField(date: Date | string | null | undefined): string {
@@ -25,7 +26,7 @@ function displayDateLabel(value: string): string {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString();
 }
 
-type TagShape = { id: number; name: string };
+type TagShape = { id: number; name: string; color?: string };
 
 type ContentFormFieldsProps = {
   isEditing: boolean;
@@ -192,15 +193,23 @@ function ContentMetadataReadonlyTable({
               {selectedTags.length === 0 ? (
                 <span className="text-muted-foreground">—</span>
               ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedTags.map((tag) => (
-                    <span
-                      key={tag.id}
-                      className="inline-flex items-center rounded-full bg-hanover-green/10 px-2.5 py-0.5 text-xs font-medium text-hanover-green ring-1 ring-hanover-green/30"
-                    >
-                      {tag.name}
-                    </span>
-                  ))}
+                <div className="flex flex-wrap gap-x-1 gap-y-1.5">
+                  {selectedTags.map((tag) => {
+                    const styles = renderTag(tag);
+
+                    return (
+                      <span
+                        key={tag.id}
+                        style={{
+                          backgroundColor: styles.bg,
+                          color: styles.text,
+                        }}
+                        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors hover:opacity-80"
+                      >
+                        {tag.name}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </td>

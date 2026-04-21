@@ -1,6 +1,7 @@
 import { Lock } from "lucide-react";
 import { Link } from "react-router";
 import type { ContentItem } from "@/types/content";
+import { renderTag } from "@/utils/tag";
 
 type Props = {
   item: ContentItem;
@@ -11,6 +12,11 @@ type Props = {
 };
 
 export function ContentCard({ item, toggleFavorite, getStatusBadge }: Props) {
+  const MAX_VISIBLE_TAGS = 3;
+  const tags = item.content_tags ?? [];
+  const visibleTags = tags.slice(0, MAX_VISIBLE_TAGS);
+  const hiddenCount = tags.length - MAX_VISIBLE_TAGS;
+
   return (
     <Link
       to={`/hero/content/${item.fileID}/edit`}
@@ -53,16 +59,51 @@ export function ContentCard({ item, toggleFavorite, getStatusBadge }: Props) {
       </p>
 
       {/* TAGS */}
-      {item.content_tags?.length ? (
-        <div className="mb-2 flex flex-wrap gap-1 max-w-full overflow-hidden">
-          {item.content_tags.map((ct) => (
-            <span
-              key={ct.tag.id}
-              className="inline-flex items-center rounded-full bg-hanover-green/10 px-2 py-0.5 text-xs font-medium text-hanover-green"
-            >
-              {ct.tag.name}
-            </span>
-          ))}
+      {tags.length ? (
+        <div className="group/tags mb-2 flex flex-wrap gap-x-1 gap-y-1.5">
+          {visibleTags.map((ct) => {
+            const styles = renderTag(ct.tag);
+
+            return (
+              <span
+                key={ct.tag.id}
+                style={{
+                  backgroundColor: styles.bg,
+                  color: styles.text,
+                }}
+                className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium transition-all hover:opacity-80"
+              >
+                {ct.tag.name}
+              </span>
+            );
+          })}
+
+          {hiddenCount > 0 && (
+            <div className="relative">
+              <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground cursor-default">
+                +{hiddenCount} more
+              </span>
+
+              <div className="pointer-events-none absolute left-0 top-full z-10 mt-1 hidden max-w-[200px] flex-wrap gap-1 rounded border border-border bg-background p-2 shadow-md group-hover/tags:flex">
+                {tags.slice(MAX_VISIBLE_TAGS).map((ct) => {
+                  const styles = renderTag(ct.tag);
+
+                  return (
+                    <span
+                      key={ct.tag.id}
+                      style={{
+                        backgroundColor: styles.bg,
+                        color: styles.text,
+                      }}
+                      className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                    >
+                      {ct.tag.name}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       ) : null}
 
