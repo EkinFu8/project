@@ -35,7 +35,7 @@ export function ContentCard({
   const visibleTags = tags.slice(0, MAX_VISIBLE_TAGS);
   const hiddenCount = tags.length - MAX_VISIBLE_TAGS;
 
-  const isCheckedOutByMe = item.is_checked_out && item.checked_out_by === currentUserId;
+  const isCheckedOutByMe = !!(item.is_checked_out && item.checked_out_by === currentUserId);
   const checkedOutByName = item.checked_out_by_user?.name;
 
   return (
