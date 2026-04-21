@@ -14,7 +14,6 @@ type Props = {
 };
 
 export function ContentListItem({ item, toggleFavorite, getStatusBadge }: Props) {
-
   const MAX_VISIBLE_TAGS = 3;
   const tags = item.content_tags ?? [];
   const visibleTags = tags.slice(0, MAX_VISIBLE_TAGS);
@@ -54,8 +53,6 @@ export function ContentListItem({ item, toggleFavorite, getStatusBadge }: Props)
         </div>
       </div>
 
-
-
       {/* RIGHT SIDE */}
       <div className="flex items-center gap-2">
         {item.is_checked_out && (
@@ -67,51 +64,51 @@ export function ContentListItem({ item, toggleFavorite, getStatusBadge }: Props)
 
         {/* TAGS */}
         {tags.length ? (
-            <div className="group/tags flex flex-wrap gap-1">
-              {visibleTags.map((ct) => {
-                const styles = renderTag(ct.tag);
+          <div className="group/tags flex flex-wrap gap-1">
+            {visibleTags.map((ct) => {
+              const styles = renderTag(ct.tag);
 
-                return (
-                    <span
+              return (
+                <span
+                  key={ct.tag.id}
+                  style={{
+                    backgroundColor: styles.bg,
+                    color: styles.text,
+                  }}
+                  className="inline-flex items-center rounded-full px-2 py-.5 text-xs font-medium"
+                >
+                  {ct.tag.name}
+                </span>
+              );
+            })}
+
+            {hiddenCount > 0 && (
+              <div className="relative">
+                <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                  +{hiddenCount}
+                </span>
+
+                <div className="pointer-events-none absolute left-0 top-full z-10 mt-1 hidden max-w-[200px] flex-wrap gap-1 rounded border border-border bg-background p-2 shadow-md group-hover/tags:flex">
+                  {tags.slice(MAX_VISIBLE_TAGS).map((ct) => {
+                    const styles = renderTag(ct.tag);
+
+                    return (
+                      <span
                         key={ct.tag.id}
                         style={{
                           backgroundColor: styles.bg,
                           color: styles.text,
                         }}
-                        className="inline-flex items-center rounded-full px-2 py-.5 text-xs font-medium"
-                    >
-          {ct.tag.name}
-        </span>
-                );
-              })}
-
-              {hiddenCount > 0 && (
-                  <div className="relative">
-        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-          +{hiddenCount}
-        </span>
-
-                    <div className="pointer-events-none absolute left-0 top-full z-10 mt-1 hidden max-w-[200px] flex-wrap gap-1 rounded border border-border bg-background p-2 shadow-md group-hover/tags:flex">
-                      {tags.slice(MAX_VISIBLE_TAGS).map((ct) => {
-                        const styles = renderTag(ct.tag);
-
-                        return (
-                            <span
-                                key={ct.tag.id}
-                                style={{
-                                  backgroundColor: styles.bg,
-                                  color: styles.text,
-                                }}
-                                className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                            >
-                {ct.tag.name}
-              </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-              )}
-            </div>
+                        className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                      >
+                        {ct.tag.name}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         ) : null}
 
         <button

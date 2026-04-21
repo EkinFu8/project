@@ -24,8 +24,8 @@ import EmployeeDetailPage from "@/pages/employees/employee-detail.tsx";
 import EmployeesPage from "@/pages/employees/page.tsx";
 import HeroLayout from "@/pages/hero/layout.tsx";
 import LoginFormPage from "@/pages/login.tsx";
-import UnderwriterPage from "@/pages/underwriter/page.tsx";
 import TagsPage from "@/pages/tags/TagsPage";
+import UnderwriterPage from "@/pages/underwriter/page.tsx";
 
 function LegacyContentEditRedirect() {
   const { id } = useParams<{ id: string }>();
