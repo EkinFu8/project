@@ -1,5 +1,15 @@
 import { Loader2 } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { trpc } from "@/lib/trpc";
+
+const TOOLTIP_STYLE = {
+  backgroundColor: "var(--color-card)",
+  border: "1px solid var(--color-border)",
+  borderRadius: "0.5rem",
+  color: "var(--color-foreground)",
+  fontSize: "0.75rem",
+  padding: "0.5rem 0.625rem",
+} as const;
 
 function formatAction(action: string) {
   const map: Record<string, string> = {
@@ -48,9 +58,26 @@ export function MetricsView() {
 
   const errorRate = metrics.data.errorRate ?? 0;
 
+  const activitySummaryData = [
+    { name: "Uploads", value: auditSummary.data?.uploads ?? 0 },
+    { name: "Downloads", value: auditSummary.data?.downloads ?? 0 },
+    { name: "Edits", value: auditSummary.data?.edits ?? 0 },
+    { name: "Deletes", value: auditSummary.data?.deletes ?? 0 },
+  ];
+
+  const activeUserCounts = new Map<string, number>();
+  for (const event of auditRecent.data ?? []) {
+    const name = event.user?.name ?? "Unknown User";
+    activeUserCounts.set(name, (activeUserCounts.get(name) ?? 0) + 1);
+  }
+
+  const topUsersData = Array.from(activeUserCounts.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6);
+
   return (
     <>
-      {/* METRICS */}
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
         <div className="rounded border border-border bg-card p-4 shadow-sm">
           <p className="text-sm text-muted-foreground">Requests</p>
@@ -73,34 +100,71 @@ export function MetricsView() {
         </div>
       </div>
 
-      {/* AUDIT SUMMARY */}
-      <div className="mb-8">
-        <h2 className="mb-3 text-xl font-semibold text-foreground">Document Activity</h2>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <div className="rounded border border-border bg-card p-4 shadow-sm">
-            <p className="text-sm text-muted-foreground">Uploads</p>
-            <p className="text-xl font-bold text-foreground">{auditSummary.data?.uploads ?? 0}</p>
+      <div className="mb-8 grid gap-4 lg:grid-cols-2">
+        <div className="rounded border border-border bg-card p-4 shadow-sm">
+          <h2 className="mb-3 text-xl font-semibold text-foreground">Document Activity</h2>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={activitySummaryData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+                <CartesianGrid vertical={false} stroke="var(--color-border)" />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "var(--color-muted)" }} />
+                <Bar dataKey="value" fill="#497728" radius={[4, 4, 0, 0]} barSize={42} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
+        </div>
 
-          <div className="rounded border border-border bg-card p-4 shadow-sm">
-            <p className="text-sm text-muted-foreground">Downloads</p>
-            <p className="text-xl font-bold text-foreground">{auditSummary.data?.downloads ?? 0}</p>
-          </div>
-
-          <div className="rounded border border-border bg-card p-4 shadow-sm">
-            <p className="text-sm text-muted-foreground">Edits</p>
-            <p className="text-xl font-bold text-foreground">{auditSummary.data?.edits ?? 0}</p>
-          </div>
-
-          <div className="rounded border border-border bg-card p-4 shadow-sm">
-            <p className="text-sm text-muted-foreground">Deletes</p>
-            <p className="text-xl font-bold text-foreground">{auditSummary.data?.deletes ?? 0}</p>
+        <div className="rounded border border-border bg-card p-4 shadow-sm">
+          <h2 className="mb-3 text-xl font-semibold text-foreground">Top Active Users</h2>
+          <div className="h-72">
+            {topUsersData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                No recent activity.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={topUsersData}
+                  layout="vertical"
+                  margin={{ top: 8, right: 16, bottom: 0, left: 8 }}
+                >
+                  <CartesianGrid horizontal={false} stroke="var(--color-border)" />
+                  <XAxis
+                    type="number"
+                    allowDecimals={false}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={110}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                  />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "var(--color-muted)" }} />
+                  <Bar dataKey="value" fill="#1B2A4A" radius={[0, 4, 4, 0]} barSize={18} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
 
-      {/* RECENT AUDIT LOG */}
       <div className="mb-8">
         <h2 className="mb-3 text-xl font-semibold text-foreground">Recent Activity</h2>
 
@@ -111,9 +175,7 @@ export function MetricsView() {
               className="flex flex-col gap-1 p-3 text-sm md:flex-row md:justify-between"
             >
               <div>
-                <span className="font-medium text-foreground">
-                  {a.user?.name ?? "Unknown User"}
-                </span>{" "}
+                <span className="font-medium text-foreground">{a.user?.name ?? "Unknown User"}</span>{" "}
                 <span className="text-muted-foreground">
                   {a.user?.employee_code ? `(${a.user.employee_code})` : ""}
                 </span>{" "}
@@ -129,7 +191,6 @@ export function MetricsView() {
         </div>
       </div>
 
-      {/* SYSTEM PERFORMANCE */}
       <div>
         <h2 className="mb-3 text-xl font-semibold text-foreground">System Performance</h2>
 
