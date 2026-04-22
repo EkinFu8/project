@@ -16,10 +16,11 @@ function buildPersonaContent(
   ownerIds: [string, string],
 ) {
   return templates.map((template, index) => ({
-    fileID: `${persona.toUpperCase().replace(/-/g, "_")}_${String(index + 1).padStart(2, "0")}`.slice(
-      0,
-      64,
-    ),
+    fileID:
+      `${persona.toUpperCase().replace(/-/g, "_")}_${String(index + 1).padStart(2, "0")}`.slice(
+        0,
+        64,
+      ),
     owner_id: ownerIds[index % ownerIds.length],
     job_position: persona,
     ...template,

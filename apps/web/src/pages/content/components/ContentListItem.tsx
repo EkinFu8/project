@@ -61,9 +61,7 @@ export function ContentListItem({
           </span>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          {item.url ?? "No URL"}
-        </p>
+        <p className="text-xs text-muted-foreground">{item.url ?? "No URL"}</p>
 
         <p className="text-xs text-muted-foreground">
           {item.content_type ?? "—"} · {item.job_position ?? "—"}
