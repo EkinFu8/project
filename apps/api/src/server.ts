@@ -16,9 +16,7 @@ const explicitCorsOrigins = process.env.CORS_ORIGINS
 /** Used in production when CORS_ORIGINS is unset (local prod smoke tests). */
 const localhostAppOrigins = [
   "http://localhost:5173",
-  "http://localhost:5174",
   "http://127.0.0.1:5173",
-  "http://127.0.0.1:5174",
 ];
 
 function setCorsHeaders(req: http.IncomingMessage, res: http.ServerResponse) {
