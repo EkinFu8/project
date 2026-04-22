@@ -105,7 +105,10 @@ export function MetricsView() {
           <h2 className="mb-3 text-xl font-semibold text-foreground">Document Activity</h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={activitySummaryData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+              <BarChart
+                data={activitySummaryData}
+                margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+              >
                 <CartesianGrid vertical={false} stroke="var(--color-border)" />
                 <XAxis
                   dataKey="name"
@@ -175,7 +178,9 @@ export function MetricsView() {
               className="flex flex-col gap-1 p-3 text-sm md:flex-row md:justify-between"
             >
               <div>
-                <span className="font-medium text-foreground">{a.user?.name ?? "Unknown User"}</span>{" "}
+                <span className="font-medium text-foreground">
+                  {a.user?.name ?? "Unknown User"}
+                </span>{" "}
                 <span className="text-muted-foreground">
                   {a.user?.employee_code ? `(${a.user.employee_code})` : ""}
                 </span>{" "}
