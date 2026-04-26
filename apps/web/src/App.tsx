@@ -27,6 +27,7 @@ import LoginFormPage from "@/pages/login.tsx";
 import TagsPage from "@/pages/tags/TagsPage";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
 import AboutPage from "@/pages/about/page.tsx";
+import CreditsPage from "@/pages/credits/page.tsx";
 
 
 function LegacyContentEditRedirect() {
@@ -176,6 +177,7 @@ function App() {
           <Route path="/dashboard/" element={<DashboardPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/about" element={<AboutPage/>} />
+          <Route path="/credits" element={<CreditsPage/>}/>
 
           {/* Legacy redirects */}
           <Route path="/content" element={<Navigate to="/hero/content" replace />} />
