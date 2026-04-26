@@ -85,6 +85,12 @@ function AppPage(){
                 {members.map((m)=><GenericCard key={m.title} title={m.title} subtitle={m.subtitle} image={m.image}/>)}
             </div>
 
+            <br/>
+            <div className={"w-full flex justify-center-safe text-center m-4"}>
+                <div className={"w-fit border-4 p-4"}>
+                    <span>Thank you Hanover Insurance and their representatives, Brandon Roche, Deputy CIO, and Meaghan Jenket, Principle Business Architect.</span>
+                </div>
+            </div>
 
         </>
 
