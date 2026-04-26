@@ -26,6 +26,8 @@ import HeroLayout from "@/pages/hero/layout.tsx";
 import LoginFormPage from "@/pages/login.tsx";
 import TagsPage from "@/pages/tags/TagsPage";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
+import AboutPage from "@/pages/about/page.tsx";
+
 
 function LegacyContentEditRedirect() {
   const { id } = useParams<{ id: string }>();
@@ -173,6 +175,7 @@ function App() {
           {/* Shared */}
           <Route path="/dashboard/" element={<DashboardPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/about" element={<AboutPage/>} />
 
           {/* Legacy redirects */}
           <Route path="/content" element={<Navigate to="/hero/content" replace />} />
