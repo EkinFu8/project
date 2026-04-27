@@ -186,7 +186,7 @@ export const contentRouter = router({
 
     const results = await ctx.prisma.contentManagement.findMany({
       where,
-      orderBy: [{ is_favorited: "desc" }, { last_modified: "desc" }],
+      orderBy: [/*{ is_favorited: "desc" }, */{ last_modified: "desc" }],
       include: {
         owner: { select: ownerSelect },
         checked_out_by_user: { select: checkedOutByUserSelect },

@@ -2,7 +2,7 @@ import DocViewer, { DocViewerRenderers } from "@iamjariwala/react-doc-viewer";
 import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
 import "@iamjariwala/react-doc-viewer/dist/index.css";
-import { ArrowLeft, Loader2, Lock, Pencil, Unlock } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, Pencil, Unlock, X, AlertTriangle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useSession } from "@/auth/session-context";
@@ -298,28 +298,26 @@ function ContentFormSummarySection({
           {mutationError}
         </div>
       )}
-
-      {canEdit ? (
-        <div className="flex justify-between">
-          <button
-            type="button"
-            onClick={() => onDelete()}
-            disabled={isSaving || isUploading}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-500/90 disabled:opacity-60"
-          >
-            {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
-            Delete Content
-          </button>
-          <button
-            type="submit"
-            disabled={isSaving || isUploading}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-6 py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
-          >
-            {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
-            {submitLabel}
-          </button>
-        </div>
-      ) : null}
+        {canEdit ??
+          <div className="flex justify-between">
+            <button
+              type="button"
+              onClick={() => onDelete()}
+              disabled={isSaving || isUploading}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-500/90 disabled:opacity-0"
+            >
+              {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+              Delete Content
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving || isUploading}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-6 py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-0"
+            >
+              {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+              {submitLabel}
+            </button>
+          </div>}
     </>
   );
 }
@@ -803,6 +801,7 @@ function ContentFormPage() {
   const [askConfirmation, setAskConfirmation] = useState(false);
   const [pendingData, setPendingData] = useState<Parameters<typeof update.mutate>[0] | null>(null);
   const [operation, setOperation] = useState("");
+  const [showReminder, setShowReminder] = useState(false);
 
   const handleUploadSuccess = useCallback(
     (result: { publicUrl: string; storagePath: string; fileName: string }) => {
@@ -825,6 +824,16 @@ function ContentFormPage() {
     onSuccess: handleUploadSuccess,
   });
 
+  function handleExpirationReminder(expiration_date: string | null): void {
+    if (expiration_date) {
+      const expiration = new Date(expiration_date);
+      const today = new Date();
+      if (expiration <= today) setShowReminder(true);
+      console.log("dates comparison below")
+      console.log(expiration <= today)
+    }
+  }
+
   useEffect(() => {
     const d = existing.data;
     if (!d) return;
@@ -838,6 +847,7 @@ function ContentFormPage() {
     setContentType(d.content_type ?? "");
     setDocumentStatus(d.document_status ?? "");
     setSelectedTags(d.content_tags?.map((ct) => ct.tag) ?? []);
+    handleExpirationReminder(d.expiration_date);
   }, [existing.data]);
 
   const utils = trpc.useUtils();
@@ -963,9 +973,24 @@ function ContentFormPage() {
   }
 
   const checkoutError = checkout.error || checkin.error || forceUnlock.error;
-
   return (
     <>
+      {showReminder && (
+          <div className="fixed bottom-2 right-2 gap-2 rounded-lg border border-destructive/40 bg-destructive/10 pl-10 pr-8 py-5 text-sm font-medium text-destructive">
+            <div className="absolute right-1 top-1">
+              <button type="button" className="hover:bg-destructive/30 rounded-md" onClick={() => setShowReminder(false)}>
+                <X className="size-4"/>
+              </button>
+            </div>
+            <div className="flex flex-row">
+              <div className="absolute left-1">
+                <AlertTriangle />
+              </div>
+              <div>
+                <p className="text-lg">Expired content. Review needed.</p>
+              </div>
+            </div>
+          </div>)}
       {isEditing && (
         <div className="mx-auto max-w-4xl px-4 pt-4 sm:px-6 lg:px-8">
           {!hasRoleAccess && (
@@ -1110,6 +1135,8 @@ function ContentFormPage() {
                 type="button"
                 onClick={() => {
                   setAskConfirmation(false);
+                  const data = existing.data
+                  if (data) handleExpirationReminder(data.expiration_date);
                   if (pendingData && operation === "update") update.mutate(pendingData);
                   if ((!isCheckedOut || isCheckedOutByMe) && operation === "delete")
                     remove.mutate({ fileID: id! });
