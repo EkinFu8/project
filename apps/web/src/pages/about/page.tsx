@@ -1,14 +1,14 @@
-import GenericCard from "@/pages/content/components/GenericCard.tsx";
-import RafealImage from "@/assets/rafael.png";
 import ColinImage from "@/assets/colin.png";
-import JacobMajorImage from "@/assets/jacob major.png";
-import MaxwellWImage from "@/assets/maxwell w.png";
-import MaxCImage from "@/assets/max c.png";
-import JacobMolniaImage from "@/assets/jacob molnia.png";
-import TobiasImage from "@/assets/tobias.jpg";
 import EkingsImage from "@/assets/ekin.png";
-import RusselsImage from "@/assets/russel.png";
+import JacobMajorImage from "@/assets/jacob major.png";
+import JacobMolniaImage from "@/assets/jacob molnia.png";
+import MaxCImage from "@/assets/max c.png";
+import MaxwellWImage from "@/assets/maxwell w.png";
 import MyantonomoImage from "@/assets/myantonomo.png";
+import RafealImage from "@/assets/rafael.png";
+import RusselsImage from "@/assets/russel.png";
+import TobiasImage from "@/assets/tobias.jpg";
+import GenericCard from "@/pages/content/components/GenericCard.tsx";
 
 function AppPage() {
   const members = [
