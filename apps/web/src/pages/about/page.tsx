@@ -10,7 +10,7 @@ import RusselsImage from "@/assets/russel.png";
 import TobiasImage from "@/assets/tobias.jpg";
 import GenericCard from "@/pages/content/components/GenericCard.tsx";
 
-function AppPage() {
+function AboutPage() {
   const members = [
     {
       title: "Rafael Mirzoyan",
@@ -98,4 +98,4 @@ function AppPage() {
   );
 }
 
-export default AppPage;
+export default AboutPage;
