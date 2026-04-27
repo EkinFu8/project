@@ -275,6 +275,7 @@ export const contentRouter = router({
         where: { fileID },
       });
 
+      if (!file) throw new Error("File not found");
       assertCanEdit(file, userId, userRole);
 
       if (!canEditForRole(userRole, file?.job_position)) {
@@ -321,7 +322,7 @@ export const contentRouter = router({
         },
       });
 
-      if (input.owner_id !== undefined && file?.owner_id !== input.owner_id) {
+      if (input.owner_id !== undefined && file.owner_id !== input.owner_id) {
         const [oldOwner, newOwner] = await Promise.all([
           file.owner_id
             ? ctx.prisma.userProfile.findUnique({
