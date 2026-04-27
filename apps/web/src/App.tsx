@@ -28,7 +28,6 @@ import TagsPage from "@/pages/tags/TagsPage";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
 import AboutPage from "@/pages/about/page.tsx";
 
-
 function LegacyContentEditRedirect() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={`/hero/content/${id}/edit`} replace />;
@@ -175,7 +174,7 @@ function App() {
           {/* Shared */}
           <Route path="/dashboard/" element={<DashboardPage />} />
           <Route path="/account" element={<AccountPage />} />
-          <Route path="/about" element={<AboutPage/>} />
+          <Route path="/about" element={<AboutPage />} />
 
           {/* Legacy redirects */}
           <Route path="/content" element={<Navigate to="/hero/content" replace />} />
