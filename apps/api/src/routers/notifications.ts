@@ -143,6 +143,7 @@ export const notificationsRouter = router({
             message: overdue
               ? "Review date passed — follow up."
               : "Review due in the next 30 days.",
+            actorName: null,
           };
         }),
       ...ownershipEvents.map((event) => {
