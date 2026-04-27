@@ -8,6 +8,8 @@ import { ContentFilters } from "./components/ContentFilters";
 import { ContentGrid } from "./components/ContentGrid";
 import { useContentFilters } from "./hooks/useContentFilters";
 import { useDebouncedValue } from "./hooks/useDebouncedValue";
+import { useEffect } from "react";
+import { useFavorites } from "@/store/favorites";
 
 const ROLE_TABS = [
   { key: "all", label: "All Users" },
@@ -45,8 +47,18 @@ export default function ContentPage() {
 
   const utils = trpc.useUtils();
 
-  const toggleFavorite = trpc.content.update.useMutation({
-    onSuccess: () => utils.content.list.invalidate(),
+  const { toggle } = useFavorites();
+
+  const toggleFavorite = trpc.content.toggleFavorite.useMutation({
+    onMutate: async ({ fileID }) => {
+      toggle(fileID); // instant UI update
+    },
+    onError: (_err, { fileID }) => {
+      toggle(fileID); // rollback
+    },
+    onSuccess: () => {
+      utils.content.list.invalidate();
+    },
   });
 
   const checkin = trpc.content.checkin.useMutation({
@@ -63,9 +75,31 @@ export default function ContentPage() {
     pinnedTagId: filters.pinnedTagId ?? undefined,
   });
 
+  const { setAll, isFavorited } = useFavorites();
+
+  useEffect(() => {
+    if (!contents.data) return;
+
+    const favIds = contents.data
+        .filter((c) => c.is_favorited)
+        .map((c) => c.fileID);
+
+    setAll(favIds);
+  }, [contents.data, setAll]);
+
   const allItems = contents.data?.map(normalizeContent) ?? [];
 
-  const filtered = allItems;
+  const filtered = [...allItems].sort((a, b) => {
+    const aFav = isFavorited(a.fileID) ? 1 : 0;
+    const bFav = isFavorited(b.fileID) ? 1 : 0;
+
+    if (bFav !== aFav) return bFav - aFav;
+
+    return (
+        new Date(b.last_modified ?? 0).getTime() -
+        new Date(a.last_modified ?? 0).getTime()
+    );
+  });
 
   return (
     <div className="border-t border-border/60 py-6 sm:py-8">
