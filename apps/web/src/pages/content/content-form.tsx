@@ -504,11 +504,11 @@ function ContentFormMetadataSection({
         onChange={(e) => setExpirationDate(e.target.value)}
       />
       <TextInput
-          label="Next Review Date"
-          type="date"
-          value={nextReviewDate}
-          onChange={(e) => setNextReviewDate(e.target.value)}
-          min={new Date().toISOString().split("T")[0]}
+        label="Next Review Date"
+        type="date"
+        value={nextReviewDate}
+        onChange={(e) => setNextReviewDate(e.target.value)}
+        min={new Date().toISOString().split("T")[0]}
       />
       <div>
         <label htmlFor="content-type" className="mb-2 block text-sm font-semibold text-foreground">

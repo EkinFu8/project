@@ -19,7 +19,7 @@ export const createContentSchema = z.object({
   tagIds: z.array(z.number().int()).optional(),
 });
 
-export const updateContentSchema = createContentSchema.omit({fileID: true }).partial();
+export const updateContentSchema = createContentSchema.omit({ fileID: true }).partial();
 
 export const contentListQuerySchema = z.object({
   document_status: z.string().optional(),
