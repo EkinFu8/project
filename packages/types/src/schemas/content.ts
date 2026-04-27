@@ -12,13 +12,14 @@ export const createContentSchema = z.object({
   job_position: z.string().max(20).nullish(),
   last_modified: z.coerce.date().nullish(),
   expiration_date: z.coerce.date().nullish(),
+  next_review_date: z.coerce.date().nullish(),
   content_type: z.enum(["Reference", "Workflow"]).nullish(),
   document_status: z.enum(["Created", "in-progress", "Finalized", "Archived"]).nullish(),
   is_favorited: z.boolean().optional(),
   tagIds: z.array(z.number().int()).optional(),
 });
 
-export const updateContentSchema = createContentSchema.omit({ fileID: true }).partial();
+export const updateContentSchema = createContentSchema.omit({fileID: true }).partial();
 
 export const contentListQuerySchema = z.object({
   document_status: z.string().optional(),

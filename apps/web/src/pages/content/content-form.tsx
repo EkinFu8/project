@@ -44,6 +44,8 @@ type ContentFormFieldsProps = {
   setLastModified: (v: string) => void;
   expirationDate: string;
   setExpirationDate: (v: string) => void;
+  nextReviewDate: string;
+  setNextReviewDate: (v: string) => void;
   contentType: string;
   setContentType: (v: string) => void;
   documentStatus: string;
@@ -389,6 +391,8 @@ function ContentFormMetadataSection({
   setLastModified,
   expirationDate,
   setExpirationDate,
+  nextReviewDate,
+  setNextReviewDate,
   contentType,
   setContentType,
   documentStatus,
@@ -420,6 +424,8 @@ function ContentFormMetadataSection({
   setLastModified: (v: string) => void;
   expirationDate: string;
   setExpirationDate: (v: string) => void;
+  nextReviewDate: string;
+  setNextReviewDate: (v: string) => void;
   contentType: string;
   setContentType: (v: string) => void;
   documentStatus: string;
@@ -497,7 +503,13 @@ function ContentFormMetadataSection({
         value={expirationDate}
         onChange={(e) => setExpirationDate(e.target.value)}
       />
-
+      <TextInput
+          label="Next Review Date"
+          type="date"
+          value={nextReviewDate}
+          onChange={(e) => setNextReviewDate(e.target.value)}
+          min={new Date().toISOString().split("T")[0]}
+      />
       <div>
         <label htmlFor="content-type" className="mb-2 block text-sm font-semibold text-foreground">
           Content Type
@@ -610,6 +622,8 @@ function ContentFormFields({
   setLastModified,
   expirationDate,
   setExpirationDate,
+  nextReviewDate,
+  setNextReviewDate,
   contentType,
   setContentType,
   documentStatus,
@@ -758,6 +772,8 @@ function ContentFormFields({
                 setLastModified={setLastModified}
                 expirationDate={expirationDate}
                 setExpirationDate={setExpirationDate}
+                nextReviewDate={nextReviewDate}
+                setNextReviewDate={setNextReviewDate}
                 contentType={contentType}
                 setContentType={setContentType}
                 documentStatus={documentStatus}
@@ -797,6 +813,7 @@ function ContentFormPage() {
   const [jobPosition, setJobPosition] = useState("");
   const [lastModified, setLastModified] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
+  const [nextReviewDate, setNextReviewDate] = useState("");
   const [contentType, setContentType] = useState("");
   const [documentStatus, setDocumentStatus] = useState("");
   const [selectedTags, setSelectedTags] = useState<{ id: number; name: string }[]>([]);
@@ -835,6 +852,7 @@ function ContentFormPage() {
     setJobPosition(d.job_position ?? "");
     setLastModified(formatDateField(d.last_modified));
     setExpirationDate(formatDateField(d.expiration_date));
+    setNextReviewDate(formatDateField(d.next_review_date));
     setContentType(d.content_type ?? "");
     setDocumentStatus(d.document_status ?? "");
     setSelectedTags(d.content_tags?.map((ct) => ct.tag) ?? []);
@@ -923,6 +941,17 @@ function ContentFormPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    if (nextReviewDate) {
+      const today = new Date();
+      const selected = new Date(nextReviewDate);
+
+      today.setHours(0, 0, 0, 0);
+
+      if (selected < today) {
+        alert("Next review date cannot be in the past");
+        return;
+      }
+    }
     let finalID = fileID;
     if (!fileID) {
       finalID = url.slice(-64);
@@ -937,6 +966,7 @@ function ContentFormPage() {
       job_position: toNullable(jobPosition),
       last_modified: lastModified ? new Date(lastModified) : null,
       expiration_date: expirationDate ? new Date(expirationDate) : null,
+      next_review_date: nextReviewDate ? new Date(nextReviewDate) : null,
       content_type: toNullable<"Reference" | "Workflow">(contentType as "Reference" | "Workflow"),
       document_status: toNullable<"Created" | "in-progress" | "Finalized" | "Archived">(
         documentStatus as "Created" | "in-progress" | "Finalized" | "Archived",
@@ -1074,6 +1104,8 @@ function ContentFormPage() {
         setLastModified={setLastModified}
         expirationDate={expirationDate}
         setExpirationDate={setExpirationDate}
+        nextReviewDate={nextReviewDate}
+        setNextReviewDate={setNextReviewDate}
         contentType={contentType}
         setContentType={setContentType}
         documentStatus={documentStatus}
