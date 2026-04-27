@@ -1,5 +1,30 @@
 import { protectedProcedure, router } from "../lib/trpc";
 
+// Prisma loses row types when `where` is Record<string, unknown> (see content.list); cast keeps callbacks typed.
+type ContentSummaryRow = {
+  fileID: string;
+  filename: string | null;
+  expiration_date: Date | null;
+};
+
+type AuditChangeEventRow = {
+  id: string;
+  action: string;
+  createdAt: Date;
+  fileName: string | null;
+  documentId: string | null;
+  user: { name: string } | null;
+};
+
+type AuditOwnershipEventRow = {
+  id: string;
+  createdAt: Date;
+  fileName: string | null;
+  documentId: string | null;
+  metadata: unknown;
+  user: { name: string } | null;
+};
+
 function normalizeRole(role?: string | null) {
   return (role ?? "").toLowerCase().replace(/\s+/g, "-").trim();
 }
@@ -25,29 +50,29 @@ export const notificationsRouter = router({
 
     const isAdmin = profile?.role === "admin";
     // Only content for this user's job bucket; admins see everything (same spirit as content list by role).
-    const where = isAdmin
+    const contentWhere: Record<string, unknown> = isAdmin
       ? {}
       : {
           OR: [{ job_position: null }, { job_position: { in: roleVariants(profile?.role) } }],
         };
 
-    const content = await ctx.prisma.contentManagement.findMany({
-      where,
+    const content = (await ctx.prisma.contentManagement.findMany({
+      where: contentWhere,
       select: {
         fileID: true,
         filename: true,
         expiration_date: true,
       },
       orderBy: { fileID: "asc" },
-    });
+    })) as ContentSummaryRow[];
 
     const byFileId = new Map(content.map((row) => [row.fileID, row]));
     const ids = content.map((row) => row.fileID);
 
-    const changeEvents =
+    const changeEvents: AuditChangeEventRow[] =
       ids.length === 0
         ? []
-        : await ctx.prisma.auditEvent.findMany({
+        : ((await ctx.prisma.auditEvent.findMany({
             where: {
               action: { in: ["upload", "edit"] },
               documentId: { in: ids },
@@ -62,12 +87,12 @@ export const notificationsRouter = router({
             },
             orderBy: { createdAt: "desc" },
             take: 100,
-          });
+          })) as AuditChangeEventRow[]);
 
-    const ownershipEvents =
+    const ownershipEvents: AuditOwnershipEventRow[] =
       ids.length === 0
         ? []
-        : await ctx.prisma.auditEvent.findMany({
+        : ((await ctx.prisma.auditEvent.findMany({
             where: {
               action: "ownership-update",
               documentId: { in: ids },
@@ -82,7 +107,7 @@ export const notificationsRouter = router({
             },
             orderBy: { createdAt: "desc" },
             take: 100,
-          });
+          })) as AuditOwnershipEventRow[]);
 
     const now = Date.now();
     const reviewHorizon = now + REVIEW_LOOKAHEAD_MS;
@@ -96,9 +121,8 @@ export const notificationsRouter = router({
           type: "document-change" as const,
           createdAt: event.createdAt,
           fileID: docId,
-          fileName: event.fileName ?? fallbackName ?? docId || "Unknown document",
-          message:
-            event.action === "upload" ? "New content was added." : "This item was updated.",
+          fileName: event.fileName ?? fallbackName ?? (docId || "Unknown document"),
+          message: event.action === "upload" ? "New content was added." : "This item was updated.",
           actorName: event.user?.name ?? null,
         };
       }),
