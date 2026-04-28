@@ -11,8 +11,13 @@ function LinkCard({ title, subtitle, image, link }: Props) {
   return (
     <>
       <div
+        role="button"
         onClick={handleClick}
         className="w-xs cursor-pointer min-w-3xs group rounded border flex flex-col items-center bg-card shadow-sm transition-all hover:border-hanover-green hover:shadow-md p-5"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') handleClick();
+        }}
+        tabIndex={0}
       >
         <img className="object-scale-down h-50 w-50" src={image} />
         <br />
