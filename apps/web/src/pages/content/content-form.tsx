@@ -300,7 +300,6 @@ function ContentFormSummarySection({
   createError,
   updateError,
   mutationError,
-  submitLabel,
   onDelete,
 }: {
   filename: string;
@@ -323,7 +322,6 @@ function ContentFormSummarySection({
   createError: unknown;
   updateError: unknown;
   mutationError: string;
-  submitLabel: string;
   onDelete: () => void;
 }) {
   return (
