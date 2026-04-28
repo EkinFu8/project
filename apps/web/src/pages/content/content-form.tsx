@@ -846,7 +846,6 @@ function ContentFormFields({
                 createError={createError}
                 updateError={updateError}
                 mutationError={mutationError}
-                submitLabel={submitLabel}
                 onDelete={onDelete}
               />
             ) : (
