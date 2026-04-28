@@ -1,5 +1,6 @@
 export { type AccountPortal, accountPortalFromUserMetadata } from "../account-portal";
 export {
+  ALLOWED_EXTENSIONS,
   type ContentId,
   type ContentListQuery,
   type CreateContent,
@@ -8,6 +9,8 @@ export {
   contentListQuerySchema,
   createContentSchema,
   createTagSchema,
+  FORMAT_GROUPS,
+  type FormatGroup,
   type TagId,
   tagIdSchema,
   type UpdateContent,
