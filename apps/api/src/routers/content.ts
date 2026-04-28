@@ -331,22 +331,22 @@ export const contentRouter = router({
       ...rest,
       format,
       owner: owner_id
-          ? {
+        ? {
             connect: { id: owner_id },
           }
-          : undefined,
+        : undefined,
     };
 
     const result = await ctx.prisma.contentManagement.create({
       data:
-          tagIds && tagIds.length > 0
-              ? {
-                ...data,
-                content_tags: {
-                  create: tagIds.map((id) => ({ tagId: id })),
-                },
-              }
-              : data,
+        tagIds && tagIds.length > 0
+          ? {
+              ...data,
+              content_tags: {
+                create: tagIds.map((id) => ({ tagId: id })),
+              },
+            }
+          : data,
       include: {
         owner: { select: ownerSelect },
         checked_out_by_user: { select: checkedOutByUserSelect },
