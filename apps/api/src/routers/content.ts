@@ -8,6 +8,7 @@ import {
 } from "@myapp/types/schemas";
 import type { Prisma } from "@prisma/client";
 import { publicProcedure, router } from "../lib/trpc";
+import { enqueueOcr } from "../services/ocr-queue";
 
 const ownerSelect = {
   id: true,
@@ -210,11 +211,34 @@ export const contentRouter = router({
       };
     }
 
+    // Map of fileID → matchedInContent (true when hit came from body, not title)
+    const matchedInContentMap = new Map<string, boolean>();
+
     if (input.search) {
-      where.OR = [
-        { filename: { contains: input.search, mode: "insensitive" } },
-        { url: { contains: input.search, mode: "insensitive" } },
-      ];
+      type FtsRow = { fileid: string; matched_in_content: boolean };
+      const ftsRows = await ctx.prisma.$queryRaw<FtsRow[]>`
+        SELECT
+          fileid,
+          (
+            to_tsvector('english', coalesce(extracted_text, ''))
+              @@ plainto_tsquery('english', ${input.search})
+            AND NOT
+            to_tsvector('english', coalesce(filename, ''))
+              @@ plainto_tsquery('english', ${input.search})
+          ) AS matched_in_content
+        FROM content_management
+        WHERE search_vector @@ plainto_tsquery('english', ${input.search})
+      `;
+
+      if (ftsRows.length === 0) {
+        return [];
+      }
+
+      for (const row of ftsRows) {
+        matchedInContentMap.set(row.fileid.trim(), row.matched_in_content);
+      }
+
+      where.fileID = { in: [...matchedInContentMap.keys()] };
     }
 
     if (input.format && input.format in FORMAT_GROUPS) {
@@ -279,6 +303,7 @@ export const contentRouter = router({
       .map((r) => ({
         ...r,
         is_favorited: (r.favoritedBy?.length ?? 0) > 0,
+        matched_in_content: matchedInContentMap.get(r.fileID) ?? false,
       }))
       .sort((a, b) => {
         // 1. favorites first
@@ -316,6 +341,7 @@ export const contentRouter = router({
         checked_out_by_user: { select: checkedOutByUserSelect },
         ...tagsInclude,
       },
+      // extracted_text and ocr_status are plain scalar fields — included by default.
     });
   }),
 
@@ -357,6 +383,9 @@ export const contentRouter = router({
       },
     });
 
+    // Kick off background OCR — fire-and-forget, does not block the response.
+    enqueueOcr(result.fileID);
+
     return result;
   }),
 
@@ -383,6 +412,17 @@ export const contentRouter = router({
 
       if (!canEditForRole(userRole, file?.job_position)) {
         throw new Error("You do not have permission to edit this content");
+      }
+
+      const urlChanged = data.url !== undefined && data.url !== file?.url;
+
+      // If the file URL changed, reset OCR so the new file gets re-extracted.
+      if (urlChanged) {
+        (
+          data as typeof data & { extracted_text?: null; ocr_status?: string; ocr_error?: null }
+        ).extracted_text = null;
+        (data as typeof data & { ocr_status?: string }).ocr_status = "pending";
+        (data as typeof data & { ocr_error?: null }).ocr_error = null;
       }
 
       const result =
@@ -424,6 +464,9 @@ export const contentRouter = router({
           fileName: result.filename,
         },
       });
+
+      // Re-run OCR if the file URL changed.
+      if (urlChanged) enqueueOcr(fileID);
 
       return result;
     }),

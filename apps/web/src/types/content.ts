@@ -1,3 +1,5 @@
+export type OcrStatus = "pending" | "processing" | "done" | "failed" | "skipped";
+
 export type ContentItem = {
   fileID: string;
   filename?: string;
@@ -13,4 +15,6 @@ export type ContentItem = {
   owner?: { name?: string };
   content_tags?: { tag: { id: number; name: string } }[];
   url?: string;
+  ocr_status?: OcrStatus;
+  matched_in_content?: boolean;
 };

@@ -107,7 +107,7 @@ export default function ContentPage() {
               <input
                 value={filters.search}
                 onChange={(e) => filters.setSearch(e.target.value)}
-                placeholder="Search by filename or URL..."
+                placeholder="Search by filename or document content..."
                 className="w-full rounded border border-border bg-background py-2 pl-10 pr-4 text-sm"
               />
             </div>
@@ -161,6 +161,7 @@ export default function ContentPage() {
             filtered={filtered}
             filters={filters}
             currentUserId={currentUserId}
+            searchQuery={debouncedSearch}
             toggleFavorite={toggleFavorite}
             checkin={checkin}
             getStatusBadge={getStatusBadge}

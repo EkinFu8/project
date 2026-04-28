@@ -20,6 +20,7 @@ type Props = {
   filtered: ContentItem[];
   filters: Filters;
   currentUserId?: string;
+  searchQuery?: string;
   toggleFavorite: {
     mutate: (args: { fileID: string }) => void;
   };
@@ -32,6 +33,7 @@ export function ContentGrid({
   filtered,
   filters,
   currentUserId,
+  searchQuery,
   toggleFavorite,
   checkin,
   getStatusBadge,
@@ -56,6 +58,7 @@ export function ContentGrid({
                 key={item.fileID}
                 item={item}
                 currentUserId={currentUserId}
+                searchQuery={searchQuery}
                 toggleFavorite={toggleFavorite}
                 checkin={checkin}
                 getStatusBadge={getStatusBadge}
@@ -65,6 +68,7 @@ export function ContentGrid({
                 key={item.fileID}
                 item={item}
                 currentUserId={currentUserId}
+                searchQuery={searchQuery}
                 toggleFavorite={toggleFavorite}
                 checkin={checkin}
                 getStatusBadge={getStatusBadge}
