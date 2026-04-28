@@ -232,8 +232,8 @@ function ContentMetadataReadonlyTable({
           </tr>
           <tr className="border-b border-border last:border-b-0">
             <th
-                scope="row"
-                className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
+              scope="row"
+              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
             >
               Next Review Date
             </th>
