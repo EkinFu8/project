@@ -98,6 +98,27 @@ export const contentRouter = router({
     return { favorited: true };
   }),
 
+  trackDownload: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user?.id;
+    if (!userId) throw new Error("Not authenticated");
+
+    const file = await ctx.prisma.contentManagement.findUnique({
+      where: { fileID: input.fileID },
+      select: { filename: true },
+    });
+
+    await ctx.prisma.auditEvent.create({
+      data: {
+        userId,
+        action: "download",
+        documentId: input.fileID,
+        fileName: file?.filename ?? null,
+      },
+    });
+
+    return { success: true };
+  }),
+
   checkout: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     const userId = ctx.user?.id;
     if (!userId) throw new Error("Not authenticated");

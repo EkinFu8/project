@@ -59,6 +59,7 @@ type ContentFormFieldsProps = {
   createError: ReturnType<typeof trpc.content.create.useMutation>["error"];
   updateError: ReturnType<typeof trpc.content.update.useMutation>["error"];
   isSaving: boolean;
+  onDownload: () => void;
   onDelete: () => void;
   onSubmit: (e: React.FormEvent) => void;
   extractedText?: string | null;
@@ -696,6 +697,7 @@ function ContentFormFields({
   const [metadataEditMode, setMetadataEditMode] = useState(false);
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("q") ?? "";
+  const trackDownload = trpc.content.trackDownload.useMutation();
   const showFileSummary = isEditing && Boolean(url) && !metadataEditMode;
   const ownerDisplayName =
     employees?.find((e) => e.id === ownerId)?.name ?? (ownerId ? ownerId : "Unassigned");
@@ -715,6 +717,7 @@ function ContentFormFields({
       newBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         e.stopPropagation();
+        trackDownload.mutate({ fileID });
         const res = await fetch(url);
         const blob = await res.blob();
         const blobUrl = URL.createObjectURL(blob);
@@ -731,7 +734,7 @@ function ContentFormFields({
 
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [url, filename]);
+  }, [url, filename, fileID, trackDownload.mutate]);
 
   // Highlight search terms inside the DocViewer once it finishes rendering.
   useEffect(() => {
