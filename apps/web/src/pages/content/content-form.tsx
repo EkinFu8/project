@@ -374,14 +374,6 @@ function ContentFormSummarySection({
             {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
             Delete Content
           </button>
-          <button
-            type="submit"
-            disabled={isSaving || isUploading}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-6 py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
-          >
-            {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
-            {submitLabel}
-          </button>
         </div>
       ) : null}
     </>
