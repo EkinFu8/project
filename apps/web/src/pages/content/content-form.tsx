@@ -26,6 +26,12 @@ function displayDateLabel(value: string): string {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString();
 }
 
+function todayDateInputValue(): string {
+  const today = new Date();
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+  return today.toISOString().split("T")[0];
+}
+
 type TagShape = { id: number; name: string; color?: string };
 
 type ContentFormFieldsProps = {
@@ -586,7 +592,7 @@ function ContentFormMetadataSection({
         type="date"
         value={nextReviewDate}
         onChange={(e) => setNextReviewDate(e.target.value)}
-        min={new Date().toISOString().split("T")[0]}
+        min={todayDateInputValue()}
       />
       <div>
         <label htmlFor="content-type" className="mb-2 block text-sm font-semibold text-foreground">
@@ -1091,18 +1097,11 @@ function ContentFormPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (nextReviewDate) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const selected = new Date(nextReviewDate);
-      selected.setHours(0, 0, 0, 0);
-
-      if (selected < today) {
-        alert("Next review date cannot be in the past");
-        return;
-      }
+    if (nextReviewDate && nextReviewDate < todayDateInputValue()) {
+      alert("Next review date cannot be in the past");
+      return;
     }
+
     let finalID = fileID;
     if (!fileID) {
       finalID = url.slice(-64);
