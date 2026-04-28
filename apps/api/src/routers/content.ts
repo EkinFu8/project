@@ -353,19 +353,25 @@ export const contentRouter = router({
 
     const format = extractFormat(input.filename);
 
-    const data: Prisma.ContentManagementUncheckedCreateInput = {
+    const data: Prisma.ContentManagementCreateInput = {
       ...rest,
-      owner_id: owner_id ?? null,
       format,
+      owner: owner_id
+        ? {
+            connect: { id: owner_id },
+          }
+        : undefined,
     };
 
     const result = await ctx.prisma.contentManagement.create({
       data:
         tagIds && tagIds.length > 0
-          ? ({
+          ? {
               ...data,
-              content_tags: { create: tagIds.map((id) => ({ tagId: id })) },
-            } as Prisma.ContentManagementCreateInput)
+              content_tags: {
+                create: tagIds.map((id) => ({ tagId: id })),
+              },
+            }
           : data,
       include: {
         owner: { select: ownerSelect },
