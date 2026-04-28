@@ -1,6 +1,18 @@
 import { Activity, LayoutGrid, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import type { RouterOutputs } from "@/lib/trpc.ts";
 import { trpc } from "@/lib/trpc.ts";
 import { MetricsView } from "@/pages/admin/metrics/page.tsx";
@@ -9,6 +21,15 @@ type DashboardTab = "overview" | "metrics";
 
 type EmployeeRow = RouterOutputs["employee"]["list"][number];
 type ContentRow = RouterOutputs["content"]["list"][number];
+
+const TOOLTIP_STYLE = {
+  backgroundColor: "var(--color-card)",
+  border: "1px solid var(--color-border)",
+  borderRadius: "0.5rem",
+  color: "var(--color-foreground)",
+  fontSize: "0.75rem",
+  padding: "0.5rem 0.625rem",
+} as const;
 
 function getStatusBadge(status: string | null) {
   switch (status) {
@@ -42,6 +63,26 @@ function DashboardLoaded({
     { label: "In Progress", value: inProgress.length },
   ];
 
+  const contentByStatus = [
+    { name: "Created", value: allContent.filter((c) => c.document_status === "Created").length },
+    { name: "In Progress", value: inProgress.length },
+    { name: "Finalized", value: finalized.length },
+    { name: "Archived", value: allContent.filter((c) => c.document_status === "Archived").length },
+  ];
+
+  const roleCounts = new Map<string, number>();
+  for (const item of allContent) {
+    const role = item.job_position?.trim() || "unassigned";
+    roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
+  }
+
+  const contentByRole = Array.from(roleCounts.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6);
+
+  const pieColors = ["#497728", "#1B2A4A", "#C9A84C", "#9CA3AF"];
+
   return (
     <>
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -54,6 +95,69 @@ function DashboardLoaded({
             <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
           </div>
         ))}
+      </div>
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <div className="rounded bg-card p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Content By Status</h2>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={contentByStatus}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={55}
+                  outerRadius={90}
+                  paddingAngle={3}
+                >
+                  {contentByStatus.map((entry, index) => (
+                    <Cell key={entry.name} fill={pieColors[index % pieColors.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3 text-xs">
+            {contentByStatus.map((entry, index) => (
+              <div key={entry.name} className="flex items-center gap-2 text-muted-foreground">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: pieColors[index % pieColors.length] }}
+                />
+                <span>
+                  {entry.name}: {entry.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded bg-card p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Top Roles By Content</h2>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={contentByRole} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+                <CartesianGrid vertical={false} stroke="var(--color-border)" />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }}
+                />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "var(--color-muted)" }} />
+                <Bar dataKey="value" fill="#1B2A4A" radius={[4, 4, 0, 0]} barSize={42} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -185,7 +289,7 @@ function DashboardPage() {
             <p className="mt-1 text-muted-foreground">
               {activeTab === "metrics"
                 ? "System and document activity metrics"
-                : "Overview of employees and content"}
+                : "Overview of employees, content, and activity trends"}
             </p>
           </div>
 
