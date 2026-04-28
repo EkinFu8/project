@@ -4,28 +4,30 @@ type Props = {
   image: string;
   link: string;
 };
+
 function LinkCard({ title, subtitle, image, link }: Props) {
-  const handleClick = () => {
-    window.location.href = link;
-  };
   return (
-    <>
-      <div
-        role="button"
-        onClick={handleClick}
-        className="w-xs cursor-pointer min-w-3xs group rounded border flex flex-col items-center bg-card shadow-sm transition-all hover:border-hanover-green hover:shadow-md p-5"
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') handleClick();
-        }}
-        tabIndex={0}
+      <a
+          href={link}
+          className="w-xs min-w-3xs group flex flex-col items-center rounded border bg-card p-5 shadow-sm transition-all hover:border-hanover-green hover:shadow-md gap-4 no-underline text-inherit"
       >
-        <img className="object-scale-down h-50 w-50" src={image} />
-        <br />
-        <span className="text-3xl font-bold">{title}</span>
-        <br />
-        <span className="text-base justify-center-safe text-center">{subtitle}</span>
-      </div>
-    </>
+        <img
+            className="object-scale-down h-50 w-50"
+            src={image}
+            alt=""
+            aria-hidden="true"
+        />
+
+        <div className="flex flex-col items-center gap-2">
+        <span className="text-3xl font-bold text-center">
+          {title}
+        </span>
+          <span className="text-base text-center">
+          {subtitle}
+        </span>
+        </div>
+      </a>
   );
 }
+
 export default LinkCard;
