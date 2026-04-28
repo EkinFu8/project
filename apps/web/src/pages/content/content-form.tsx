@@ -300,7 +300,6 @@ function ContentFormSummarySection({
   createError,
   updateError,
   mutationError,
-  submitLabel,
   onDelete,
 }: {
   filename: string;
@@ -323,7 +322,6 @@ function ContentFormSummarySection({
   createError: unknown;
   updateError: unknown;
   mutationError: string;
-  submitLabel: string;
   onDelete: () => void;
 }) {
   return (
@@ -372,14 +370,6 @@ function ContentFormSummarySection({
           >
             {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
             Delete Content
-          </button>
-          <button
-            type="submit"
-            disabled={isSaving || isUploading}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-6 py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-0"
-          >
-            {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
-            {submitLabel}
           </button>
         </div>
       )}
@@ -695,6 +685,7 @@ function ContentFormFields({
   const [metadataEditMode, setMetadataEditMode] = useState(false);
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("q") ?? "";
+  const trackDownload = trpc.content.trackDownload.useMutation();
   const showFileSummary = isEditing && Boolean(url) && !metadataEditMode;
   const ownerDisplayName =
     employees?.find((e) => e.id === ownerId)?.name ?? (ownerId ? ownerId : "Unassigned");
@@ -714,6 +705,7 @@ function ContentFormFields({
       newBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         e.stopPropagation();
+        trackDownload.mutate({ fileID });
         const res = await fetch(url);
         const blob = await res.blob();
         const blobUrl = URL.createObjectURL(blob);
@@ -730,7 +722,7 @@ function ContentFormFields({
 
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [url, filename]);
+  }, [url, filename, fileID, trackDownload.mutate]);
 
   // Highlight search terms inside the DocViewer once it finishes rendering.
   useEffect(() => {
@@ -853,7 +845,6 @@ function ContentFormFields({
                 createError={createError}
                 updateError={updateError}
                 mutationError={mutationError}
-                submitLabel={submitLabel}
                 onDelete={onDelete}
               />
             ) : (
