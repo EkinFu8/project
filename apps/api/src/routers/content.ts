@@ -2,10 +2,13 @@ import {
   contentIdSchema,
   contentListQuerySchema,
   createContentSchema,
+  FORMAT_GROUPS,
+  NAMED_EXTENSIONS,
   updateContentSchema,
 } from "@myapp/types/schemas";
 import type { Prisma } from "@prisma/client";
 import { publicProcedure, router } from "../lib/trpc";
+import { enqueueOcr } from "../services/ocr-queue";
 
 const ownerSelect = {
   id: true,
@@ -39,6 +42,13 @@ function assertCanEdit(
   }
 }
 
+function extractFormat(filename: string | null | undefined): string | null {
+  if (!filename) return null;
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  if (!ext) return null;
+  return NAMED_EXTENSIONS.includes(ext as never) ? ext : "other";
+}
+
 function normalizeRole(role?: string | null) {
   return (role ?? "").toLowerCase().replace(/\s+/g, "-").trim();
 }
@@ -54,6 +64,61 @@ function canEditForRole(
 }
 
 export const contentRouter = router({
+  toggleFavorite: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user?.id;
+    if (!userId) throw new Error("Not authenticated");
+
+    const existing = await ctx.prisma.favorite.findUnique({
+      where: {
+        userId_fileID: {
+          userId,
+          fileID: input.fileID,
+        },
+      },
+    });
+
+    if (existing) {
+      await ctx.prisma.favorite.deleteMany({
+        where: {
+          userId,
+          fileID: input.fileID,
+        },
+      });
+
+      return { favorited: false };
+    }
+
+    await ctx.prisma.favorite.create({
+      data: {
+        userId,
+        fileID: input.fileID,
+      },
+    });
+    console.log("FAVORITE TOGGLE:", ctx.user?.id, input.fileID);
+    return { favorited: true };
+  }),
+
+  trackDownload: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user?.id;
+    if (!userId) throw new Error("Not authenticated");
+
+    const file = await ctx.prisma.contentManagement.findUnique({
+      where: { fileID: input.fileID },
+      select: { filename: true },
+    });
+
+    await ctx.prisma.auditEvent.create({
+      data: {
+        userId,
+        action: "download",
+        documentId: input.fileID,
+        fileName: file?.filename ?? null,
+      },
+    });
+
+    return { success: true };
+  }),
+
   checkout: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     const userId = ctx.user?.id;
     if (!userId) throw new Error("Not authenticated");
@@ -140,6 +205,7 @@ export const contentRouter = router({
 
   list: publicProcedure.input(contentListQuerySchema).query(async ({ ctx, input }) => {
     const where: Record<string, unknown> = {};
+    const userId = ctx.user?.id;
 
     if (input.document_status) {
       where.document_status = input.document_status;
@@ -166,11 +232,39 @@ export const contentRouter = router({
       };
     }
 
+    // Map of fileID → matchedInContent (true when hit came from body, not title)
+    const matchedInContentMap = new Map<string, boolean>();
+
     if (input.search) {
-      where.OR = [
-        { filename: { contains: input.search, mode: "insensitive" } },
-        { url: { contains: input.search, mode: "insensitive" } },
-      ];
+      type FtsRow = { fileid: string; matched_in_content: boolean };
+      const ftsRows = await ctx.prisma.$queryRaw<FtsRow[]>`
+        SELECT
+          fileid,
+          (
+            to_tsvector('english', coalesce(extracted_text, ''))
+              @@ plainto_tsquery('english', ${input.search})
+            AND NOT
+            to_tsvector('english', coalesce(filename, ''))
+              @@ plainto_tsquery('english', ${input.search})
+          ) AS matched_in_content
+        FROM content_management
+        WHERE search_vector @@ plainto_tsquery('english', ${input.search})
+      `;
+
+      if (ftsRows.length === 0) {
+        return [];
+      }
+
+      for (const row of ftsRows) {
+        matchedInContentMap.set(row.fileid.trim(), row.matched_in_content);
+      }
+
+      where.fileID = { in: [...matchedInContentMap.keys()] };
+    }
+
+    if (input.format && input.format in FORMAT_GROUPS) {
+      const exts = FORMAT_GROUPS[input.format as keyof typeof FORMAT_GROUPS];
+      where.format = { in: [...exts] };
     }
 
     if (input.tagIds && input.tagIds.length > 0) {
@@ -186,22 +280,71 @@ export const contentRouter = router({
 
     const results = await ctx.prisma.contentManagement.findMany({
       where,
-      orderBy: [{ is_favorited: "desc" }, { last_modified: "desc" }],
+      orderBy: [
+        {
+          favoritedBy: {
+            _count: "desc",
+          },
+        },
+        {
+          last_modified: "desc",
+        },
+      ],
       include: {
         owner: { select: ownerSelect },
         checked_out_by_user: { select: checkedOutByUserSelect },
         ...tagsInclude,
+        favoritedBy: userId
+          ? {
+              where: { userId },
+              select: { fileID: true },
+            }
+          : false,
       },
     });
 
-    if (input.pinnedTagId !== undefined) {
-      const pinnedId = input.pinnedTagId;
-      const pinned = results.filter((r) => r.content_tags.some((ct) => ct.tagId === pinnedId));
-      const unpinned = results.filter((r) => !r.content_tags.some((ct) => ct.tagId === pinnedId));
-      return [...pinned, ...unpinned];
-    }
+    const base =
+      input.pinnedTagId !== undefined
+        ? (() => {
+            const pinnedId = input.pinnedTagId;
 
-    return results;
+            const pinned = results.filter((r) =>
+              r.content_tags.some((ct) => ct.tagId === pinnedId),
+            );
+
+            const unpinned = results.filter(
+              (r) => !r.content_tags.some((ct) => ct.tagId === pinnedId),
+            );
+
+            return [...pinned, ...unpinned];
+          })()
+        : results;
+
+    return base
+      .map((r) => ({
+        ...r,
+        is_favorited: (r.favoritedBy?.length ?? 0) > 0,
+        matched_in_content: matchedInContentMap.get(r.fileID) ?? false,
+      }))
+      .sort((a, b) => {
+        // 1. favorites first
+        const favDiff = Number(b.is_favorited) - Number(a.is_favorited);
+        if (favDiff !== 0) return favDiff;
+
+        // 2. pinned tags (optional enhancement)
+        const pinnedId = input.pinnedTagId;
+
+        if (pinnedId !== undefined) {
+          const aPinned = a.content_tags.some((t) => t.tagId === pinnedId);
+          const bPinned = b.content_tags.some((t) => t.tagId === pinnedId);
+
+          const pinnedDiff = Number(bPinned) - Number(aPinned);
+          if (pinnedDiff !== 0) return pinnedDiff;
+        }
+
+        // 3. fallback: last modified
+        return new Date(b.last_modified ?? 0).getTime() - new Date(a.last_modified ?? 0).getTime();
+      });
   }),
 
   getById: publicProcedure.input(contentIdSchema).query(async ({ ctx, input }) => {
@@ -219,6 +362,7 @@ export const contentRouter = router({
         checked_out_by_user: { select: checkedOutByUserSelect },
         ...tagsInclude,
       },
+      // extracted_text and ocr_status are plain scalar fields — included by default.
     });
   }),
 
@@ -228,18 +372,27 @@ export const contentRouter = router({
 
     const { tagIds, owner_id, ...rest } = input;
 
-    const data: Prisma.ContentManagementUncheckedCreateInput = {
+    const format = extractFormat(input.filename);
+
+    const data: Prisma.ContentManagementCreateInput = {
       ...rest,
-      owner_id: owner_id ?? null,
+      format,
+      owner: owner_id
+        ? {
+            connect: { id: owner_id },
+          }
+        : undefined,
     };
 
     const result = await ctx.prisma.contentManagement.create({
       data:
         tagIds && tagIds.length > 0
-          ? ({
+          ? {
               ...data,
-              content_tags: { create: tagIds.map((id) => ({ tagId: id })) },
-            } as Prisma.ContentManagementCreateInput)
+              content_tags: {
+                create: tagIds.map((id) => ({ tagId: id })),
+              },
+            }
           : data,
       include: {
         owner: { select: ownerSelect },
@@ -257,6 +410,9 @@ export const contentRouter = router({
       },
     });
 
+    // Kick off background OCR — fire-and-forget, does not block the response.
+    enqueueOcr(result.fileID);
+
     return result;
   }),
 
@@ -268,6 +424,10 @@ export const contentRouter = router({
       const userId = ctx.user?.id;
       if (!userId) throw new Error("Not authenticated");
 
+      if (data.filename !== undefined) {
+        (data as typeof data & { format?: string | null }).format = extractFormat(data.filename);
+      }
+
       const profile = ctx.profile as { role: string | null } | null;
       const userRole = profile?.role;
 
@@ -275,10 +435,22 @@ export const contentRouter = router({
         where: { fileID },
       });
 
+      if (!file) throw new Error("File not found");
       assertCanEdit(file, userId, userRole);
 
       if (!canEditForRole(userRole, file?.job_position)) {
         throw new Error("You do not have permission to edit this content");
+      }
+
+      const urlChanged = data.url !== undefined && data.url !== file?.url;
+
+      // If the file URL changed, reset OCR so the new file gets re-extracted.
+      if (urlChanged) {
+        (
+          data as typeof data & { extracted_text?: null; ocr_status?: string; ocr_error?: null }
+        ).extracted_text = null;
+        (data as typeof data & { ocr_status?: string }).ocr_status = "pending";
+        (data as typeof data & { ocr_error?: null }).ocr_error = null;
       }
 
       const result =
@@ -320,6 +492,40 @@ export const contentRouter = router({
           fileName: result.filename,
         },
       });
+
+      if (input.owner_id !== undefined && file.owner_id !== input.owner_id) {
+        const [oldOwner, newOwner] = await Promise.all([
+          file.owner_id
+            ? ctx.prisma.userProfile.findUnique({
+                where: { id: file.owner_id },
+                select: { name: true },
+              })
+            : Promise.resolve(null),
+          input.owner_id
+            ? ctx.prisma.userProfile.findUnique({
+                where: { id: input.owner_id },
+                select: { name: true },
+              })
+            : Promise.resolve(null),
+        ]);
+
+        await ctx.prisma.auditEvent.create({
+          data: {
+            userId,
+            action: "ownership-update",
+            documentId: fileID,
+            fileName: result.filename,
+            metadata: {
+              oldOwnerId: file.owner_id,
+              newOwnerId: input.owner_id,
+              oldOwnerName: oldOwner?.name ?? null,
+              newOwnerName: newOwner?.name ?? null,
+            },
+          },
+        });
+      }
+      // Re-run OCR if the file URL changed.
+      if (urlChanged) enqueueOcr(fileID);
 
       return result;
     }),
