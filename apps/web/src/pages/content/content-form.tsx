@@ -982,7 +982,7 @@ function ContentFormPage() {
     setDocumentStatus(d.document_status ?? "");
     setSelectedTags(d.content_tags?.map((ct) => ct.tag) ?? []);
     handleExpirationReminder(d.expiration_date);
-  }, [existing.data, handleExpirationReminder]);
+  }, [existing.data]);
 
   const utils = trpc.useUtils();
 
