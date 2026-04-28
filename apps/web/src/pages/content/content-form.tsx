@@ -137,6 +137,7 @@ function ContentMetadataReadonlyTable({
   jobPosition,
   lastModified,
   expirationDate,
+  nextReviewDate,
   contentType,
   documentStatus,
   selectedTags,
@@ -148,6 +149,7 @@ function ContentMetadataReadonlyTable({
   jobPosition: string;
   lastModified: string;
   expirationDate: string;
+  nextReviewDate: string;
   contentType: string;
   documentStatus: string;
   selectedTags: TagShape[];
@@ -230,6 +232,15 @@ function ContentMetadataReadonlyTable({
           </tr>
           <tr className="border-b border-border last:border-b-0">
             <th
+                scope="row"
+                className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
+            >
+              Next Review Date
+            </th>
+            <td className="px-4 py-3 text-foreground">{displayDateLabel(nextReviewDate)}</td>
+          </tr>
+          <tr className="border-b border-border last:border-b-0">
+            <th
               scope="row"
               className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
             >
@@ -292,6 +303,7 @@ function ContentFormSummarySection({
   jobPosition,
   lastModified,
   expirationDate,
+  nextReviewDate,
   contentType,
   documentStatus,
   selectedTags,
@@ -312,6 +324,7 @@ function ContentFormSummarySection({
   jobPosition: string;
   lastModified: string;
   expirationDate: string;
+  nextReviewDate: string;
   contentType: string;
   documentStatus: string;
   selectedTags: TagShape[];
@@ -354,6 +367,7 @@ function ContentFormSummarySection({
         jobPosition={jobPosition}
         lastModified={lastModified}
         expirationDate={expirationDate}
+        nextReviewDate={nextReviewDate}
         contentType={contentType}
         documentStatus={documentStatus}
         selectedTags={selectedTags}
@@ -855,6 +869,7 @@ function ContentFormFields({
                 jobPosition={jobPosition}
                 lastModified={lastModified}
                 expirationDate={expirationDate}
+                nextReviewDate={nextReviewDate}
                 contentType={contentType}
                 documentStatus={documentStatus}
                 selectedTags={selectedTags}
@@ -1078,9 +1093,10 @@ function ContentFormPage() {
 
     if (nextReviewDate) {
       const today = new Date();
-      const selected = new Date(nextReviewDate);
-
       today.setHours(0, 0, 0, 0);
+
+      const selected = new Date(nextReviewDate);
+      selected.setHours(0, 0, 0, 0);
 
       if (selected < today) {
         alert("Next review date cannot be in the past");
