@@ -13,12 +13,14 @@ import {
 import { useSession } from "@/auth/session-context";
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
+import AboutPage from "@/pages/about/page.tsx";
 import AccountPage from "@/pages/account/page.tsx";
 import UsersPage from "@/pages/admin/users/page.tsx";
 import UserFormPage from "@/pages/admin/users/user-form.tsx";
 import BusinessAnalystPage from "@/pages/business-analyst/page.tsx";
 import ContentFormPage from "@/pages/content/content-form.tsx";
 import ContentPage from "@/pages/content/page.tsx";
+import CreditsPage from "@/pages/credits/page.tsx";
 import DashboardPage from "@/pages/dashboard/page.tsx";
 import EmployeeDetailPage from "@/pages/employees/employee-detail.tsx";
 import EmployeesPage from "@/pages/employees/page.tsx";
@@ -26,9 +28,6 @@ import HeroLayout from "@/pages/hero/layout.tsx";
 import LoginFormPage from "@/pages/login.tsx";
 import TagsPage from "@/pages/tags/TagsPage";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
-import AboutPage from "@/pages/about/page.tsx";
-import CreditsPage from "@/pages/credits/page.tsx";
-
 
 function LegacyContentEditRedirect() {
   const { id } = useParams<{ id: string }>();
@@ -176,8 +175,8 @@ function App() {
           {/* Shared */}
           <Route path="/dashboard/" element={<DashboardPage />} />
           <Route path="/account" element={<AccountPage />} />
-          <Route path="/about" element={<AboutPage/>} />
-          <Route path="/credits" element={<CreditsPage/>}/>
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/credits" element={<CreditsPage />} />
 
           {/* Legacy redirects */}
           <Route path="/content" element={<Navigate to="/hero/content" replace />} />
