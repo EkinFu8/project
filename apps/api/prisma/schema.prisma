@@ -571,10 +571,11 @@ model ContentManagement {
   checked_out_by      String?      @db.Uuid
   checked_out_at      DateTime?    @db.Timestamptz(6)
   owner_id            String?      @map("owner_id") @db.Uuid
-  extracted_text      String?      @db.Text
-  ocr_status          OcrStatus    @default(pending)
-  ocr_error           String?      @db.Text
-  ocr_updated_at      DateTime?    @db.Timestamptz(6)
+  extracted_text      String?                    @db.Text
+  ocr_status          OcrStatus                  @default(pending)
+  ocr_error           String?                    @db.Text
+  ocr_updated_at      DateTime?                  @db.Timestamptz(6)
+  search_vector       Unsupported("tsvector")?
   owner               UserProfile? @relation("OwnedContent", fields: [owner_id], references: [id], onUpdate: NoAction)
   checked_out_by_user UserProfile? @relation("CheckedOutContent", fields: [checked_out_by], references: [id], onUpdate: NoAction)
   content_tags        ContentTag[]
