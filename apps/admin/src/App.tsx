@@ -116,7 +116,6 @@ function App() {
           <Route path="/users/new" element={<UserFormPage />} />
           <Route path="/users/:id" element={<UserFormPage />} />
           <Route path="/account" element={<AccountPage />} />
-          <Route path="/about" element={<AboutPage />} />
           <Route path="*" element={<Navigate to="/content" replace />} />
         </Route>
       </Routes>
