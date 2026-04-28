@@ -456,9 +456,7 @@ export function ContentFilters({
                   <select
                     value={filters.pinnedTagId ?? ""}
                     onChange={(e) =>
-                      filters.setPinnedTagId(
-                        e.target.value === "" ? null : Number(e.target.value),
-                      )
+                      filters.setPinnedTagId(e.target.value === "" ? null : Number(e.target.value))
                     }
                     className="rounded border border-border bg-background px-2 py-1 text-xs font-normal"
                   >
