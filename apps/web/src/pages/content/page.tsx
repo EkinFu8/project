@@ -42,6 +42,7 @@ export default function ContentPage() {
   const [openRole, setOpenRole] = useState(true);
   const [openStatus, setOpenStatus] = useState(true);
   const [openType, setOpenType] = useState(true);
+  const [openFormat, setOpenFormat] = useState(true);
   const [openTags, setOpenTags] = useState(true);
 
   const utils = trpc.useUtils();
@@ -68,6 +69,7 @@ export default function ContentPage() {
     search: debouncedSearch,
     document_status: filters.status || undefined,
     content_type: (filters.type as "Reference" | "Workflow") || undefined,
+    format: filters.format || undefined,
     role: filters.role === "all" ? undefined : filters.role,
     tagIds: filters.tagIds.length > 0 ? filters.tagIds : undefined,
     tagMatchMode: filters.tagIds.length > 0 ? filters.tagMode : undefined,
@@ -146,6 +148,8 @@ export default function ContentPage() {
             setOpenStatus={setOpenStatus}
             openType={openType}
             setOpenType={setOpenType}
+            openFormat={openFormat}
+            setOpenFormat={setOpenFormat}
             openTags={openTags}
             setOpenTags={setOpenTags}
             ROLE_TABS={ROLE_TABS}

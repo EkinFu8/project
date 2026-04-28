@@ -2,6 +2,8 @@ import {
   contentIdSchema,
   contentListQuerySchema,
   createContentSchema,
+  FORMAT_GROUPS,
+  NAMED_EXTENSIONS,
   updateContentSchema,
 } from "@myapp/types/schemas";
 import type { Prisma } from "@prisma/client";
@@ -37,6 +39,13 @@ function assertCanEdit(
   if (!file.is_checked_out || file.checked_out_by !== userId) {
     throw new Error("You must check out this item before modifying or deleting it");
   }
+}
+
+function extractFormat(filename: string | null | undefined): string | null {
+  if (!filename) return null;
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  if (!ext) return null;
+  return NAMED_EXTENSIONS.includes(ext as never) ? ext : "other";
 }
 
 function normalizeRole(role?: string | null) {
@@ -208,6 +217,11 @@ export const contentRouter = router({
       ];
     }
 
+    if (input.format && input.format in FORMAT_GROUPS) {
+      const exts = FORMAT_GROUPS[input.format as keyof typeof FORMAT_GROUPS];
+      where.format = { in: [...exts] };
+    }
+
     if (input.tagIds && input.tagIds.length > 0) {
       const mode = input.tagMatchMode ?? "any";
       if (mode === "all") {
@@ -311,9 +325,12 @@ export const contentRouter = router({
 
     const { tagIds, owner_id, ...rest } = input;
 
+    const format = extractFormat(input.filename);
+
     const data: Prisma.ContentManagementUncheckedCreateInput = {
       ...rest,
       owner_id: owner_id ?? null,
+      format,
     };
 
     const result = await ctx.prisma.contentManagement.create({
@@ -350,6 +367,10 @@ export const contentRouter = router({
 
       const userId = ctx.user?.id;
       if (!userId) throw new Error("Not authenticated");
+
+      if (data.filename !== undefined) {
+        (data as typeof data & { format?: string | null }).format = extractFormat(data.filename);
+      }
 
       const profile = ctx.profile as { role: string | null } | null;
       const userRole = profile?.role;
