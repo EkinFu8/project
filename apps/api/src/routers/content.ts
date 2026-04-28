@@ -435,6 +435,7 @@ export const contentRouter = router({
         where: { fileID },
       });
 
+      if (!file) throw new Error("File not found");
       assertCanEdit(file, userId, userRole);
 
       if (!canEditForRole(userRole, file?.job_position)) {
@@ -492,6 +493,37 @@ export const contentRouter = router({
         },
       });
 
+      if (input.owner_id !== undefined && file.owner_id !== input.owner_id) {
+        const [oldOwner, newOwner] = await Promise.all([
+          file.owner_id
+            ? ctx.prisma.userProfile.findUnique({
+                where: { id: file.owner_id },
+                select: { name: true },
+              })
+            : Promise.resolve(null),
+          input.owner_id
+            ? ctx.prisma.userProfile.findUnique({
+                where: { id: input.owner_id },
+                select: { name: true },
+              })
+            : Promise.resolve(null),
+        ]);
+
+        await ctx.prisma.auditEvent.create({
+          data: {
+            userId,
+            action: "ownership-update",
+            documentId: fileID,
+            fileName: result.filename,
+            metadata: {
+              oldOwnerId: file.owner_id,
+              newOwnerId: input.owner_id,
+              oldOwnerName: oldOwner?.name ?? null,
+              newOwnerName: newOwner?.name ?? null,
+            },
+          },
+        });
+      }
       // Re-run OCR if the file URL changed.
       if (urlChanged) enqueueOcr(fileID);
 
