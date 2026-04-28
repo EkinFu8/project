@@ -26,6 +26,12 @@ function displayDateLabel(value: string): string {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString();
 }
 
+function todayDateInputValue(): string {
+  const today = new Date();
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+  return today.toISOString().split("T")[0];
+}
+
 type TagShape = { id: number; name: string; color?: string };
 
 type ContentFormFieldsProps = {
@@ -44,6 +50,8 @@ type ContentFormFieldsProps = {
   setLastModified: (v: string) => void;
   expirationDate: string;
   setExpirationDate: (v: string) => void;
+  nextReviewDate: string;
+  setNextReviewDate: (v: string) => void;
   contentType: string;
   setContentType: (v: string) => void;
   documentStatus: string;
@@ -135,6 +143,7 @@ function ContentMetadataReadonlyTable({
   jobPosition,
   lastModified,
   expirationDate,
+  nextReviewDate,
   contentType,
   documentStatus,
   selectedTags,
@@ -146,6 +155,7 @@ function ContentMetadataReadonlyTable({
   jobPosition: string;
   lastModified: string;
   expirationDate: string;
+  nextReviewDate: string;
   contentType: string;
   documentStatus: string;
   selectedTags: TagShape[];
@@ -231,6 +241,15 @@ function ContentMetadataReadonlyTable({
               scope="row"
               className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
             >
+              Next Review Date
+            </th>
+            <td className="px-4 py-3 text-foreground">{displayDateLabel(nextReviewDate)}</td>
+          </tr>
+          <tr className="border-b border-border last:border-b-0">
+            <th
+              scope="row"
+              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
+            >
               Content type
             </th>
             <td className="px-4 py-3 text-foreground">{contentType || "—"}</td>
@@ -290,6 +309,7 @@ function ContentFormSummarySection({
   jobPosition,
   lastModified,
   expirationDate,
+  nextReviewDate,
   contentType,
   documentStatus,
   selectedTags,
@@ -309,6 +329,7 @@ function ContentFormSummarySection({
   jobPosition: string;
   lastModified: string;
   expirationDate: string;
+  nextReviewDate: string;
   contentType: string;
   documentStatus: string;
   selectedTags: TagShape[];
@@ -350,6 +371,7 @@ function ContentFormSummarySection({
         jobPosition={jobPosition}
         lastModified={lastModified}
         expirationDate={expirationDate}
+        nextReviewDate={nextReviewDate}
         contentType={contentType}
         documentStatus={documentStatus}
         selectedTags={selectedTags}
@@ -442,6 +464,8 @@ function ContentFormMetadataSection({
   setLastModified,
   expirationDate,
   setExpirationDate,
+  nextReviewDate,
+  setNextReviewDate,
   contentType,
   setContentType,
   documentStatus,
@@ -473,6 +497,8 @@ function ContentFormMetadataSection({
   setLastModified: (v: string) => void;
   expirationDate: string;
   setExpirationDate: (v: string) => void;
+  nextReviewDate: string;
+  setNextReviewDate: (v: string) => void;
   contentType: string;
   setContentType: (v: string) => void;
   documentStatus: string;
@@ -550,7 +576,13 @@ function ContentFormMetadataSection({
         value={expirationDate}
         onChange={(e) => setExpirationDate(e.target.value)}
       />
-
+      <TextInput
+        label="Next Review Date"
+        type="date"
+        value={nextReviewDate}
+        onChange={(e) => setNextReviewDate(e.target.value)}
+        min={todayDateInputValue()}
+      />
       <div>
         <label htmlFor="content-type" className="mb-2 block text-sm font-semibold text-foreground">
           Content Type
@@ -663,6 +695,8 @@ function ContentFormFields({
   setLastModified,
   expirationDate,
   setExpirationDate,
+  nextReviewDate,
+  setNextReviewDate,
   contentType,
   setContentType,
   documentStatus,
@@ -832,6 +866,7 @@ function ContentFormFields({
                 jobPosition={jobPosition}
                 lastModified={lastModified}
                 expirationDate={expirationDate}
+                nextReviewDate={nextReviewDate}
                 contentType={contentType}
                 documentStatus={documentStatus}
                 selectedTags={selectedTags}
@@ -883,6 +918,8 @@ function ContentFormFields({
                 setLastModified={setLastModified}
                 expirationDate={expirationDate}
                 setExpirationDate={setExpirationDate}
+                nextReviewDate={nextReviewDate}
+                setNextReviewDate={setNextReviewDate}
                 contentType={contentType}
                 setContentType={setContentType}
                 documentStatus={documentStatus}
@@ -922,6 +959,7 @@ function ContentFormPage() {
   const [jobPosition, setJobPosition] = useState("");
   const [lastModified, setLastModified] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
+  const [nextReviewDate, setNextReviewDate] = useState("");
   const [contentType, setContentType] = useState("");
   const [documentStatus, setDocumentStatus] = useState("");
   const [selectedTags, setSelectedTags] = useState<{ id: number; name: string }[]>([]);
@@ -969,6 +1007,7 @@ function ContentFormPage() {
     setJobPosition(d.job_position ?? "");
     setLastModified(formatDateField(d.last_modified));
     setExpirationDate(formatDateField(d.expiration_date));
+    setNextReviewDate(formatDateField(d.next_review_date));
     setContentType(d.content_type ?? "");
     setDocumentStatus(d.document_status ?? "");
     setSelectedTags(d.content_tags?.map((ct) => ct.tag) ?? []);
@@ -1058,6 +1097,11 @@ function ContentFormPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    if (nextReviewDate && nextReviewDate < todayDateInputValue()) {
+      alert("Next review date cannot be in the past");
+      return;
+    }
+
     let finalID = fileID;
     if (!fileID) {
       finalID = url.slice(-64);
@@ -1072,6 +1116,7 @@ function ContentFormPage() {
       job_position: toNullable(jobPosition),
       last_modified: lastModified ? new Date(lastModified) : null,
       expiration_date: expirationDate ? new Date(expirationDate) : null,
+      next_review_date: nextReviewDate ? new Date(nextReviewDate) : null,
       content_type: toNullable<"Reference" | "Workflow">(contentType as "Reference" | "Workflow"),
       document_status: toNullable<"Created" | "in-progress" | "Finalized" | "Archived">(
         documentStatus as "Created" | "in-progress" | "Finalized" | "Archived",
@@ -1229,6 +1274,8 @@ function ContentFormPage() {
         setLastModified={setLastModified}
         expirationDate={expirationDate}
         setExpirationDate={setExpirationDate}
+        nextReviewDate={nextReviewDate}
+        setNextReviewDate={setNextReviewDate}
         contentType={contentType}
         setContentType={setContentType}
         documentStatus={documentStatus}
