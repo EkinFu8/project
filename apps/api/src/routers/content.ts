@@ -54,42 +54,39 @@ function canEditForRole(
 }
 
 export const contentRouter = router({
+  toggleFavorite: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user?.id;
+    if (!userId) throw new Error("Not authenticated");
 
-    toggleFavorite: publicProcedure
-        .input(contentIdSchema)
-        .mutation(async ({ ctx, input }) => {
-            const userId = ctx.user?.id;
-            if (!userId) throw new Error("Not authenticated");
+    const existing = await ctx.prisma.favorite.findUnique({
+      where: {
+        userId_fileID: {
+          userId,
+          fileID: input.fileID,
+        },
+      },
+    });
 
-            const existing = await ctx.prisma.favorite.findUnique({
-                where: {
-                    userId_fileID: {
-                        userId,
-                        fileID: input.fileID,
-                    },
-                },
-            });
+    if (existing) {
+      await ctx.prisma.favorite.deleteMany({
+        where: {
+          userId,
+          fileID: input.fileID,
+        },
+      });
 
-            if (existing) {
-                await ctx.prisma.favorite.deleteMany({
-                    where: {
-                        userId,
-                        fileID: input.fileID,
-                    },
-                });
+      return { favorited: false };
+    }
 
-                return { favorited: false };
-            }
-
-            await ctx.prisma.favorite.create({
-                data: {
-                    userId,
-                    fileID: input.fileID,
-                },
-            });
-            console.log("FAVORITE TOGGLE:", ctx.user?.id, input.fileID);
-            return { favorited: true };
-        }),
+    await ctx.prisma.favorite.create({
+      data: {
+        userId,
+        fileID: input.fileID,
+      },
+    });
+    console.log("FAVORITE TOGGLE:", ctx.user?.id, input.fileID);
+    return { favorited: true };
+  }),
 
   checkout: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     const userId = ctx.user?.id;
@@ -224,73 +221,70 @@ export const contentRouter = router({
 
     const results = await ctx.prisma.contentManagement.findMany({
       where,
-        orderBy: [
-            {
-                favoritedBy: {
-                    _count: "desc",
-                },
-            },
-            {
-                last_modified: "desc",
-            },
-        ],
-        include: {
-            owner: { select: ownerSelect },
-            checked_out_by_user: { select: checkedOutByUserSelect },
-            ...tagsInclude,
-            favoritedBy: userId
-                ? {
-                    where: { userId },
-                    select: { fileID: true },
-                }
-                : false,
+      orderBy: [
+        {
+          favoritedBy: {
+            _count: "desc",
+          },
         },
+        {
+          last_modified: "desc",
+        },
+      ],
+      include: {
+        owner: { select: ownerSelect },
+        checked_out_by_user: { select: checkedOutByUserSelect },
+        ...tagsInclude,
+        favoritedBy: userId
+          ? {
+              where: { userId },
+              select: { fileID: true },
+            }
+          : false,
+      },
     });
 
-      const base =
-          input.pinnedTagId !== undefined
-              ? (() => {
-                  const pinnedId = input.pinnedTagId;
+    const base =
+      input.pinnedTagId !== undefined
+        ? (() => {
+            const pinnedId = input.pinnedTagId;
 
-                  const pinned = results.filter((r) =>
-                      r.content_tags.some((ct) => ct.tagId === pinnedId),
-                  );
+            const pinned = results.filter((r) =>
+              r.content_tags.some((ct) => ct.tagId === pinnedId),
+            );
 
-                  const unpinned = results.filter(
-                      (r) => !r.content_tags.some((ct) => ct.tagId === pinnedId),
-                  );
+            const unpinned = results.filter(
+              (r) => !r.content_tags.some((ct) => ct.tagId === pinnedId),
+            );
 
-                  return [...pinned, ...unpinned];
-              })()
-              : results;
+            return [...pinned, ...unpinned];
+          })()
+        : results;
 
-      return base
-          .map((r) => ({
-              ...r,
-              is_favorited: (r.favoritedBy?.length ?? 0) > 0,
-          }))
-          .sort((a, b) => {
-              // 1. favorites first
-              const favDiff = Number(b.is_favorited) - Number(a.is_favorited);
-              if (favDiff !== 0) return favDiff;
+    return base
+      .map((r) => ({
+        ...r,
+        is_favorited: (r.favoritedBy?.length ?? 0) > 0,
+      }))
+      .sort((a, b) => {
+        // 1. favorites first
+        const favDiff = Number(b.is_favorited) - Number(a.is_favorited);
+        if (favDiff !== 0) return favDiff;
 
-              // 2. pinned tags (optional enhancement)
-              const pinnedId = input.pinnedTagId;
+        // 2. pinned tags (optional enhancement)
+        const pinnedId = input.pinnedTagId;
 
-              if (pinnedId !== undefined) {
-                  const aPinned = a.content_tags.some((t) => t.tagId === pinnedId);
-                  const bPinned = b.content_tags.some((t) => t.tagId === pinnedId);
+        if (pinnedId !== undefined) {
+          const aPinned = a.content_tags.some((t) => t.tagId === pinnedId);
+          const bPinned = b.content_tags.some((t) => t.tagId === pinnedId);
 
-                  const pinnedDiff = Number(bPinned) - Number(aPinned);
-                  if (pinnedDiff !== 0) return pinnedDiff;
-              }
+          const pinnedDiff = Number(bPinned) - Number(aPinned);
+          if (pinnedDiff !== 0) return pinnedDiff;
+        }
 
-              // 3. fallback: last modified
-              return (
-                  new Date(b.last_modified ?? 0).getTime() -
-                  new Date(a.last_modified ?? 0).getTime()
-              );
-          });
+        // 3. fallback: last modified
+        return new Date(b.last_modified ?? 0).getTime() - new Date(a.last_modified ?? 0).getTime();
+      });
   }),
 
   getById: publicProcedure.input(contentIdSchema).query(async ({ ctx, input }) => {

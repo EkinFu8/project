@@ -1,8 +1,8 @@
 import { Lock, Unlock } from "lucide-react";
 import { Link } from "react-router";
+import { useFavorites } from "@/store/favorites";
 import type { ContentItem } from "@/types/content";
 import { renderTag } from "@/utils/tag";
-import { useFavorites } from "@/store/favorites";
 
 type CheckinMutation = {
   mutate: (args: { fileID: string }) => void;
@@ -149,16 +149,16 @@ export function ContentListItem({
         ) : null}
 
         <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
 
-              toggleFavorite.mutate({
-                fileID: item.fileID,
-              });
-            }}
-            className="text-yellow-400"
+            toggleFavorite.mutate({
+              fileID: item.fileID,
+            });
+          }}
+          className="text-yellow-400"
         >
           {isFavorited(item.fileID) ? "★" : "☆"}
         </button>

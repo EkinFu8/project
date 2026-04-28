@@ -1,15 +1,14 @@
 import { Plus, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { trpc } from "@/lib/trpc.ts";
+import { useFavorites } from "@/store/favorites";
 import { normalizeContent } from "@/utils/normalizeContent.ts";
 import { ContentFilters } from "./components/ContentFilters";
 import { ContentGrid } from "./components/ContentGrid";
 import { useContentFilters } from "./hooks/useContentFilters";
 import { useDebouncedValue } from "./hooks/useDebouncedValue";
-import { useEffect } from "react";
-import { useFavorites } from "@/store/favorites";
 
 const ROLE_TABS = [
   { key: "all", label: "All Users" },
@@ -80,9 +79,7 @@ export default function ContentPage() {
   useEffect(() => {
     if (!contents.data) return;
 
-    const favIds = contents.data
-        .filter((c) => c.is_favorited)
-        .map((c) => c.fileID);
+    const favIds = contents.data.filter((c) => c.is_favorited).map((c) => c.fileID);
 
     setAll(favIds);
   }, [contents.data, setAll]);
@@ -95,10 +92,7 @@ export default function ContentPage() {
 
     if (bFav !== aFav) return bFav - aFav;
 
-    return (
-        new Date(b.last_modified ?? 0).getTime() -
-        new Date(a.last_modified ?? 0).getTime()
-    );
+    return new Date(b.last_modified ?? 0).getTime() - new Date(a.last_modified ?? 0).getTime();
   });
 
   return (
