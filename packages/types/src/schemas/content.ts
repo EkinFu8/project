@@ -31,8 +31,25 @@ export const FORMAT_GROUPS = {
   jpeg: ["jpg", "jpeg"],
   gif: ["gif"],
   svg: ["svg"],
+  other: ["other"],
 } as const;
 
+export const NAMED_EXTENSIONS = [
+  "pdf",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx",
+  "txt",
+  "csv",
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "svg",
+] as const;
 export const ALLOWED_EXTENSIONS = Object.values(FORMAT_GROUPS).flat();
 
 export type FormatGroup = keyof typeof FORMAT_GROUPS;

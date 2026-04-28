@@ -11,6 +11,7 @@ export {
   createTagSchema,
   FORMAT_GROUPS,
   type FormatGroup,
+  NAMED_EXTENSIONS,
   type TagId,
   tagIdSchema,
   type UpdateContent,

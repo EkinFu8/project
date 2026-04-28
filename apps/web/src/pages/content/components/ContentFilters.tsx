@@ -18,6 +18,7 @@ const FORMAT_OPTIONS = [
   { key: "jpeg", label: "JPEG" },
   { key: "gif", label: "GIF" },
   { key: "svg", label: "SVG" },
+  { key: "other", label: "Other" },
 ] as const;
 
 type Filters = {

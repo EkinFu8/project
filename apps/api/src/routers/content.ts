@@ -1,9 +1,9 @@
 import {
-  ALLOWED_EXTENSIONS,
   contentIdSchema,
   contentListQuerySchema,
   createContentSchema,
   FORMAT_GROUPS,
+  NAMED_EXTENSIONS,
   updateContentSchema,
 } from "@myapp/types/schemas";
 import type { Prisma } from "@prisma/client";
@@ -44,7 +44,8 @@ function assertCanEdit(
 function extractFormat(filename: string | null | undefined): string | null {
   if (!filename) return null;
   const ext = filename.split(".").pop()?.toLowerCase() ?? "";
-  return ALLOWED_EXTENSIONS.includes(ext as never) ? ext : null;
+  if (!ext) return null;
+  return NAMED_EXTENSIONS.includes(ext as never) ? ext : "other";
 }
 
 function normalizeRole(role?: string | null) {
@@ -325,9 +326,6 @@ export const contentRouter = router({
     const { tagIds, owner_id, ...rest } = input;
 
     const format = extractFormat(input.filename);
-    if (input.filename && !format) {
-      throw new Error("Unsupported file format");
-    }
 
     const data: Prisma.ContentManagementUncheckedCreateInput = {
       ...rest,
@@ -371,11 +369,7 @@ export const contentRouter = router({
       if (!userId) throw new Error("Not authenticated");
 
       if (data.filename !== undefined) {
-        const format = extractFormat(data.filename);
-        if (data.filename && !format) {
-          throw new Error("Unsupported file format");
-        }
-        (data as typeof data & { format?: string | null }).format = format;
+        (data as typeof data & { format?: string | null }).format = extractFormat(data.filename);
       }
 
       const profile = ctx.profile as { role: string | null } | null;
