@@ -2,6 +2,31 @@ import "../load-env-pre.js";
 import { prisma } from "../src/lib/prisma";
 import { DEMO_ADMIN_EMAIL, DEMO_USER_EMAIL, ensureDemoAuthAndProfiles } from "./ensure-demo-users";
 
+type SeedTemplate = {
+  filename: string;
+  url: string;
+  content_type: "Reference" | "Workflow";
+  document_status: "Created" | "in-progress" | "Finalized" | "Archived";
+  last_modified: Date;
+};
+
+function buildPersonaContent(
+  persona: "actuarial-analyst" | "exl-operations",
+  templates: SeedTemplate[],
+  ownerIds: [string, string],
+) {
+  return templates.map((template, index) => ({
+    fileID:
+      `${persona.toUpperCase().replace(/-/g, "_")}_${String(index + 1).padStart(2, "0")}`.slice(
+        0,
+        64,
+      ),
+    owner_id: ownerIds[index % ownerIds.length],
+    job_position: persona,
+    ...template,
+  }));
+}
+
 async function main() {
   console.log("Seeding database...");
 
@@ -34,74 +59,291 @@ async function main() {
 
   if (!userRow || !adminRow) {
     throw new Error(
-      `Demo profiles missing after ensureDemoAuthAndProfiles (${DEMO_USER_EMAIL}, ${DEMO_ADMIN_EMAIL}).`,
+      `Demo profiles missing after ensureDemoAuthAndProfiles (${DEMO_ADMIN_EMAIL}, ${DEMO_USER_EMAIL}).`,
     );
   }
 
-  await Promise.all([
-    prisma.contentManagement.create({
-      data: {
-        fileID: "FILE-TS-GUIDE-001",
-        filename: "Getting Started with TypeScript",
-        url: "/docs/typescript-guide",
-        owner_id: userRow.id,
-        job_position: "Senior Developer",
-        last_modified: new Date("2026-03-15"),
-        content_type: "Reference",
-        document_status: "Finalized",
-      },
-    }),
-    prisma.contentManagement.create({
-      data: {
-        fileID: "FILE-MKT-Q1-002",
-        filename: "Q1 Marketing Strategy",
-        url: "/docs/q1-marketing",
-        owner_id: adminRow.id,
-        job_position: "Content Strategist",
-        last_modified: new Date("2026-02-20"),
-        content_type: "Workflow",
-        document_status: "Finalized",
-      },
-    }),
-    prisma.contentManagement.create({
-      data: {
-        fileID: "FILE-ARCH-MICRO-003",
-        filename: "Microservices Architecture Guide",
-        url: "/docs/microservices",
-        owner_id: userRow.id,
-        job_position: "Tech Lead",
-        last_modified: new Date("2026-01-10"),
-        content_type: "Reference",
-        document_status: "Finalized",
-      },
-    }),
-    prisma.contentManagement.create({
-      data: {
-        fileID: "FILE-DS-V2-004",
-        filename: "Design System v2 Proposal",
-        url: "/docs/design-system-v2",
-        owner_id: adminRow.id,
-        job_position: "UI/UX Designer",
-        last_modified: new Date("2026-03-28"),
-        content_type: "Reference",
-        document_status: "Created",
-      },
-    }),
-    prisma.contentManagement.create({
-      data: {
-        fileID: "FILE-ROADMAP-2026-005",
-        filename: "Product Roadmap 2026",
-        url: "/docs/roadmap-2026",
-        owner_id: userRow.id,
-        job_position: "Product Manager",
-        last_modified: new Date("2026-03-01"),
-        content_type: "Workflow",
-        document_status: "in-progress",
-      },
-    }),
-  ]);
+  const actuarialTemplates: SeedTemplate[] = [
+    {
+      filename: "Actuarial Pricing Workbook",
+      url: "https://file-examples.com/wp-content/storage/2017/02/file_example_XLSX_10.xlsx",
+      content_type: "Workflow",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-01"),
+    },
+    {
+      filename: "Loss Trend Analysis Guide",
+      url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      content_type: "Reference",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-02"),
+    },
+    {
+      filename: "Reserve Adequacy Checklist",
+      url: "https://example.com/actuarial/reserve-checklist",
+      content_type: "Workflow",
+      document_status: "Created",
+      last_modified: new Date("2026-04-03"),
+    },
+    {
+      filename: "Catastrophe Scenario Notes",
+      url: "https://example.com/actuarial/cat-scenarios",
+      content_type: "Reference",
+      document_status: "in-progress",
+      last_modified: new Date("2026-04-04"),
+    },
+    {
+      filename: "Quarterly Rate Review Slides",
+      url: "https://file-examples.com/wp-content/storage/2017/02/file_example_PPT_500kB.ppt",
+      content_type: "Workflow",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-05"),
+    },
+    {
+      filename: "Exposure Forecast Summary",
+      url: "https://example.com/actuarial/exposure-forecast",
+      content_type: "Reference",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-06"),
+    },
+    {
+      filename: "Claim Frequency Assumptions",
+      url: "https://example.com/actuarial/frequency-assumptions",
+      content_type: "Reference",
+      document_status: "Created",
+      last_modified: new Date("2026-04-07"),
+    },
+    {
+      filename: "Severity Calibration Notes",
+      url: "https://example.com/actuarial/severity-calibration",
+      content_type: "Workflow",
+      document_status: "in-progress",
+      last_modified: new Date("2026-04-08"),
+    },
+    {
+      filename: "Territory Relativity Memo",
+      url: "https://example.com/actuarial/territory-relativity",
+      content_type: "Reference",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-09"),
+    },
+    {
+      filename: "Reinsurance Attachment Summary",
+      url: "https://example.com/actuarial/reinsurance-attachment",
+      content_type: "Reference",
+      document_status: "Archived",
+      last_modified: new Date("2026-04-10"),
+    },
+    {
+      filename: "Profitability Trend Dashboard Spec",
+      url: "https://example.com/actuarial/profitability-dashboard",
+      content_type: "Workflow",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-11"),
+    },
+    {
+      filename: "Actuarial Model Validation Doc",
+      url: "https://file-examples.com/wp-content/storage/2017/10/file-sample_150kB.pdf",
+      content_type: "Reference",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-12"),
+    },
+    {
+      filename: "Premium Indication Template",
+      url: "https://example.com/actuarial/premium-indication-template",
+      content_type: "Workflow",
+      document_status: "Created",
+      last_modified: new Date("2026-04-13"),
+    },
+    {
+      filename: "Rate Filing Submission Tracker",
+      url: "https://example.com/actuarial/rate-filing-tracker",
+      content_type: "Workflow",
+      document_status: "in-progress",
+      last_modified: new Date("2026-04-14"),
+    },
+    {
+      filename: "Actuarial Reference Image",
+      url: "https://file-examples.com/wp-content/storage/2017/10/file_example_JPG_100kB.jpg",
+      content_type: "Reference",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-15"),
+    },
+  ];
 
-  console.log("Seeded 5 content items (owners: demo Auth users).");
+  const exlTemplates: SeedTemplate[] = [
+    {
+      filename: "EXL Intake Workflow",
+      url: "https://example.com/exl/intake-workflow",
+      content_type: "Workflow",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-01"),
+    },
+    {
+      filename: "Vendor SLA Summary",
+      url: "https://example.com/exl/vendor-sla-summary",
+      content_type: "Reference",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-02"),
+    },
+    {
+      filename: "Backlog Prioritization Board",
+      url: "https://example.com/exl/backlog-prioritization",
+      content_type: "Workflow",
+      document_status: "Created",
+      last_modified: new Date("2026-04-03"),
+    },
+    {
+      filename: "Data Handoff Checklist",
+      url: "https://example.com/exl/data-handoff-checklist",
+      content_type: "Workflow",
+      document_status: "in-progress",
+      last_modified: new Date("2026-04-04"),
+    },
+    {
+      filename: "Operational Metrics Slides",
+      url: "https://file-examples.com/wp-content/storage/2017/02/file_example_PPT_500kB.ppt",
+      content_type: "Reference",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-05"),
+    },
+    {
+      filename: "Escalation Routing Matrix",
+      url: "https://example.com/exl/escalation-routing",
+      content_type: "Reference",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-06"),
+    },
+    {
+      filename: "Quality Review Playbook",
+      url: "https://example.com/exl/quality-review-playbook",
+      content_type: "Reference",
+      document_status: "Created",
+      last_modified: new Date("2026-04-07"),
+    },
+    {
+      filename: "Case Assignment Rules",
+      url: "https://example.com/exl/case-assignment-rules",
+      content_type: "Workflow",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-08"),
+    },
+    {
+      filename: "Turnaround Time Targets",
+      url: "https://example.com/exl/turnaround-targets",
+      content_type: "Reference",
+      document_status: "in-progress",
+      last_modified: new Date("2026-04-09"),
+    },
+    {
+      filename: "Queue Monitoring Workbook",
+      url: "https://file-examples.com/wp-content/storage/2017/02/file_example_XLSX_10.xlsx",
+      content_type: "Workflow",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-10"),
+    },
+    {
+      filename: "Resource Planning Template",
+      url: "https://example.com/exl/resource-planning",
+      content_type: "Workflow",
+      document_status: "Archived",
+      last_modified: new Date("2026-04-11"),
+    },
+    {
+      filename: "Audit Readiness Notes",
+      url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      content_type: "Reference",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-12"),
+    },
+    {
+      filename: "Service Recovery Guide",
+      url: "https://example.com/exl/service-recovery-guide",
+      content_type: "Reference",
+      document_status: "Created",
+      last_modified: new Date("2026-04-13"),
+    },
+    {
+      filename: "Knowledge Transfer Recording",
+      url: "https://example.com/exl/knowledge-transfer-recording",
+      content_type: "Workflow",
+      document_status: "in-progress",
+      last_modified: new Date("2026-04-14"),
+    },
+    {
+      filename: "Operations Reference Image",
+      url: "https://file-examples.com/wp-content/storage/2017/10/file_example_PNG_500kB.png",
+      content_type: "Reference",
+      document_status: "Finalized",
+      last_modified: new Date("2026-04-15"),
+    },
+  ];
+
+  const legacyContent = [
+    {
+      fileID: "FILE-TS-GUIDE-001",
+      filename: "Getting Started with TypeScript",
+      url: "/docs/typescript-guide",
+      owner_id: userRow.id,
+      job_position: "underwriter",
+      last_modified: new Date("2026-03-15"),
+      content_type: "Reference" as const,
+      document_status: "Finalized" as const,
+    },
+    {
+      fileID: "FILE-MKT-Q1-002",
+      filename: "Q1 Marketing Strategy",
+      url: "/docs/q1-marketing",
+      owner_id: adminRow.id,
+      job_position: "business-analyst",
+      last_modified: new Date("2026-02-20"),
+      content_type: "Workflow" as const,
+      document_status: "Finalized" as const,
+    },
+    {
+      fileID: "FILE-ARCH-MICRO-003",
+      filename: "Microservices Architecture Guide",
+      url: "/docs/microservices",
+      owner_id: userRow.id,
+      job_position: "underwriter",
+      last_modified: new Date("2026-01-10"),
+      content_type: "Reference" as const,
+      document_status: "Finalized" as const,
+    },
+    {
+      fileID: "FILE-DS-V2-004",
+      filename: "Design System v2 Proposal",
+      url: "/docs/design-system-v2",
+      owner_id: adminRow.id,
+      job_position: "business-analyst",
+      last_modified: new Date("2026-03-28"),
+      content_type: "Reference" as const,
+      document_status: "Created" as const,
+    },
+    {
+      fileID: "FILE-ROADMAP-2026-005",
+      filename: "Product Roadmap 2026",
+      url: "/docs/roadmap-2026",
+      owner_id: userRow.id,
+      job_position: "underwriter",
+      last_modified: new Date("2026-03-01"),
+      content_type: "Workflow" as const,
+      document_status: "in-progress" as const,
+    },
+  ];
+
+  const personaContent = [
+    ...buildPersonaContent("actuarial-analyst", actuarialTemplates, [adminRow.id, userRow.id]),
+    ...buildPersonaContent("exl-operations", exlTemplates, [userRow.id, adminRow.id]),
+  ];
+
+  await prisma.contentManagement.createMany({
+    data: [...legacyContent, ...personaContent],
+  });
+
+  console.log(
+    `Seeded ${legacyContent.length + personaContent.length} content items including 15 for actuarial-analyst and 15 for exl-operations.`,
+  );
 }
 
 main()
