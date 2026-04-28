@@ -2,11 +2,11 @@ import ColinImage from "@/assets/colin.png";
 import EkingsImage from "@/assets/ekin.png";
 import JacobMajorImage from "@/assets/jacob major.png";
 import JacobMolniaImage from "@/assets/jacob molnia.png";
+import MyantonomoImage from "@/assets/Myantonomo.png";
 import MaxCImage from "@/assets/max c.png";
 import MaxwellWImage from "@/assets/maxwell w.png";
-import MyantonomoImage from "@/assets/Myantonomo.png";
-import RafealImage from "@/assets/rafael.png";
 import RusselsImage from "@/assets/Russel.png";
+import RafealImage from "@/assets/rafael.png";
 import TobiasImage from "@/assets/tobias.jpg";
 import GenericCard from "@/pages/content/components/GenericCard.tsx";
 
