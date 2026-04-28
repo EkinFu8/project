@@ -4,9 +4,9 @@ import JacobMajorImage from "@/assets/jacob major.png";
 import JacobMolniaImage from "@/assets/jacob molnia.png";
 import MaxCImage from "@/assets/max c.png";
 import MaxwellWImage from "@/assets/maxwell w.png";
-import MyantonomoImage from "@/assets/myantonomo.png";
+import MyantonomoImage from "@/assets/Myantonomo.png";
 import RafealImage from "@/assets/rafael.png";
-import RusselsImage from "@/assets/russel.png";
+import RusselsImage from "@/assets/Russel.png";
 import TobiasImage from "@/assets/tobias.jpg";
 import GenericCard from "@/pages/content/components/GenericCard.tsx";
 
