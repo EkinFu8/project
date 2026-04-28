@@ -362,7 +362,7 @@ function ContentFormSummarySection({
           {mutationError}
         </div>
       )}
-      {canEdit ?? (
+      {canEdit && (
         <div className="flex justify-between">
           <button
             type="button"
@@ -965,8 +965,6 @@ function ContentFormPage() {
       const expiration = new Date(expiration_date);
       const today = new Date();
       if (expiration <= today) setShowReminder(true);
-      console.log("dates comparison below");
-      console.log(expiration <= today);
     }
   }
 
