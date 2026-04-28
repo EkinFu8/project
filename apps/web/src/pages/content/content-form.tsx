@@ -59,7 +59,6 @@ type ContentFormFieldsProps = {
   createError: ReturnType<typeof trpc.content.create.useMutation>["error"];
   updateError: ReturnType<typeof trpc.content.update.useMutation>["error"];
   isSaving: boolean;
-  onDownload: () => void;
   onDelete: () => void;
   onSubmit: (e: React.FormEvent) => void;
   extractedText?: string | null;
