@@ -11,6 +11,7 @@ type CheckinMutation = {
 type Props = {
   item: ContentItem;
   currentUserId?: string;
+  searchQuery?: string;
   toggleFavorite: {
     mutate: (args: { fileID: string }) => void;
   };
@@ -27,6 +28,7 @@ function checkedOutLabel(isCheckedOutByMe: boolean, name: string | undefined): s
 export function ContentListItem({
   item,
   currentUserId,
+  searchQuery,
   toggleFavorite,
   checkin,
   getStatusBadge,
@@ -39,9 +41,13 @@ export function ContentListItem({
   const isCheckedOutByMe = !!(item.is_checked_out && item.checked_out_by === currentUserId);
   const checkedOutByName = item.checked_out_by_user?.name;
 
+  const detailHref = searchQuery
+    ? `/hero/content/${item.fileID}/edit?q=${encodeURIComponent(searchQuery)}`
+    : `/hero/content/${item.fileID}/edit`;
+
   return (
     <Link
-      to={`/hero/content/${item.fileID}/edit`}
+      to={detailHref}
       className="group flex items-center justify-between rounded border border-border bg-card p-3 shadow-sm transition-all hover:border-hanover-green hover:shadow-md"
     >
       {/* LEFT SIDE */}
@@ -72,6 +78,25 @@ export function ContentListItem({
           <span>
             {item.last_modified ? new Date(item.last_modified).toLocaleDateString() : "—"}
           </span>
+        </div>
+
+        {/* OCR BADGES */}
+        <div className="flex flex-wrap gap-1">
+          {item.matched_in_content && (
+            <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+              matched in content
+            </span>
+          )}
+          {(item.ocr_status === "pending" || item.ocr_status === "processing") && (
+            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+              indexing…
+            </span>
+          )}
+          {item.ocr_status === "failed" && (
+            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">
+              OCR failed
+            </span>
+          )}
         </div>
       </div>
 

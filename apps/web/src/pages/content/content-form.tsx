@@ -4,7 +4,7 @@ import { TextInput } from "@myapp/ui/components/text-input";
 import "@iamjariwala/react-doc-viewer/dist/index.css";
 import { ArrowLeft, Loader2, Lock, Pencil, Unlock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { type RouterOutputs, trpc } from "@/lib/trpc.ts";
@@ -61,7 +61,71 @@ type ContentFormFieldsProps = {
   isSaving: boolean;
   onDelete: () => void;
   onSubmit: (e: React.FormEvent) => void;
+  extractedText?: string | null;
 };
+
+// Walk DOM text nodes and wrap matches in <mark> without touching React-managed nodes.
+function highlightTextNodes(root: Element, re: RegExp) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const matches: [Text, string][] = [];
+
+  let node: Node | null;
+  // biome-ignore lint/suspicious/noAssignInExpressions: standard TreeWalker pattern
+  while ((node = walker.nextNode())) {
+    const text = (node as Text).textContent ?? "";
+    if (re.test(text)) matches.push([node as Text, text]);
+    re.lastIndex = 0;
+  }
+
+  for (const [textNode, raw] of matches) {
+    const span = document.createElement("span");
+    span.innerHTML = raw.replace(
+      re,
+      '<mark style="background:#fef08a;border-radius:2px;padding:0 1px">$1</mark>',
+    );
+    re.lastIndex = 0;
+    textNode.parentNode?.replaceChild(span, textNode);
+  }
+}
+
+function HighlightedExcerpt({ text, query }: { text: string; query: string }) {
+  const CONTEXT = 120;
+  const lower = text.toLowerCase();
+  const queryLower = query.toLowerCase().trim();
+
+  if (!queryLower) return null;
+
+  // Find the first occurrence to anchor the excerpt.
+  const idx = lower.indexOf(queryLower);
+  if (idx === -1) return null;
+
+  const start = Math.max(0, idx - CONTEXT);
+  const end = Math.min(text.length, idx + queryLower.length + CONTEXT);
+  const excerpt = (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
+
+  // Split excerpt on all occurrences of the query word (case-insensitive) for highlighting.
+  const parts = excerpt.split(new RegExp(`(${queryLower})`, "gi"));
+
+  return (
+    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
+      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-blue-600">
+        Matched in document content
+      </p>
+      <p className="leading-relaxed text-foreground">
+        {parts.map((part, i) =>
+          part.toLowerCase() === queryLower ? (
+            // biome-ignore lint/suspicious/noArrayIndexKey: split-on-regex parts have no stable identity
+            <mark key={i} className="rounded bg-yellow-200 px-0.5 text-foreground">
+              {part}
+            </mark>
+          ) : (
+            part
+          ),
+        )}
+      </p>
+    </div>
+  );
+}
 
 function ContentMetadataReadonlyTable({
   fileID,
@@ -627,8 +691,11 @@ function ContentFormFields({
   isSaving,
   onDelete,
   onSubmit,
+  extractedText,
 }: ContentFormFieldsProps) {
   const [metadataEditMode, setMetadataEditMode] = useState(false);
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get("q") ?? "";
   const showFileSummary = isEditing && Boolean(url) && !metadataEditMode;
   const ownerDisplayName =
     employees?.find((e) => e.id === ownerId)?.name ?? (ownerId ? ownerId : "Unassigned");
@@ -666,6 +733,71 @@ function ContentFormFields({
     return () => observer.disconnect();
   }, [url, filename]);
 
+  // Highlight search terms inside the DocViewer once it finishes rendering.
+  useEffect(() => {
+    if (!searchQuery || !url) return;
+
+    const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+    const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const queryRe = new RegExp(`(${escaped})`, "gi");
+
+    function applyHighlights() {
+      // ── Plain text / CSV ────────────────────────────────────────────────
+      const txtContainer = document.querySelector(".rdv-txt-container");
+      if (txtContainer && (ext === "txt" || ext === "csv")) {
+        const raw = txtContainer.textContent ?? "";
+        if (!raw) return false;
+        txtContainer.innerHTML = raw.replace(
+          queryRe,
+          '<mark style="background:#fef08a;border-radius:2px;padding:0 1px">$1</mark>',
+        );
+        txtContainer.querySelector("mark")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return true;
+      }
+
+      // ── DOCX / DOC ──────────────────────────────────────────────────────
+      const msdocContainer = document.querySelector(".rdv-msdoc-content");
+      if (msdocContainer && (ext === "docx" || ext === "doc")) {
+        highlightTextNodes(msdocContainer, queryRe);
+        msdocContainer
+          .querySelector("mark")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return true;
+      }
+
+      // ── PDF text layer ──────────────────────────────────────────────────
+      // PDF.js renders an invisible text layer (.textLayer) on top of the canvas.
+      // We tint matching spans so the highlight aligns with the visible glyphs.
+      if (ext === "pdf") {
+        const textLayerSpans = document.querySelectorAll<HTMLElement>(
+          ".textLayer span, .text-layer span",
+        );
+        if (textLayerSpans.length === 0) return false;
+
+        let firstMatch: HTMLElement | null = null;
+        for (const span of textLayerSpans) {
+          if (queryRe.test(span.textContent ?? "")) {
+            span.style.backgroundColor = "#fef08a";
+            span.style.borderRadius = "2px";
+            if (!firstMatch) firstMatch = span;
+          }
+          queryRe.lastIndex = 0; // reset stateful regex after each test
+        }
+        firstMatch?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return true;
+      }
+
+      return false;
+    }
+
+    // Retry until the DocViewer finishes rendering, then stop.
+    const observer = new MutationObserver(() => {
+      if (applyHighlights()) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [searchQuery, url, filename]);
+
   const docs = [{ uri: url }];
   return (
     <div className="border-t border-border/60 py-8 sm:py-10">
@@ -683,6 +815,9 @@ function ContentFormFields({
         </h1>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
+          {searchQuery && extractedText && (
+            <HighlightedExcerpt text={extractedText} query={searchQuery} />
+          )}
           {url && canDisplayDocument(url) ? (
             <div className="mb-6 text-black overflow-hidden rounded-lg border border-border bg-muted">
               <style>{`.rdv-txt-container { white-space: pre; font-family: monospace; }`}</style>
@@ -1091,6 +1226,7 @@ function ContentFormPage() {
         isSaving={isSaving}
         onDelete={handleDelete}
         onSubmit={handleSubmit}
+        extractedText={existing.data?.extracted_text}
       />
       {askConfirmation && (
         <div className="bg-black/50 fixed inset-0 flex items-center justify-center">
