@@ -844,16 +844,56 @@ function ContentFormFields({
             <HighlightedExcerpt text={extractedText} query={searchQuery} />
           )}
           {url && canDisplayDocument(url) ? (
-            <div className="mb-6 text-black overflow-hidden rounded-lg border border-border bg-muted">
-              <style>{`.rdv-txt-container { white-space: pre; font-family: monospace; }`}</style>
+            <div className="mb-6 overflow-hidden rounded-lg border border-gray-300 bg-muted text-black max-w-4xl mx-auto shadow-lg">
+              <style>{`.rdv-txt-container { white-space: pre; font-family: monospace; }
+    button.rdv-toolbar-btn[title='Download'],
+    button.rdv-toolbar-btn[title='Print'],
+    #pdf-download,
+    #pdf-print { display: none !important; }`}</style>
+
               <DocViewer
                 documents={docs}
                 pluginRenderers={DocViewerRenderers}
                 config={{
                   header: { disableHeader: true, disableFileName: true },
                 }}
-                style={{ height: "70vh", minHeight: 800, width: "100%" }}
+                style={{ height: "80vh", minHeight: 500, width: "100%" }}
               />
+
+              <div className="flex justify-end border-t border-border bg-background px-4 py-2.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    trackDownload.mutate({ fileID });
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = blobUrl;
+                    a.download = filename || "download";
+                    a.click();
+                    URL.revokeObjectURL(blobUrl);
+                  }}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-hanover-green px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-hanover-green/90 active:scale-95"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Download
+                </button>
+              </div>
             </div>
           ) : null}
           <form className="space-y-6" onSubmit={onSubmit}>
