@@ -48,7 +48,7 @@ export function ContentCard({
   return (
     <Link
       to={detailHref}
-      className="group rounded border border-border bg-card shadow-sm transition-all hover:border-hanover-green hover:shadow-md p-5"
+      className={`group flex flex-col rounded border bg-card shadow-sm transition-all hover:border-hanover-green hover:shadow-md p-5`}
     >
       {/* HEADER */}
       <div className="mb-3 flex items-start justify-between gap-2">
@@ -180,11 +180,11 @@ export function ContentCard({
       </div>
 
       {/* FOOTER */}
-      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+      <div className="mt-auto pt-3 border-t border-border flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span className="truncate max-w-[60%]">{item.owner?.name ?? "Unassigned"}</span>
 
         <span className="shrink-0">
-          {item.last_modified ? new Date(item.last_modified).toLocaleDateString() : "—"}
+          Due: {item.next_review_date ? new Date(item.next_review_date).toLocaleDateString() : "—"}
         </span>
       </div>
     </Link>

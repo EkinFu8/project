@@ -25,6 +25,8 @@ export function useContentFilters() {
   const pinnedTagIdParam = params.get("pinnedTagId");
   const pinnedTagId =
     pinnedTagIdParam && !Number.isNaN(Number(pinnedTagIdParam)) ? Number(pinnedTagIdParam) : null;
+  const sort = (params.get("sort") as "due" | "name" | "created") ?? "due";
+  const sortDir = (params.get("sortDir") as "asc" | "desc") ?? "asc";
 
   function update(key: string, value: string) {
     const next = new URLSearchParams(params);
@@ -78,6 +80,10 @@ export function useContentFilters() {
     tagIds,
     tagMode,
     pinnedTagId,
+    sort,
+    sortDir,
+    setSort: (v: "due" | "name" | "created") => update("sort", v),
+    setSortDir: (v: "asc" | "desc") => update("sortDir", v),
 
     setSearch: (v: string) => update("search", v),
     setView: (v: "grid" | "list") => update("view", v),
