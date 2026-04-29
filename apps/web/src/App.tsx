@@ -1,4 +1,5 @@
 import { TopNav } from "@myapp/ui/components/top-nav";
+import CMSChatbot from "@myapp/ui/components/chatbot";
 import { Loader2 } from "lucide-react";
 import {
   BrowserRouter,
@@ -89,6 +90,8 @@ function ProtectedLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const { data: me } = trpc.user.myProfile.useQuery();
+
   const accessQuery = trpc.user.myAccess.useQuery(undefined, {
     enabled: Boolean(session),
   });
@@ -106,6 +109,7 @@ function ProtectedLayout() {
   const role = accessQuery.data?.role;
   const isAdmin = role === "admin";
   const navItems = isAdmin ? adminNavItems() : employeeNavItems();
+  const username = me?.name;
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -122,6 +126,14 @@ function ProtectedLayout() {
           onSignOut: handleSignOut,
           photoUrl: accessQuery.data?.photo_url,
         }}
+      />
+      <CMSChatbot
+          context={{
+            user: {
+              name: username ? username : "User",
+              role: role ? role : "Unknown",
+            },
+          }}
       />
       <Outlet />
     </div>

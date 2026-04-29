@@ -15,6 +15,7 @@
   "dependencies": {
     "@cyntler/react-doc-viewer": "^1.17.1",
     "@iamjariwala/react-doc-viewer": "^1.8.0",
+    "@mlc-ai/web-llm": "^0.2.82",
     "@myapp/api": "workspace:*",
     "@myapp/types": "workspace:*",
     "@myapp/ui": "workspace:*",
