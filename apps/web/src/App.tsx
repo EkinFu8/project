@@ -75,6 +75,7 @@ function adminNavItems() {
     { label: "User Management", to: "/users" },
     { label: "Tags", to: "/tags" },
     { label: "Dashboard", to: "/dashboard" },
+    {label: "About", to: "/about" },
   ];
 }
 
@@ -84,6 +85,7 @@ function employeeNavItems() {
     { label: "Content", to: "/hero/content" },
     { label: "Notifications", to: "/notifications" },
     { label: "Coworkers", to: "/employees" },
+    {label: "About", to: "/about" },
   ];
 }
 
