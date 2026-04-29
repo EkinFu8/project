@@ -1,5 +1,6 @@
 import type * as webllm from "@mlc-ai/web-llm";
 import { Bot, ExternalLink, Send, Sparkles } from "lucide-react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ASSISTANT_TOOLS, DEFAULT_MODEL } from "./chatbot/knowledge";
 import { buildGreeting, buildSystemPrompt } from "./chatbot/prompt";
@@ -9,34 +10,55 @@ import type { AssistantAction, ChatMessage, ChatRole, CMSChatbotProps } from "./
 import { useWebLlmAssistant } from "./chatbot/use-web-llm-assistant";
 
 type ParsedMessage = {
-  text: string;
-  actions: AssistantAction[];
+  blocks: MessageBlock[];
 };
 
+type MessageBlock =
+  | { type: "markdown"; content: string }
+  | { type: "actions"; actions: AssistantAction[] };
+
 const ACTION_PATTERN = /^ACTION:\s*(\/[^\s|]*)\s*\|\s*(.+)$/i;
+const LOOSE_ACTION_PATTERN = /^[-*]?\s*Action:\s*`?\s*(\/[^`|]+?)\s*\|\s*([^`]+?)\s*`?\.?$/i;
 
 function resizeTextarea(textarea: HTMLTextAreaElement) {
   textarea.style.height = "auto";
   textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
 }
 
+function parseActionLine(line: string): AssistantAction | null {
+  const trimmed = line.trim();
+  const match = trimmed.match(ACTION_PATTERN) ?? trimmed.match(LOOSE_ACTION_PATTERN);
+  const to = match?.[1]?.trim();
+  const label = match?.[2]?.trim();
+  if (!to || !label) return null;
+  return { to, label, tone: "primary" };
+}
+
 function parseAssistantMessage(content: string): ParsedMessage {
-  const actions: AssistantAction[] = [];
+  const blocks: MessageBlock[] = [];
   const lines = content.split("\n");
   const textLines: string[] = [];
 
+  function flushText() {
+    const content = textLines.join("\n").trim();
+    if (content) {
+      blocks.push({ type: "markdown", content });
+    }
+    textLines.length = 0;
+  }
+
   for (const line of lines) {
-    const match = line.trim().match(ACTION_PATTERN);
-    const to = match?.[1];
-    const label = match?.[2];
-    if (to && label) {
-      actions.push({ to, label: label.trim(), tone: "primary" });
+    const action = parseActionLine(line);
+    if (action) {
+      flushText();
+      blocks.push({ type: "actions", actions: [action] });
       continue;
     }
     textLines.push(line);
   }
 
-  return { text: textLines.join("\n").trim(), actions };
+  flushText();
+  return { blocks };
 }
 
 function actionAllowed(action: AssistantAction, allActions: AssistantAction[]) {
@@ -76,6 +98,107 @@ function mergeActions(actions: AssistantAction[], inferred: AssistantAction[]) {
       return true;
     }),
   ];
+}
+
+function renderInlineMarkdown(text: string) {
+  const nodes: ReactNode[] = [];
+  const pattern = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  let lastIndex = 0;
+  let match = pattern.exec(text);
+
+  while (match !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    const token = match[0];
+    if (token.startsWith("**")) {
+      nodes.push(<strong key={`${match.index}-${token}`}>{token.slice(2, -2)}</strong>);
+    } else {
+      nodes.push(
+        <code key={`${match.index}-${token}`} style={styles.inlineCode}>
+          {token.slice(1, -1)}
+        </code>,
+      );
+    }
+    lastIndex = match.index + token.length;
+    match = pattern.exec(text);
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes;
+}
+
+function renderMarkdown(content: string) {
+  const lines = content.split("\n");
+  const nodes: ReactNode[] = [];
+  let listItems: { ordered: boolean; text: string }[] = [];
+
+  function flushList() {
+    if (listItems.length === 0) return;
+    const ordered = listItems[0]?.ordered ?? false;
+    const ListTag = ordered ? "ol" : "ul";
+    nodes.push(
+      <ListTag
+        key={`list-${nodes.length}`}
+        style={ordered ? styles.orderedList : styles.unorderedList}
+      >
+        {listItems.map((item) => (
+          <li
+            key={`${item.ordered ? "ordered" : "unordered"}-${item.text}`}
+            style={styles.listItem}
+          >
+            {renderInlineMarkdown(item.text)}
+          </li>
+        ))}
+      </ListTag>,
+    );
+    listItems = [];
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushList();
+      continue;
+    }
+
+    const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (heading?.[2]) {
+      flushList();
+      nodes.push(
+        <div key={`heading-${nodes.length}`} style={styles.markdownHeading}>
+          {renderInlineMarkdown(heading[2])}
+        </div>,
+      );
+      continue;
+    }
+
+    const ordered = trimmed.match(/^\d+\.\s+(.+)$/);
+    if (ordered?.[1]) {
+      listItems.push({ ordered: true, text: ordered[1] });
+      continue;
+    }
+
+    const unordered = trimmed.match(/^[-*]\s+(.+)$/);
+    if (unordered?.[1]) {
+      listItems.push({ ordered: false, text: unordered[1] });
+      continue;
+    }
+
+    flushList();
+    nodes.push(
+      <p key={`paragraph-${nodes.length}`} style={styles.markdownParagraph}>
+        {renderInlineMarkdown(trimmed)}
+      </p>,
+    );
+  }
+
+  flushList();
+  return nodes;
 }
 
 function SuggestedActionButton({
@@ -331,13 +454,16 @@ export default function CMSChatbot({
             const parsed =
               message.role === "assistant"
                 ? parseAssistantMessage(message.content)
-                : { text: message.content, actions: [] };
-            const actions = mergeActions(
-              parsed.actions.filter((action) => actionAllowed(action, availableActions)),
-              message.role === "assistant"
-                ? inferActionsFromText(parsed.text, availableActions)
-                : [],
-            );
+                : { blocks: [{ type: "markdown", content: message.content }] as MessageBlock[] };
+            const markdownText = parsed.blocks
+              .filter((block) => block.type === "markdown")
+              .map((block) => block.content)
+              .join("\n");
+            const hasExplicitActions = parsed.blocks.some((block) => block.type === "actions");
+            const inferredActions =
+              message.role === "assistant" && !hasExplicitActions
+                ? inferActionsFromText(markdownText, availableActions)
+                : [];
 
             return (
               <div
@@ -357,11 +483,42 @@ export default function CMSChatbot({
                     ...(message.role === "user" ? styles.userBubble : styles.assistantBubble),
                   }}
                 >
-                  {parsed.text || (message.role === "assistant" && isTyping ? "Thinking" : "")}
+                  {parsed.blocks.length > 0
+                    ? parsed.blocks.map((block) => {
+                        if (block.type === "actions") {
+                          const actions = block.actions.filter((action) =>
+                            actionAllowed(action, availableActions),
+                          );
+                          if (actions.length === 0) return null;
+                          return (
+                            <div
+                              key={`actions-${actions.map(actionKey).join("-")}`}
+                              style={styles.inlineActions}
+                            >
+                              {actions.map((action) => (
+                                <SuggestedActionButton
+                                  key={actionKey(action)}
+                                  action={action}
+                                  onNavigate={onNavigate}
+                                />
+                              ))}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={`markdown-${block.content}`} style={styles.markdownBlock}>
+                            {renderMarkdown(block.content)}
+                          </div>
+                        );
+                      })
+                    : message.role === "assistant" && isTyping
+                      ? "Thinking"
+                      : ""}
                 </div>
-                {actions.length > 0 ? (
+                {inferredActions.length > 0 ? (
                   <div style={styles.messageActions}>
-                    {actions.map((action) => (
+                    {mergeActions([], inferredActions).map((action) => (
                       <SuggestedActionButton
                         key={actionKey(action)}
                         action={action}

@@ -166,7 +166,7 @@ export const styles = {
     borderRadius: 14,
     fontSize: 14,
     lineHeight: 1.55,
-    whiteSpace: "pre-wrap",
+    whiteSpace: "normal",
     wordBreak: "break-word",
   },
   userBubble: {
@@ -185,6 +185,44 @@ export const styles = {
     flexWrap: "wrap",
     gap: 8,
     marginTop: 8,
+  },
+  inlineActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    margin: "8px 0 10px",
+  },
+  markdownBlock: {
+    display: "block",
+  },
+  markdownParagraph: {
+    margin: "0 0 10px",
+  },
+  markdownHeading: {
+    margin: "4px 0 8px",
+    fontSize: 14,
+    fontWeight: 720,
+    color: "#111827",
+  },
+  orderedList: {
+    margin: "0 0 10px 18px",
+    padding: 0,
+  },
+  unorderedList: {
+    margin: "0 0 10px 18px",
+    padding: 0,
+  },
+  listItem: {
+    margin: "0 0 6px",
+    paddingLeft: 2,
+  },
+  inlineCode: {
+    borderRadius: 5,
+    background: "rgba(22,71,52,0.08)",
+    color: "#164734",
+    padding: "1px 4px",
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    fontSize: "0.92em",
   },
   actionButton: {
     border: "1px solid rgba(22,71,52,0.16)",
