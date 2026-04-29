@@ -15,13 +15,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { trpc } from "@/lib/trpc.ts";
+import { useContentFilters } from "@/store/content-filters";
 import { useFavorites } from "@/store/favorites";
 import { normalizeContent } from "@/utils/normalizeContent.ts";
 import { ContentFilters } from "./components/ContentFilters";
 import { ContentGrid } from "./components/ContentGrid";
-import { useContentFilters } from "./hooks/useContentFilters";
 import { useDebouncedValue } from "./hooks/useDebouncedValue";
-import { usePersistedState } from "./hooks/usePersistedState";
 
 const ROLE_TABS = [
   { key: "all", label: "All Users" },
@@ -57,13 +56,6 @@ export default function ContentPage() {
   const debouncedSearch = useDebouncedValue(filters.search, 300);
   const { session } = useSession();
   const currentUserId = session?.user?.id;
-
-  // Persist the sidebar collapsibles so toggling sections survives navigation.
-  const [openRole, setOpenRole] = usePersistedState("content.filters.role.open", true);
-  const [openStatus, setOpenStatus] = usePersistedState("content.filters.status.open", true);
-  const [openType, setOpenType] = usePersistedState("content.filters.type.open", true);
-  const [openFormat, setOpenFormat] = usePersistedState("content.filters.format.open", true);
-  const [openTags, setOpenTags] = usePersistedState("content.filters.tags.open", true);
 
   const utils = trpc.useUtils();
 
@@ -407,20 +399,7 @@ export default function ContentPage() {
         </div>
         <div className="flex gap-6">
           {/* SIDEBAR */}
-          <ContentFilters
-            filters={filters}
-            openRole={openRole}
-            setOpenRole={setOpenRole}
-            openStatus={openStatus}
-            setOpenStatus={setOpenStatus}
-            openType={openType}
-            setOpenType={setOpenType}
-            openFormat={openFormat}
-            setOpenFormat={setOpenFormat}
-            openTags={openTags}
-            setOpenTags={setOpenTags}
-            ROLE_TABS={ROLE_TABS}
-          />
+          <ContentFilters filters={filters} ROLE_TABS={ROLE_TABS} />
 
           {/* Grid / List view */}
           <ContentGrid

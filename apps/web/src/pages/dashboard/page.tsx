@@ -1,6 +1,5 @@
 import { InfoPopover } from "@myapp/ui/components/info-popover";
 import { Activity, LayoutGrid, Loader2 } from "lucide-react";
-import { useState } from "react";
 import { Link } from "react-router";
 import {
   Bar,
@@ -17,8 +16,7 @@ import {
 import type { RouterOutputs } from "@/lib/trpc.ts";
 import { trpc } from "@/lib/trpc.ts";
 import { DashboardReports, MetricsView } from "@/pages/admin/metrics/page.tsx";
-
-type DashboardTab = "overview" | "metrics";
+import { type DashboardTab, useAppPreferences } from "@/store/app-preferences";
 
 type EmployeeRow = RouterOutputs["employee"]["list"][number];
 type ContentRow = RouterOutputs["content"]["list"][number];
@@ -385,7 +383,8 @@ function DashboardLoaded({
 }
 
 function DashboardPage() {
-  const [tab, setTab] = useState<DashboardTab>("overview");
+  const tab = useAppPreferences((state) => state.dashboardTab);
+  const setTab = useAppPreferences((state) => state.setDashboardTab);
 
   const access = trpc.user.myAccess.useQuery();
   const isAdmin = access.data?.role === "admin";

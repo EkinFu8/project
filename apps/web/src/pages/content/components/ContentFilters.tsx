@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Filter, Search, SlidersHorizontal, X } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { trpc } from "@/lib/trpc.ts";
+import type { ContentFilters as ContentFiltersState } from "@/store/content-filters";
 import { normalizeTag, renderTag } from "@/utils/tag";
 
 type RoleTab = {
@@ -26,35 +27,8 @@ const FORMAT_OPTIONS = [
 
 const ALL_FORMATS = [{ key: "", label: "All" }, ...FORMAT_OPTIONS];
 
-type Filters = {
-  role: string;
-  status: string;
-  type: string;
-  format: string;
-  tagIds: number[];
-  tagMode: "any" | "all";
-  pinnedTagId: number | null;
-  setRole: (v: string) => void;
-  setStatus: (v: string) => void;
-  setType: (v: string) => void;
-  setFormat: (v: string) => void;
-  setTagIds: (ids: number[]) => void;
-  setTagMode: (mode: "any" | "all") => void;
-  setPinnedTagId: (id: number | null) => void;
-};
-
 type Props = {
-  filters: Filters;
-  openRole: boolean;
-  setOpenRole: (v: boolean) => void;
-  openStatus: boolean;
-  setOpenStatus: (v: boolean) => void;
-  openType: boolean;
-  setOpenType: (v: boolean) => void;
-  openFormat: boolean;
-  setOpenFormat: (v: boolean) => void;
-  openTags: boolean;
-  setOpenTags: (v: boolean) => void;
+  filters: ContentFiltersState;
   ROLE_TABS: RoleTab[];
 };
 
@@ -99,34 +73,19 @@ const SECTION_MOTION = {
   transition: { duration: 0.2, ease: "easeInOut" as const },
 };
 
-export function ContentFilters({
-  filters,
-  openRole,
-  setOpenRole,
-  openStatus,
-  setOpenStatus,
-  openType,
-  setOpenType,
-  openFormat,
-  setOpenFormat,
-  openTags,
-  setOpenTags,
-  ROLE_TABS,
-}: Props) {
+export function ContentFilters({ filters, ROLE_TABS }: Props) {
   const tagsQuery = trpc.tag.list.useQuery();
   const tags = tagsQuery.data ?? [];
 
-  const [formatSearch, setFormatSearch] = useState("");
   const [formatOpen, setFormatOpen] = useState(false);
-  const [tagSearch, setTagSearch] = useState("");
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
 
   const visibleFormats = ALL_FORMATS.filter(({ label }) =>
-    label.toLowerCase().includes(formatSearch.toLowerCase()),
+    label.toLowerCase().includes(filters.formatSearch.toLowerCase()),
   );
 
   const visibleTags = tags.filter((tag) =>
-    tag.name.toLowerCase().includes(tagSearch.toLowerCase()),
+    tag.name.toLowerCase().includes(filters.tagSearch.toLowerCase()),
   );
 
   function toggleTag(id: number) {
@@ -138,9 +97,6 @@ export function ContentFilters({
   }
 
   const selectedFormatLabel = ALL_FORMATS.find((f) => f.key === filters.format)?.label;
-
-  // Count of any active narrowing filter — surfaced in the header so users
-  // always know how aggressively they're filtering.
   const activeFilterCount =
     (filters.role !== "all" ? 1 : 0) +
     (filters.status ? 1 : 0) +
@@ -154,13 +110,14 @@ export function ContentFilters({
     filters.setStatus("");
     filters.setType("");
     filters.setFormat("");
+    filters.setFormatSearch("");
     filters.setTagIds([]);
+    filters.setTagSearch("");
     filters.setPinnedTagId(null);
   }
 
   return (
     <aside className="sticky top-4 h-fit w-64 shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm shadow-black/[0.02]">
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-border/70 bg-muted/30 px-4 py-3">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
@@ -185,19 +142,18 @@ export function ContentFilters({
       </div>
 
       <div className="px-4 py-4">
-        {/* ROLE */}
         <div className="mb-3.5">
           <FilterSectionHeader
             label="Role"
-            open={openRole}
-            onToggle={() => setOpenRole(!openRole)}
+            open={filters.sections.role}
+            onToggle={() => filters.setSectionOpen("role", !filters.sections.role)}
             helpTitle="Role filter"
           >
             Limits results to content intended for a selected audience. All Users shows content
             across every role.
           </FilterSectionHeader>
           <AnimatePresence initial={false}>
-            {openRole && (
+            {filters.sections.role && (
               <motion.div layout {...SECTION_MOTION} className="flex flex-col overflow-hidden">
                 {ROLE_TABS.map((tab) => {
                   const active = filters.role === tab.key;
@@ -228,19 +184,18 @@ export function ContentFilters({
         </div>
         <div className="my-3.5 h-px bg-border/70" />
 
-        {/* STATUS */}
         <div className="mb-3.5">
           <FilterSectionHeader
             label="Status"
-            open={openStatus}
-            onToggle={() => setOpenStatus(!openStatus)}
+            open={filters.sections.status}
+            onToggle={() => filters.setSectionOpen("status", !filters.sections.status)}
             helpTitle="Status filter"
           >
             Narrows content by workflow state, from newly created drafts through finalized or
             archived material.
           </FilterSectionHeader>
           <AnimatePresence initial={false}>
-            {openStatus && (
+            {filters.sections.status && (
               <motion.div layout {...SECTION_MOTION} className="flex flex-col overflow-hidden">
                 {["", "Created", "in-progress", "Finalized", "Archived"].map((s) => {
                   const active = filters.status === s;
@@ -272,18 +227,17 @@ export function ContentFilters({
         </div>
         <div className="my-3.5 h-px bg-border/70" />
 
-        {/* TYPE */}
         <div className="mb-3.5">
           <FilterSectionHeader
             label="Type"
-            open={openType}
-            onToggle={() => setOpenType(!openType)}
+            open={filters.sections.type}
+            onToggle={() => filters.setSectionOpen("type", !filters.sections.type)}
             helpTitle="Content type filter"
           >
             Reference content is informational. Workflow content is tied to a process or task.
           </FilterSectionHeader>
           <AnimatePresence initial={false}>
-            {openType && (
+            {filters.sections.type && (
               <motion.div layout {...SECTION_MOTION} className="flex flex-col overflow-hidden">
                 {["", "Reference", "Workflow"].map((t) => {
                   const active = filters.type === t;
@@ -314,7 +268,6 @@ export function ContentFilters({
         </div>
         <div className="my-3.5 h-px bg-border/70" />
 
-        {/* FORMAT */}
         <div className="mb-3.5">
           <FilterSectionHeader
             label={
@@ -327,14 +280,14 @@ export function ContentFilters({
                 )}
               </span>
             }
-            open={openFormat}
-            onToggle={() => setOpenFormat(!openFormat)}
+            open={filters.sections.format}
+            onToggle={() => filters.setSectionOpen("format", !filters.sections.format)}
             helpTitle="Format filter"
           >
             Filters by the uploaded file's detected format, such as PDF, Word, Excel, or image.
           </FilterSectionHeader>
           <AnimatePresence initial={false}>
-            {openFormat && (
+            {filters.sections.format && (
               <motion.div layout {...SECTION_MOTION} className="overflow-hidden">
                 <div className="relative">
                   <Search
@@ -343,11 +296,11 @@ export function ContentFilters({
                   />
                   <input
                     type="text"
-                    value={formatSearch}
-                    onChange={(e) => setFormatSearch(e.target.value)}
+                    value={filters.formatSearch}
+                    onChange={(e) => filters.setFormatSearch(e.target.value)}
                     onFocus={() => setFormatOpen(true)}
                     onBlur={() => setFormatOpen(false)}
-                    placeholder={selectedFormatLabel ?? "Search formats…"}
+                    placeholder={selectedFormatLabel ?? "Search formats..."}
                     className="w-full rounded-md border border-border bg-background py-1.5 pl-7 pr-2 text-xs transition-colors placeholder:text-muted-foreground/70 hover:border-foreground/25 focus:border-hanover-green focus:outline-none focus:ring-2 focus:ring-hanover-green/20"
                   />
                   {formatOpen && (
@@ -366,7 +319,7 @@ export function ContentFilters({
                               onMouseDown={(e) => e.preventDefault()}
                               onClick={() => {
                                 filters.setFormat(key);
-                                setFormatSearch("");
+                                filters.setFormatSearch("");
                                 setFormatOpen(false);
                               }}
                               className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-muted ${
@@ -394,7 +347,6 @@ export function ContentFilters({
         </div>
         <div className="my-3.5 h-px bg-border/70" />
 
-        {/* TAGS */}
         <div>
           <FilterSectionHeader
             label={
@@ -407,21 +359,20 @@ export function ContentFilters({
                 )}
               </span>
             }
-            open={openTags}
-            onToggle={() => setOpenTags(!openTags)}
+            open={filters.sections.tags}
+            onToggle={() => filters.setSectionOpen("tags", !filters.sections.tags)}
             helpTitle="Tag filters"
           >
             Match any returns content with at least one selected tag. Match all requires every
             selected tag. Pin tag to top prioritizes one tag in the results.
           </FilterSectionHeader>
           <AnimatePresence initial={false}>
-            {openTags && (
+            {filters.sections.tags && (
               <motion.div
                 layout
                 {...SECTION_MOTION}
                 className="flex flex-col gap-2.5 overflow-hidden"
               >
-                {/* ANY / ALL segmented toggle */}
                 <div className="relative flex items-center rounded-md bg-muted/70 p-0.5 text-xs ring-1 ring-inset ring-border/70">
                   <button
                     type="button"
@@ -447,7 +398,6 @@ export function ContentFilters({
                   </button>
                 </div>
 
-                {/* Tag search with dropdown */}
                 <div className="relative">
                   <Search
                     className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground/70"
@@ -455,22 +405,22 @@ export function ContentFilters({
                   />
                   <input
                     type="text"
-                    value={tagSearch}
-                    onChange={(e) => setTagSearch(e.target.value)}
+                    value={filters.tagSearch}
+                    onChange={(e) => filters.setTagSearch(e.target.value)}
                     onFocus={() => setTagDropdownOpen(true)}
                     onBlur={() => setTagDropdownOpen(false)}
-                    placeholder="Search tags…"
+                    placeholder="Search tags..."
                     className="w-full rounded-md border border-border bg-background py-1.5 pl-7 pr-2 text-xs transition-colors placeholder:text-muted-foreground/70 hover:border-foreground/25 focus:border-hanover-green focus:outline-none focus:ring-2 focus:ring-hanover-green/20"
                   />
                   {tagDropdownOpen && (
                     <div className="absolute left-0 right-0 top-full z-20 mt-1.5 origin-top animate-pop rounded-lg border border-border bg-popover shadow-lg shadow-black/10 ring-1 ring-black/[0.02]">
                       <div className="flex max-h-44 flex-wrap gap-1.5 overflow-y-auto p-2">
                         {tagsQuery.isLoading && (
-                          <span className="text-xs text-muted-foreground">Loading…</span>
+                          <span className="text-xs text-muted-foreground">Loading...</span>
                         )}
                         {!tagsQuery.isLoading && visibleTags.length === 0 && (
                           <span className="text-xs text-muted-foreground">
-                            {tagSearch ? "No match" : "No tags yet"}
+                            {filters.tagSearch ? "No match" : "No tags yet"}
                           </span>
                         )}
                         {visibleTags.map((tag) => {
@@ -503,7 +453,6 @@ export function ContentFilters({
                   )}
                 </div>
 
-                {/* Selected tags shown below input at all times */}
                 {filters.tagIds.length > 0 && (
                   <div className="flex flex-col gap-1.5">
                     <div className="flex flex-wrap gap-1">
@@ -540,7 +489,6 @@ export function ContentFilters({
                   </div>
                 )}
 
-                {/* Pin-to-top dropdown */}
                 <div className="flex flex-col gap-1.5 border-t border-border/70 pt-2.5">
                   <label
                     htmlFor="pin-tag-select"

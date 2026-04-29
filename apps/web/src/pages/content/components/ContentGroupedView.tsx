@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { useContentFilterStore } from "@/store/content-filters";
 import type { ContentItem } from "@/types/content";
-import { usePersistedState } from "../hooks/usePersistedState";
 import { ContentCard } from "./ContentCard";
 import { ContentListHeader } from "./ContentListHeader";
 import { ContentListRow } from "./ContentListRow";
@@ -115,11 +115,8 @@ export function ContentGroupedView({
   checkin,
   getStatusBadge,
 }: Props) {
-  // Persisted across navigation so closing a section doesn't reset every time.
-  const [collapsed, setCollapsed] = usePersistedState<Record<string, boolean>>(
-    "content.groups.collapsed",
-    {},
-  );
+  const collapsedGroups = useContentFilterStore((state) => state.collapsedGroups);
+  const setGroupCollapsed = useContentFilterStore((state) => state.setGroupCollapsed);
 
   // Bucket while preserving the upstream sort order within each group.
   const buckets = new Map<RoleKey, ContentItem[]>();
@@ -168,7 +165,7 @@ export function ContentGroupedView({
     <div className="flex flex-col gap-4">
       {visibleGroups.map((key) => {
         const groupItems = buckets.get(key) ?? [];
-        const isCollapsed = !!collapsed[key];
+        const isCollapsed = !!collapsedGroups[key];
         const overdueCount = groupItems.filter(isOverdue).length;
 
         return (
@@ -179,7 +176,7 @@ export function ContentGroupedView({
               overdueCount={overdueCount}
               accent={ROLE_ACCENT[key]}
               expanded={!isCollapsed}
-              onToggle={() => setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }))}
+              onToggle={() => setGroupCollapsed(key, !isCollapsed)}
             />
 
             <AnimatePresence initial={false}>
