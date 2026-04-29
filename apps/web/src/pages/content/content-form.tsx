@@ -3,7 +3,7 @@ import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
 import "@iamjariwala/react-doc-viewer/dist/index.css";
 import { AlertTriangle, ArrowLeft, Loader2, Lock, Pencil, Unlock, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { useFileUpload } from "@/hooks/use-file-upload";
@@ -844,7 +844,7 @@ function ContentFormFields({
             <HighlightedExcerpt text={extractedText} query={searchQuery} />
           )}
           {url && canDisplayDocument(url) ? (
-            <div className="mb-6 overflow-hidden rounded-lg border border-gray-300 bg-muted text-black max-w-4xl mx-auto shadow-lg">
+            <div className="mx-auto mb-6 max-w-4xl overflow-hidden rounded-lg border border-gray-300 bg-muted text-black shadow-lg">
               <style>{`.rdv-txt-container { white-space: pre; font-family: monospace; }
     button.rdv-toolbar-btn[title='Download'],
     button.rdv-toolbar-btn[title='Print'],
@@ -988,6 +988,7 @@ function ContentFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditing = Boolean(id) && id !== "new";
+  const trackedViewIdRef = useRef<string | null>(null);
 
   const existing = trpc.content.getById.useQuery({ fileID: id! }, { enabled: isEditing });
   const employees = trpc.employee.list.useQuery({ employeePortalOnly: true });
@@ -1075,6 +1076,21 @@ function ContentFormPage() {
   }, [existing.data, handleReviewReminder]);
 
   const utils = trpc.useUtils();
+  const trackView = trpc.content.trackView.useMutation({
+    onSuccess: () => {
+      if (!id) return;
+      utils.content.getById.invalidate({ fileID: id });
+      utils.content.list.invalidate();
+    },
+  });
+
+  useEffect(() => {
+    if (!isEditing || !existing.data?.fileID) return;
+    if (trackedViewIdRef.current === existing.data.fileID) return;
+
+    trackedViewIdRef.current = existing.data.fileID;
+    trackView.mutate({ fileID: existing.data.fileID });
+  }, [existing.data?.fileID, isEditing, trackView]);
 
   const create = trpc.content.create.useMutation({
     onSuccess: () => {
@@ -1206,7 +1222,7 @@ function ContentFormPage() {
   return (
     <>
       {showReminder && (
-        <div className="fixed bottom-2 right-2 gap-2 rounded-lg border border-destructive/40 bg-destructive/10 pl-10 pr-8 py-5 text-sm font-medium text-destructive">
+        <div className="fixed bottom-2 right-2 gap-2 rounded-lg border border-destructive/40 bg-destructive/10 py-5 pl-10 pr-8 text-sm font-medium text-destructive">
           <div className="absolute right-1 top-1">
             <button
               type="button"
@@ -1356,8 +1372,8 @@ function ContentFormPage() {
         extractedText={existing.data?.extracted_text}
       />
       {askConfirmation && (
-        <div className="bg-black/50 fixed inset-0 flex items-center justify-center">
-          <div className="bg-white dark:bg-zinc-800 px-10 py-5 rounded-xl">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50">
+          <div className="rounded-xl bg-white px-10 py-5 dark:bg-zinc-800">
             <p>Are you sure you want to {operation} this content?</p>
             <br />
             <div className="flex w-full justify-between">

@@ -1,5 +1,6 @@
 import { TopNav } from "@myapp/ui/components/top-nav";
 import { Loader2 } from "lucide-react";
+import { useCallback, useEffect } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -11,6 +12,7 @@ import {
   useParams,
 } from "react-router";
 import { useSession } from "@/auth/session-context";
+import { useNotificationReadState } from "@/hooks/use-notification-read-state";
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
 import AboutPage from "@/pages/about/page.tsx";
@@ -37,6 +39,9 @@ function LegacyContentEditRedirect() {
 }
 
 const SIGNED_OUT_NOTICE = "You were signed out. Please sign in again.";
+const CONTENT_SEARCH_FOCUS_EVENT = "content-search:focus";
+const USERS_SEARCH_FOCUS_EVENT = "users-search:focus";
+const TAGS_SEARCH_FOCUS_EVENT = "tags-search:focus";
 
 function AuthSplash() {
   return (
@@ -73,13 +78,10 @@ function LoginRoute() {
 function adminNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
-    { label: "Notifications", to: "/notifications" },
-    { label: "User Management", to: "/users" },
+    { label: "Users", to: "/users" },
     { label: "Tags", to: "/tags" },
     { label: "Dashboard", to: "/dashboard" },
     { label: "Help", to: "/help" },
-    { label: "About", to: "/about" },
-    { label: "Credits", to: "/credits" },
   ];
 }
 
@@ -87,11 +89,8 @@ function adminNavItems() {
 function employeeNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
-    { label: "Notifications", to: "/notifications" },
     { label: "Coworkers", to: "/employees" },
     { label: "Help", to: "/help" },
-    { label: "About", to: "/about" },
-    { label: "Credits", to: "/credits" },
   ];
 }
 
@@ -104,6 +103,50 @@ function ProtectedLayout() {
   const accessQuery = trpc.user.myAccess.useQuery(undefined, {
     enabled: Boolean(session),
   });
+  const notificationsQuery = trpc.notifications.myList.useQuery(undefined, {
+    enabled: Boolean(session) && Boolean(accessQuery.data),
+  });
+  const { unreadCount } = useNotificationReadState(notificationsQuery.data, session?.user.id);
+  const isContentPage = location.pathname === "/hero" || location.pathname === "/hero/content";
+  const isUsersPage = location.pathname === "/users";
+  const isUsersRoute = location.pathname.startsWith("/users/");
+  const isTagsPage = location.pathname === "/tags";
+
+  const focusCurrentSearch = useCallback(() => {
+    if (isUsersPage) {
+      window.dispatchEvent(new Event(USERS_SEARCH_FOCUS_EVENT));
+      return;
+    }
+
+    if (isUsersRoute) {
+      navigate("/users", { state: { focusUsersSearch: true } });
+      return;
+    }
+
+    if (isTagsPage) {
+      window.dispatchEvent(new Event(TAGS_SEARCH_FOCUS_EVENT));
+      return;
+    }
+
+    if (isContentPage) {
+      window.dispatchEvent(new Event(CONTENT_SEARCH_FOCUS_EVENT));
+      return;
+    }
+
+    navigate("/hero/content", { state: { focusContentSearch: true } });
+  }, [isContentPage, isTagsPage, isUsersPage, isUsersRoute, navigate]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        focusCurrentSearch();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [focusCurrentSearch]);
 
   if (sessionLoading) return <AuthSplash />;
   if (!session) {
@@ -130,7 +173,13 @@ function ProtectedLayout() {
         items={navItems}
         brandTo="/hero"
         accountMenu={{
+          notificationsTo: "/notifications",
+          unreadNotificationCount: unreadCount,
           settingsTo: "/account",
+          links: [
+            { label: "About", to: "/about" },
+            { label: "Credits", to: "/credits" },
+          ],
           onSignOut: handleSignOut,
           photoUrl: accessQuery.data?.photo_url,
         }}

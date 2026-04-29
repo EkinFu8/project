@@ -235,7 +235,7 @@ function UserFormPage() {
                   <button
                     type="button"
                     onClick={() => setPhotoUrl(null)}
-                    className="flex items-center gap-1 rounded border border-border bg-background px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
                   >
                     <Trash2 className="h-3 w-3" />
                     Remove

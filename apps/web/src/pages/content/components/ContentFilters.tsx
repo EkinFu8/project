@@ -128,7 +128,7 @@ export function ContentFilters({
   const selectedFormatLabel = ALL_FORMATS.find((f) => f.key === filters.format)?.label;
 
   return (
-    <aside className="w-64 shrink-0 rounded border border-border bg-card p-4 h-fit sticky top-4">
+    <aside className="sticky top-4 h-fit w-64 shrink-0 rounded border border-border bg-card p-4">
       <p className="mb-2 text-sm font-semibold">Filters</p>
       <hr className="mb-3" />
 
@@ -160,7 +160,7 @@ export function ContentFilters({
                     type="button"
                     key={tab.key}
                     onClick={() => filters.setRole(tab.key)}
-                    className="relative flex items-start text-left rounded px-2 py-1 text-sm hover:bg-muted"
+                    className="relative flex items-start rounded px-2 py-1 text-left text-sm hover:bg-muted"
                   >
                     {active && (
                       <span className="absolute left-0 top-1.5 h-5 w-1 rounded bg-hanover-green" />
@@ -209,7 +209,7 @@ export function ContentFilters({
                     type="button"
                     key={s || "all"}
                     onClick={() => filters.setStatus(s)}
-                    className="relative flex items-start text-left rounded px-2 py-1 text-sm hover:bg-muted"
+                    className="relative flex items-start rounded px-2 py-1 text-left text-sm hover:bg-muted"
                   >
                     {active && (
                       <span className="absolute left-0 top-1.5 h-5 w-1 rounded bg-hanover-green" />
@@ -253,7 +253,7 @@ export function ContentFilters({
                     type="button"
                     key={t || "all"}
                     onClick={() => filters.setType(t)}
-                    className="relative flex items-start text-left rounded px-2 py-1 text-sm hover:bg-muted"
+                    className="relative flex items-start rounded px-2 py-1 text-left text-sm hover:bg-muted"
                   >
                     {active && (
                       <span className="absolute left-0 top-1.5 h-5 w-1 rounded bg-hanover-green" />
@@ -417,7 +417,7 @@ export function ContentFilters({
                 />
                 {tagDropdownOpen && (
                   <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded border border-border bg-card shadow-md">
-                    <div className="max-h-44 overflow-y-auto p-2 flex flex-wrap gap-1.5">
+                    <div className="flex max-h-44 flex-wrap gap-1.5 overflow-y-auto p-2">
                       {tagsQuery.isLoading && (
                         <span className="text-xs text-muted-foreground">Loading…</span>
                       )}
@@ -488,7 +488,7 @@ export function ContentFilters({
               )}
 
               {/* Pin-to-top dropdown */}
-              <div className="flex flex-col gap-1 pt-2 border-t border-border">
+              <div className="flex flex-col gap-1 border-t border-border pt-2">
                 <label className="flex flex-col gap-1 text-xs font-semibold">
                   Pin tag to top
                   <select

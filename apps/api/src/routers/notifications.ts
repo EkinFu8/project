@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { protectedProcedure, router } from "../lib/trpc";
 
 // Prisma loses row types when `where` is Record<string, unknown> (see content.list); cast keeps callbacks typed.
@@ -43,6 +44,42 @@ function roleVariants(role?: string | null) {
 const REVIEW_LOOKAHEAD_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const notificationsRouter = router({
+  markViewed: protectedProcedure
+    .input(
+      z.object({
+        notifications: z
+          .array(
+            z.object({
+              id: z.string().min(1),
+              type: z.string().min(1),
+              fileID: z.string().optional(),
+              fileName: z.string().optional(),
+              createdAt: z.coerce.date(),
+            }),
+          )
+          .max(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.notifications.length === 0) return { success: true, count: 0 };
+
+      await ctx.prisma.auditEvent.createMany({
+        data: input.notifications.map((notification) => ({
+          userId: ctx.user.id,
+          action: "notification-view",
+          documentId: notification.fileID || null,
+          fileName: notification.fileName || null,
+          metadata: {
+            notificationId: notification.id,
+            notificationType: notification.type,
+            notificationCreatedAt: notification.createdAt.toISOString(),
+          },
+        })),
+      });
+
+      return { success: true, count: input.notifications.length };
+    }),
+
   myList: protectedProcedure.query(async ({ ctx }) => {
     const profile = await ctx.prisma.userProfile.findUnique({
       where: { id: ctx.user.id },

@@ -1,5 +1,8 @@
 import { Bell, Clock3, FilePenLine, Loader2, UserRoundCog } from "lucide-react";
+import { useEffect } from "react";
 import { Link } from "react-router";
+import { useSession } from "@/auth/session-context";
+import { useNotificationReadState } from "@/hooks/use-notification-read-state.ts";
 import type { RouterOutputs } from "@/lib/trpc.ts";
 import { trpc } from "@/lib/trpc.ts";
 
@@ -41,7 +44,25 @@ function typeLabel(type: NotificationRow["type"]) {
 }
 
 function NotificationsPage() {
+  const { session } = useSession();
   const list = trpc.notifications.myList.useQuery();
+  const markViewed = trpc.notifications.markViewed.useMutation();
+  const { markRowsRead, unreadRows } = useNotificationReadState(list.data, session?.user.id);
+
+  useEffect(() => {
+    if (unreadRows.length === 0) return;
+
+    markViewed.mutate({
+      notifications: unreadRows.map((row) => ({
+        id: row.id,
+        type: row.type,
+        fileID: row.fileID,
+        fileName: row.fileName,
+        createdAt: new Date(row.createdAt),
+      })),
+    });
+    markRowsRead(unreadRows);
+  }, [markRowsRead, markViewed, unreadRows]);
 
   if (list.isLoading) {
     return (
@@ -69,35 +90,51 @@ function NotificationsPage() {
 
   return (
     <div className="min-h-[calc(100vh-2.75rem)] bg-muted px-4 py-10">
-      <div className="mx-auto max-w-5xl">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
-          <Bell className="h-6 w-6 text-hanover-green" />
+      <div className="mx-auto max-w-5xl animate-fade-in-up">
+        <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight text-foreground">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-hanover-green/10">
+            <Bell className="h-5 w-5 text-hanover-green" />
+          </span>
           Notifications
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Edits, review dates, and owner changes for content that matches your role.
         </p>
 
-        <div className="mt-6 overflow-x-auto rounded border border-border bg-card shadow-sm">
+        <div className="mt-6 overflow-x-auto rounded-lg border border-border bg-card shadow-sm transition-shadow duration-200 hover:shadow-md">
           {rows.length === 0 ? (
-            <p className="px-6 py-10 text-center text-sm text-muted-foreground">
-              Nothing to show right now.
-            </p>
+            <div className="px-6 py-12 text-center">
+              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                <Bell className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">Nothing to show right now.</p>
+            </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border">
-                  <th className="px-4 py-3 text-left font-semibold text-foreground">Type</th>
-                  <th className="px-4 py-3 text-left font-semibold text-foreground">Document</th>
-                  <th className="px-4 py-3 text-left font-semibold text-foreground">Message</th>
-                  <th className="px-4 py-3 text-left font-semibold text-foreground">Date</th>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Document
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Message
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Date
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((item) => (
-                  <tr key={item.id} className="border-b border-border">
+                  <tr
+                    key={item.id}
+                    className="border-b border-border transition-colors duration-150 last:border-b-0 hover:bg-muted/50"
+                  >
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-2 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
+                      <span className="inline-flex items-center gap-2 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground ring-1 ring-border">
                         {typeIcon(item.type)}
                         {typeLabel(item.type)}
                       </span>
@@ -106,7 +143,7 @@ function NotificationsPage() {
                       {item.fileID ? (
                         <Link
                           to={`/hero/content/${item.fileID}/edit`}
-                          className="text-hanover-green hover:underline"
+                          className="font-medium text-hanover-green underline-offset-2 transition-colors duration-150 hover:text-hanover-green/80 hover:underline"
                         >
                           {item.fileName}
                         </Link>

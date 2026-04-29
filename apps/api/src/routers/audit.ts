@@ -1,6 +1,14 @@
 import { adminPortalProcedure, router } from "../lib/trpc";
 
-const knownActivityActions = ["upload", "download", "edit", "delete", "ownership-update"] as const;
+const knownActivityActions = [
+  "upload",
+  "view",
+  "download",
+  "edit",
+  "delete",
+  "ownership-update",
+  "notification-view",
+] as const;
 
 type ActivityAction = (typeof knownActivityActions)[number];
 
@@ -16,10 +24,12 @@ type ActivityOwner = {
 function blankActivityCounts(): ActivityCounts {
   return {
     upload: 0,
+    view: 0,
     download: 0,
     edit: 0,
     delete: 0,
     "ownership-update": 0,
+    "notification-view": 0,
     other: 0,
   };
 }
@@ -68,14 +78,16 @@ export const auditRouter = router({
   }),
 
   getSummary: adminPortalProcedure.query(async ({ ctx }) => {
-    const [uploads, downloads, edits, deletes] = await Promise.all([
+    const [uploads, views, downloads, edits, deletes, notificationViews] = await Promise.all([
       ctx.prisma.auditEvent.count({ where: { action: "upload" } }),
+      ctx.prisma.auditEvent.count({ where: { action: "view" } }),
       ctx.prisma.auditEvent.count({ where: { action: "download" } }),
       ctx.prisma.auditEvent.count({ where: { action: "edit" } }),
       ctx.prisma.auditEvent.count({ where: { action: "delete" } }),
+      ctx.prisma.auditEvent.count({ where: { action: "notification-view" } }),
     ]);
 
-    return { uploads, downloads, edits, deletes };
+    return { uploads, views, downloads, edits, deletes, notificationViews };
   }),
 
   getTopUsers: adminPortalProcedure.query(async ({ ctx }) => {
@@ -132,6 +144,8 @@ export const auditRouter = router({
             select: {
               fileID: true,
               filename: true,
+              view_count: true,
+              last_viewed_at: true,
               job_position: true,
               owner: {
                 select: {
@@ -226,6 +240,7 @@ export const auditRouter = router({
       transactions: events.length,
       documents: documentIds.length,
       actions: blankActivityCounts(),
+      views: documents.reduce((sum, document) => sum + document.view_count, 0),
     };
 
     for (const event of events) {
@@ -269,6 +284,8 @@ export const auditRouter = router({
           createdAt: event.createdAt,
           owner,
           role: roleLabel(document?.job_position, owner?.role, event.user.role),
+          documentViewCount: document?.view_count ?? null,
+          documentLastViewedAt: document?.last_viewed_at ?? null,
           actor: event.user,
         };
       }),

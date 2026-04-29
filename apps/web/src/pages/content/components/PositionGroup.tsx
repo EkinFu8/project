@@ -188,11 +188,11 @@ export function PositionGroup({
   const [open, setOpen] = useState(true);
 
   return (
-    <section className="border-b border-border/70 pb-5 last:border-b-0 last:pb-0">
+    <section className="pb-1">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="mb-3 flex w-full items-center justify-between rounded border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/50"
+        className="mb-3 flex w-full items-center justify-between rounded-lg border border-border bg-card px-3.5 py-2.5 text-left shadow-sm transition-colors hover:bg-muted/40"
         aria-expanded={open}
       >
         <span className="flex min-w-0 items-center gap-2">
@@ -213,7 +213,7 @@ export function PositionGroup({
           <div
             style={{
               display: "grid",
-              gap: "1rem",
+              gap: "0.875rem",
               gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
             }}
           >

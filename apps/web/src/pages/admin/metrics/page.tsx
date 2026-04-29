@@ -36,10 +36,12 @@ type ActivityReportRow = {
   owner: string;
   role: string;
   uploads: number;
+  views: number;
   downloads: number;
   edits: number;
   deletes: number;
   ownershipUpdates: number;
+  notificationViews: number;
   other: number;
   total: number;
   latestAt: Date | null;
@@ -52,10 +54,12 @@ const STALE_AFTER_DAYS = 180;
 function formatAction(action: string) {
   const map: Record<string, string> = {
     upload: "uploaded",
+    view: "viewed",
     download: "downloaded",
     edit: "edited",
     delete: "deleted",
     "ownership-update": "updated ownership for",
+    "notification-view": "viewed notification for",
   };
 
   return map[action] ?? action;
@@ -250,10 +254,12 @@ function getOrCreateActivityGroup(
       owner,
       role,
       uploads: 0,
+      views: 0,
       downloads: 0,
       edits: 0,
       deletes: 0,
       ownershipUpdates: 0,
+      notificationViews: 0,
       other: 0,
       total: 0,
       latestAt: null,
@@ -276,10 +282,12 @@ export function buildActivityReportRows(auditEvents: AuditEventRow[], content: C
 
     row.total += 1;
     if (event.action === "upload") row.uploads += 1;
+    else if (event.action === "view") row.views += 1;
     else if (event.action === "download") row.downloads += 1;
     else if (event.action === "edit") row.edits += 1;
     else if (event.action === "delete") row.deletes += 1;
     else if (event.action === "ownership-update") row.ownershipUpdates += 1;
+    else if (event.action === "notification-view") row.notificationViews += 1;
     else row.other += 1;
 
     if (createdAt && (!row.latestAt || createdAt.getTime() > row.latestAt.getTime())) {
@@ -365,6 +373,7 @@ export function DashboardReports({
                   <th className="px-2 py-3 text-left font-semibold text-foreground">Role</th>
                   <th className="px-2 py-3 text-right font-semibold text-foreground">Total</th>
                   <th className="px-2 py-3 text-right font-semibold text-foreground">Uploads</th>
+                  <th className="px-2 py-3 text-right font-semibold text-foreground">Views</th>
                   <th className="px-2 py-3 text-right font-semibold text-foreground">Downloads</th>
                   <th className="px-2 py-3 text-right font-semibold text-foreground">Edits</th>
                   <th className="px-2 py-3 text-right font-semibold text-foreground">
@@ -382,6 +391,7 @@ export function DashboardReports({
                       {row.total}
                     </td>
                     <td className="px-2 py-3 text-right text-muted-foreground">{row.uploads}</td>
+                    <td className="px-2 py-3 text-right text-muted-foreground">{row.views}</td>
                     <td className="px-2 py-3 text-right text-muted-foreground">{row.downloads}</td>
                     <td className="px-2 py-3 text-right text-muted-foreground">{row.edits}</td>
                     <td className="px-2 py-3 text-right text-muted-foreground">
@@ -542,9 +552,11 @@ export function MetricsView() {
 
   const activitySummaryData = [
     { name: "Uploads", value: auditSummary.data?.uploads ?? 0 },
+    { name: "Views", value: auditSummary.data?.views ?? 0 },
     { name: "Downloads", value: auditSummary.data?.downloads ?? 0 },
     { name: "Edits", value: auditSummary.data?.edits ?? 0 },
     { name: "Deletes", value: auditSummary.data?.deletes ?? 0 },
+    { name: "Notifications", value: auditSummary.data?.notificationViews ?? 0 },
   ];
 
   const activeUserCounts = new Map<string, number>();
@@ -603,7 +615,7 @@ export function MetricsView() {
           <h2 className="mb-3 flex items-center gap-2 text-xl font-semibold text-foreground">
             Document Activity
             <InfoPopover title="Document Activity">
-              Upload, download, edit, and delete audit counts.
+              Upload, view, download, edit, delete, and notification-view audit counts.
             </InfoPopover>
           </h2>
           <div className="h-72">

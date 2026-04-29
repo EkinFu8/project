@@ -8,6 +8,8 @@ export interface ContentItem {
   expiration_date: string | null;
   content_type: string | null;
   document_status: string | null;
+  view_count: number;
+  last_viewed_at: string | null;
 }
 
 export interface ContentWithOwner extends ContentItem {

@@ -93,4 +93,155 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Smoother default focus rings, applied app-wide */
+  :focus-visible {
+    outline: none;
+  }
+
+  /* Honor reduced-motion preference for any motion utilities below */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Subtle motion utilities — kept short, gentle, and predictable so UI feels
+ * polished without ever calling attention to itself.
+ * ------------------------------------------------------------------------- */
+@layer utilities {
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in-down {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /*
+   * Pop-from-anchor: small downward translate + slight scale, used for
+   * dropdowns/popovers. Pair with `origin-top` / `origin-top-left` /
+   * `origin-top-right` so the morph emerges from the trigger edge.
+   */
+  @keyframes pop-from-top {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-fade-in-down {
+    animation: fade-in-down 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-pop {
+    animation: pop-from-top 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Gentle rise + shadow lift on hover for cards. Use sparingly. */
+  .hover-lift {
+    transition:
+      transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 200ms ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  /* Staggered list reveals — apply to a parent and children inherit a delay. */
+  .stagger-children > * {
+    animation: fade-in-up 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .stagger-children > *:nth-child(1)  { animation-delay: 20ms; }
+  .stagger-children > *:nth-child(2)  { animation-delay: 60ms; }
+  .stagger-children > *:nth-child(3)  { animation-delay: 100ms; }
+  .stagger-children > *:nth-child(4)  { animation-delay: 140ms; }
+  .stagger-children > *:nth-child(5)  { animation-delay: 180ms; }
+  .stagger-children > *:nth-child(6)  { animation-delay: 220ms; }
+  .stagger-children > *:nth-child(7)  { animation-delay: 260ms; }
+  .stagger-children > *:nth-child(8)  { animation-delay: 300ms; }
+  .stagger-children > *:nth-child(9)  { animation-delay: 340ms; }
+  .stagger-children > *:nth-child(10) { animation-delay: 380ms; }
+  .stagger-children > *:nth-child(n+11) { animation-delay: 420ms; }
+
+  /* Soft skeleton sheen for loading states. */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-muted) 0%,
+      color-mix(in oklch, var(--color-muted) 60%, var(--color-background)) 50%,
+      var(--color-muted) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
 }
