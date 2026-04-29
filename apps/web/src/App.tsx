@@ -30,7 +30,6 @@ import TagsPage from "@/pages/tags/TagsPage";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
 import AboutPage from "@/pages/about/page.tsx";
 
-
 function LegacyContentEditRedirect() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={`/hero/content/${id}/edit`} replace />;
@@ -78,6 +77,7 @@ function adminNavItems() {
     { label: "Tags", to: "/tags" },
     { label: "Dashboard", to: "/dashboard" },
     { label: "About", to: "/about" },
+    { label: "Credits", to: "/credits" },
   ];
 }
 
@@ -88,6 +88,7 @@ function employeeNavItems() {
     { label: "Notifications", to: "/notifications" },
     { label: "Coworkers", to: "/employees" },
     { label: "About", to: "/about" },
+    { label: "Credits", to: "/credits" },
   ];
 }
 
