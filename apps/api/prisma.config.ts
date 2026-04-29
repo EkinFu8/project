@@ -34,9 +34,14 @@ let databaseUrl: string | undefined = (() => {
 })();
 
 if (!databaseUrl) {
-  // `prisma generate` and bundled API builds do not open a DB connection; Prisma still loads this config.
-  // CI / Railway builds often have no repo `.env` — use a well-formed placeholder for config parsing only.
-  if (process.env.CI === "true" || process.env.RAILWAY_ENVIRONMENT) {
+  // `prisma generate` does not open a DB connection, but Prisma still loads this config.
+  // Fresh installs may not have a local `.env` yet, so postinstall can explicitly allow a
+  // well-formed placeholder for config parsing only.
+  if (
+    process.env.CI === "true" ||
+    process.env.RAILWAY_ENVIRONMENT ||
+    process.env.PRISMA_ALLOW_PLACEHOLDER_DATABASE_URL === "1"
+  ) {
     databaseUrl = "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
   } else {
     throw new Error(
