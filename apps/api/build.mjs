@@ -6,6 +6,7 @@ await build({
   platform: "node",
   target: "node22",
   format: "esm",
+  external: ["tesseract.js"],
   outfile: "dist/server.mjs",
   banner: {
     js: 'import{createRequire}from"module";const require=createRequire(import.meta.url);',

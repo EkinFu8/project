@@ -1,11 +1,21 @@
-import { createWorker } from "tesseract.js";
 import * as XLSX from "xlsx";
 
+type TesseractWorker = {
+  recognize: (image: Buffer) => Promise<{ data: { text: string } }>;
+};
+
+type TesseractModule = {
+  createWorker: (language?: string) => Promise<TesseractWorker>;
+};
+
 // Lazy singleton Tesseract worker — initialising one per call is too slow.
-let tesseractWorker: Awaited<ReturnType<typeof createWorker>> | null = null;
+let tesseractWorker: TesseractWorker | null = null;
 
 async function getTesseractWorker() {
   if (!tesseractWorker) {
+    const mod = (await import("tesseract.js")) as TesseractModule & { default?: TesseractModule };
+    const createWorker = mod.createWorker ?? mod.default?.createWorker;
+    if (!createWorker) throw new Error("tesseract.js did not export createWorker");
     tesseractWorker = await createWorker("eng");
   }
   return tesseractWorker;
