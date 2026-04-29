@@ -142,13 +142,123 @@ function GompeiPage() {
   const { assistantContext } = useOutletContext<ProtectedOutletContext>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const utils = trpc.useUtils();
+  const activeConversationId = searchParams.get("chat");
+  const initialPrompt = searchParams.get("q") ?? undefined;
+  const conversations = trpc.chat.list.useQuery();
+  const activeConversation = trpc.chat.get.useQuery(
+    { conversationId: activeConversationId ?? "" },
+    { enabled: Boolean(activeConversationId) },
+  );
+  const createConversation = trpc.chat.create.useMutation();
+  const addMessage = trpc.chat.addMessage.useMutation();
+  const markRead = trpc.chat.markRead.useMutation();
+  const deleteConversation = trpc.chat.delete.useMutation();
+
+  useEffect(() => {
+    if (activeConversationId || !initialPrompt || createConversation.isPending) return;
+    createConversation.mutate(
+      { title: initialPrompt },
+      {
+        onSuccess: (conversation) => {
+          navigate(`/gompei?chat=${conversation.id}&q=${encodeURIComponent(initialPrompt)}`, {
+            replace: true,
+          });
+        },
+      },
+    );
+  }, [activeConversationId, createConversation, initialPrompt, navigate]);
+
+  useEffect(() => {
+    if (
+      activeConversationId ||
+      initialPrompt ||
+      !conversations.isSuccess ||
+      createConversation.isPending
+    ) {
+      return;
+    }
+
+    const firstConversation = conversations.data[0];
+    if (firstConversation) {
+      navigate(`/gompei?chat=${firstConversation.id}`, { replace: true });
+      return;
+    }
+
+    createConversation.mutate(undefined, {
+      onSuccess: (conversation) => navigate(`/gompei?chat=${conversation.id}`, { replace: true }),
+    });
+  }, [
+    activeConversationId,
+    conversations.data,
+    conversations.isSuccess,
+    createConversation,
+    initialPrompt,
+    navigate,
+  ]);
+
+  useEffect(() => {
+    if (!activeConversationId) return;
+    markRead.mutate({ conversationId: activeConversationId });
+  }, [activeConversationId, markRead]);
+
+  const history =
+    conversations.data?.map((conversation) => {
+      const last = conversation.messages[0];
+      return {
+        id: conversation.id,
+        title: conversation.title,
+        preview: last?.content,
+        updatedAt: conversation.updatedAt,
+        unread:
+          last?.role === "assistant" &&
+          (!conversation.readAt ||
+            new Date(conversation.updatedAt) > new Date(conversation.readAt)),
+      };
+    }) ?? [];
 
   return (
     <CMSChatbot
+      activeConversationId={activeConversationId}
       context={assistantContext}
-      initialPrompt={searchParams.get("q") ?? undefined}
+      history={history}
+      initialMessages={activeConversation.data?.messages.map((message) => ({
+        id: message.id,
+        role: message.role as "user" | "assistant",
+        content: message.content,
+      }))}
+      initialPrompt={activeConversationId ? initialPrompt : undefined}
       mode="page"
+      onDeleteConversation={(conversationId) => {
+        deleteConversation.mutate(
+          { conversationId },
+          {
+            onSuccess: async () => {
+              await utils.chat.list.invalidate();
+              if (conversationId === activeConversationId) navigate("/gompei", { replace: true });
+            },
+          },
+        );
+      }}
       onNavigate={(to) => navigate(to)}
+      onNewConversation={() => {
+        createConversation.mutate(undefined, {
+          onSuccess: async (conversation) => {
+            await utils.chat.list.invalidate();
+            navigate(`/gompei?chat=${conversation.id}`);
+          },
+        });
+      }}
+      onPersistMessage={async (message) => {
+        if (!activeConversationId) return;
+        await addMessage.mutateAsync({ conversationId: activeConversationId, ...message });
+        await utils.chat.list.invalidate();
+        if (message.role === "assistant") {
+          await utils.chat.get.invalidate({ conversationId: activeConversationId });
+        }
+        await utils.chat.unreadCount.invalidate();
+      }}
+      onSelectConversation={(conversationId) => navigate(`/gompei?chat=${conversationId}`)}
     />
   );
 }
@@ -222,6 +332,9 @@ function ProtectedLayout() {
     enabled: Boolean(session),
   });
   const notificationsQuery = trpc.notifications.myList.useQuery(undefined, {
+    enabled: Boolean(session) && Boolean(accessQuery.data),
+  });
+  const gompeiUnreadQuery = trpc.chat.unreadCount.useQuery(undefined, {
     enabled: Boolean(session) && Boolean(accessQuery.data),
   });
   const submittedContentQuery = trpc.content.list.useQuery(
@@ -425,6 +538,7 @@ function ProtectedLayout() {
         accountMenu={{
           notificationsTo: "/notifications",
           unreadNotificationCount: unreadCount,
+          gompeiUnreadCount: gompeiUnreadQuery.data ?? 0,
           settingsTo: "/account",
           links: [
             { label: "Gompei", to: "/gompei" },

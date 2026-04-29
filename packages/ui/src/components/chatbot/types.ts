@@ -19,9 +19,17 @@ export interface AssistantSnapshotItem {
 }
 
 export interface ChatMessage {
-  id: number;
+  id: number | string;
   role: ChatRole;
   content: string;
+}
+
+export interface ChatHistoryItem {
+  id: string;
+  title: string;
+  preview?: string;
+  unread?: boolean;
+  updatedAt?: string | Date;
 }
 
 export interface CMSContext {
@@ -60,6 +68,13 @@ export interface CMSChatbotProps {
   modelId?: string;
   onNavigate?: (to: string) => void;
   initialPrompt?: string;
+  initialMessages?: ChatMessage[];
+  history?: ChatHistoryItem[];
+  activeConversationId?: string | null;
+  onNewConversation?: () => void;
+  onSelectConversation?: (id: string) => void;
+  onDeleteConversation?: (id: string) => void;
+  onPersistMessage?: (message: { role: ChatRole; content: string }) => void | Promise<void>;
   mode?: "launcher" | "page";
   onSubmitQuestion?: (question: string) => void;
 }
