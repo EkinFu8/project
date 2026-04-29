@@ -1007,6 +1007,7 @@ function ContentFormPage() {
   const [pendingData, setPendingData] = useState<Parameters<typeof update.mutate>[0] | null>(null);
   const [operation, setOperation] = useState("");
   const [showReminder, setShowReminder] = useState(false);
+  const [reminderText, setReminderText] = useState("");
 
   const handleUploadSuccess = useCallback(
     (result: { publicUrl: string; storagePath: string; fileName: string }) => {
@@ -1029,13 +1030,32 @@ function ContentFormPage() {
     onSuccess: handleUploadSuccess,
   });
 
-  function handleExpirationReminder(expiration_date: string | null): void {
-    if (expiration_date) {
-      const expiration = new Date(expiration_date);
+  const handleReviewReminder = useCallback(
+    (next_review_date: string | Date | null, expiration_date: string | Date | null): void => {
       const today = new Date();
-      if (expiration <= today) setShowReminder(true);
-    }
-  }
+      today.setHours(0, 0, 0, 0);
+
+      if (next_review_date) {
+        const review = new Date(next_review_date);
+        review.setHours(0, 0, 0, 0);
+        if (review <= today) {
+          setReminderText("Review date passed. Review needed.");
+          setShowReminder(true);
+          return;
+        }
+      }
+
+      if (expiration_date) {
+        const expiration = new Date(expiration_date);
+        expiration.setHours(0, 0, 0, 0);
+        if (expiration <= today) {
+          setReminderText("Expired content. Review needed.");
+          setShowReminder(true);
+        }
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const d = existing.data;
@@ -1051,8 +1071,8 @@ function ContentFormPage() {
     setContentType(d.content_type ?? "");
     setDocumentStatus(d.document_status ?? "");
     setSelectedTags(d.content_tags?.map((ct) => ct.tag) ?? []);
-    handleExpirationReminder(d.expiration_date);
-  }, [existing.data]);
+    handleReviewReminder(d.next_review_date, d.expiration_date);
+  }, [existing.data, handleReviewReminder]);
 
   const utils = trpc.useUtils();
 
@@ -1201,7 +1221,7 @@ function ContentFormPage() {
               <AlertTriangle />
             </div>
             <div>
-              <p className="text-lg">Expired content. Review needed.</p>
+              <p className="text-lg">{reminderText}</p>
             </div>
           </div>
         </div>
@@ -1354,7 +1374,7 @@ function ContentFormPage() {
                 onClick={() => {
                   setAskConfirmation(false);
                   const data = existing.data;
-                  if (data) handleExpirationReminder(data.expiration_date);
+                  if (data) handleReviewReminder(data.next_review_date, data.expiration_date);
                   if (pendingData && operation === "update") update.mutate(pendingData);
                   if ((!isCheckedOut || isCheckedOutByMe) && operation === "delete")
                     remove.mutate({ fileID: id! });

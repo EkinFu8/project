@@ -1,3 +1,4 @@
+import { InfoPopover } from "@myapp/ui/components/info-popover";
 import { Activity, LayoutGrid, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -15,12 +16,13 @@ import {
 } from "recharts";
 import type { RouterOutputs } from "@/lib/trpc.ts";
 import { trpc } from "@/lib/trpc.ts";
-import { MetricsView } from "@/pages/admin/metrics/page.tsx";
+import { DashboardReports, MetricsView } from "@/pages/admin/metrics/page.tsx";
 
 type DashboardTab = "overview" | "metrics";
 
 type EmployeeRow = RouterOutputs["employee"]["list"][number];
 type ContentRow = RouterOutputs["content"]["list"][number];
+type AuditEventRow = RouterOutputs["audit"]["getRecent"][number];
 
 const TOOLTIP_STYLE = {
   backgroundColor: "var(--color-card)",
@@ -46,32 +48,102 @@ function getStatusBadge(status: string | null) {
   }
 }
 
+function normalizeRole(value?: string | null) {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .trim();
+}
+
+function formatRoleLabel(value?: string | null) {
+  const role = normalizeRole(value);
+  if (!role) return "Unassigned";
+  return role
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function DashboardLoaded({
   employees,
   allContent,
+  auditEvents,
+  isAdmin,
+  userRole,
 }: {
   employees: EmployeeRow[];
   allContent: ContentRow[];
+  auditEvents: AuditEventRow[];
+  isAdmin: boolean;
+  userRole?: string | null;
 }) {
-  const finalized = allContent.filter((c) => c.document_status === "Finalized");
-  const inProgress = allContent.filter((c) => c.document_status === "in-progress");
+  const roleKey = normalizeRole(userRole);
+  const dashboardContent = isAdmin
+    ? allContent
+    : allContent.filter((item) => {
+        const itemRole = normalizeRole(item.job_position);
+        return !itemRole || itemRole === roleKey;
+      });
+
+  const roleEmployees = isAdmin
+    ? employees
+    : employees.filter((employee) => normalizeRole(employee.role) === roleKey);
+
+  const finalized = dashboardContent.filter((c) => c.document_status === "Finalized");
+  const inProgress = dashboardContent.filter((c) => c.document_status === "in-progress");
+  const reviewDue = dashboardContent.filter((c) => {
+    if (!c.next_review_date) return false;
+    const review = new Date(c.next_review_date);
+    review.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return review < today;
+  });
 
   const stats = [
-    { label: "Total Employees", value: employees.length },
-    { label: "Total Content", value: allContent.length },
-    { label: "Finalized", value: finalized.length },
-    { label: "In Progress", value: inProgress.length },
+    {
+      label: isAdmin ? "Total Employees" : "Role Coworkers",
+      value: roleEmployees.length,
+      info: isAdmin
+        ? "Count of employee records currently available in the system."
+        : "Employees assigned to the same role as your account.",
+    },
+    {
+      label: isAdmin ? "Total Content" : "Role Content",
+      value: dashboardContent.length,
+      info: isAdmin
+        ? "Count of content records included in the dashboard data set."
+        : "Content records assigned to your role, plus unassigned shared content.",
+    },
+    {
+      label: "Finalized",
+      value: finalized.length,
+      info: "Content records with a document status of Finalized.",
+    },
+    {
+      label: isAdmin ? "In Progress" : "Review Due",
+      value: isAdmin ? inProgress.length : reviewDue.length,
+      info: isAdmin
+        ? "Content records currently marked with the in-progress document status."
+        : "Role content whose next review date has already passed.",
+    },
   ];
 
   const contentByStatus = [
-    { name: "Created", value: allContent.filter((c) => c.document_status === "Created").length },
+    {
+      name: "Created",
+      value: dashboardContent.filter((c) => c.document_status === "Created").length,
+    },
     { name: "In Progress", value: inProgress.length },
     { name: "Finalized", value: finalized.length },
-    { name: "Archived", value: allContent.filter((c) => c.document_status === "Archived").length },
+    {
+      name: "Archived",
+      value: dashboardContent.filter((c) => c.document_status === "Archived").length,
+    },
   ];
 
   const roleCounts = new Map<string, number>();
-  for (const item of allContent) {
+  for (const item of dashboardContent) {
     const role = item.job_position?.trim() || "unassigned";
     roleCounts.set(role, (roleCounts.get(role) ?? 0) + 1);
   }
@@ -85,6 +157,23 @@ function DashboardLoaded({
 
   return (
     <>
+      {!isAdmin ? (
+        <div className="mb-6 rounded border border-border bg-card px-5 py-4 shadow-sm">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-foreground">
+              {formatRoleLabel(userRole)} Dashboard View
+            </h2>
+            <InfoPopover title="Role dashboard">
+              This view is customized to content assigned to your role and unassigned shared
+              content.
+            </InfoPopover>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Showing {dashboardContent.length} content records relevant to your role.
+          </p>
+        </div>
+      ) : null}
+
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
         {stats.map((stat) => (
           <div
@@ -92,14 +181,23 @@ function DashboardLoaded({
             className="rounded border-t-4 border-t-hanover-green bg-card p-6 shadow-sm"
           >
             <div className="text-3xl font-bold text-foreground">{stat.value}</div>
-            <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
+            <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+              <span>{stat.label}</span>
+              <InfoPopover title={stat.label}>{stat.info}</InfoPopover>
+            </div>
           </div>
         ))}
       </div>
 
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <div className="rounded bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">Content By Status</h2>
+          <div className="mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-foreground">Content By Status</h2>
+            <InfoPopover title="Content By Status">
+              Distribution of content records across Created, In Progress, Finalized, and Archived
+              document statuses.
+            </InfoPopover>
+          </div>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -135,7 +233,13 @@ function DashboardLoaded({
         </div>
 
         <div className="rounded bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">Top Roles By Content</h2>
+          <div className="mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-foreground">Top Roles By Content</h2>
+            <InfoPopover title="Top Roles By Content">
+              The six job positions with the most associated content records. Records without a job
+              position are grouped as unassigned.
+            </InfoPopover>
+          </div>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={contentByRole} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
@@ -159,6 +263,8 @@ function DashboardLoaded({
           </div>
         </div>
       </div>
+
+      <DashboardReports content={dashboardContent} auditEvents={auditEvents} />
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="overflow-x-auto rounded bg-card p-6 shadow-sm">
@@ -198,7 +304,7 @@ function DashboardLoaded({
 
         <div className="overflow-x-auto rounded bg-card p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-foreground">Recent Content</h2>
-          {allContent.length === 0 ? (
+          {dashboardContent.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No content yet.</p>
           ) : (
             <table className="w-full text-sm">
@@ -211,7 +317,7 @@ function DashboardLoaded({
                 </tr>
               </thead>
               <tbody>
-                {allContent.slice(0, 6).map((item) => (
+                {dashboardContent.slice(0, 6).map((item) => (
                   <tr key={item.fileID} className="border-b border-border">
                     <td className="px-2 py-3">
                       <Link
@@ -263,14 +369,18 @@ function DashboardPage() {
 
   const access = trpc.user.myAccess.useQuery();
   const isAdmin = access.data?.role === "admin";
-
-  const employees = trpc.employee.list.useQuery({}, { enabled: tab === "overview" });
-  const allContent = trpc.content.list.useQuery({}, { enabled: tab === "overview" });
-
-  const isLoading = tab === "overview" && (employees.isLoading || allContent.isLoading);
-  const loadError = tab === "overview" ? (employees.error ?? allContent.error) : null;
-
   const activeTab: DashboardTab = tab === "metrics" && !isAdmin ? "overview" : tab;
+
+  const employees = trpc.employee.list.useQuery({}, { enabled: activeTab === "overview" });
+  const allContent = trpc.content.list.useQuery({}, { enabled: activeTab === "overview" });
+
+  const isLoading = activeTab === "overview" && (employees.isLoading || allContent.isLoading);
+  const loadError = activeTab === "overview" ? (employees.error ?? allContent.error) : null;
+
+  const auditRecent = trpc.audit.getRecent.useQuery(undefined, {
+    enabled: activeTab === "overview" && isAdmin,
+    refetchInterval: 30000,
+  });
 
   const tabs: { key: DashboardTab; label: string; icon: typeof LayoutGrid }[] = [
     { key: "overview", label: "Overview", icon: LayoutGrid },
@@ -332,7 +442,13 @@ function DashboardPage() {
               </p>
             </div>
           ) : (
-            <DashboardLoaded employees={employees.data ?? []} allContent={allContent.data ?? []} />
+            <DashboardLoaded
+              employees={employees.data ?? []}
+              allContent={allContent.data ?? []}
+              auditEvents={auditRecent.data ?? []}
+              isAdmin={isAdmin}
+              userRole={access.data?.role}
+            />
           )}
         </div>
       </div>

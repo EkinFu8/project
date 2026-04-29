@@ -1,4 +1,5 @@
 import type { AccountRole } from "@myapp/types/schemas";
+import { HelpPopover } from "@myapp/ui/components/help-popover";
 import { TextInput } from "@myapp/ui/components/text-input";
 import { ArrowLeft, Camera, Loader2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -192,8 +193,11 @@ function UserFormPage() {
           Back to User Management
         </Link>
 
-        <h1 className="mb-6 text-2xl font-bold text-foreground">
+        <h1 className="mb-6 flex flex-wrap items-center gap-2 text-2xl font-bold text-foreground">
           {isEditing ? "Edit User" : "Add New User"}
+          <HelpPopover title={isEditing ? "Edit user" : "Add user"} side="right" align="center">
+            User records combine login credentials with directory fields used across the portal.
+          </HelpPopover>
         </h1>
 
         <div className="rounded bg-card p-8 shadow-md">
@@ -237,6 +241,10 @@ function UserFormPage() {
                     Remove
                   </button>
                 )}
+                <HelpPopover title="Profile photo" side="right" align="center">
+                  Photos are stored with employee profile assets and appear anywhere this user is
+                  shown with an avatar.
+                </HelpPopover>
               </div>
               {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
               <input
@@ -248,23 +256,46 @@ function UserFormPage() {
               />
             </div>
 
-            <TextInput
-              label="Email"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <div className="relative">
+              <TextInput
+                label="Email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <HelpPopover
+                title="Email"
+                side="right"
+                align="start"
+                className="absolute right-0 top-0"
+              >
+                This is the user's Supabase login email and the primary account identifier.
+              </HelpPopover>
+            </div>
 
-            <TextInput
-              label={isEditing ? "New password (leave blank to keep current)" : "Password"}
-              type="password"
-              required={!isEditing}
-              autoComplete={isEditing ? "new-password" : "new-password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div className="relative">
+              <TextInput
+                label={isEditing ? "New password (leave blank to keep current)" : "Password"}
+                type="password"
+                required={!isEditing}
+                autoComplete={isEditing ? "new-password" : "new-password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-10"
+              />
+              <HelpPopover
+                title="Password"
+                side="right"
+                align="start"
+                className="absolute right-2 top-8"
+              >
+                {isEditing
+                  ? "Leave this blank to keep the existing password. Enter a value only when resetting access."
+                  : "Set the initial password this user will use to sign in."}
+              </HelpPopover>
+            </div>
 
             <TextInput
               label="Display name"
@@ -275,9 +306,14 @@ function UserFormPage() {
             />
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="role" className="text-sm font-medium text-foreground">
-                Job role
-              </label>
+              <div className="flex items-center gap-1.5">
+                <label htmlFor="role" className="text-sm font-medium text-foreground">
+                  Job role
+                </label>
+                <HelpPopover title="Job role" side="right" align="start">
+                  Job role sets the user's portal access and the content audience they belong to.
+                </HelpPopover>
+              </div>
               <select
                 id="role"
                 value={role}
@@ -292,13 +328,23 @@ function UserFormPage() {
               </select>
             </div>
 
-            <TextInput
-              label="Employee code (optional)"
-              type="text"
-              maxLength={10}
-              value={employeeCode}
-              onChange={(e) => setEmployeeCode(e.target.value)}
-            />
+            <div className="relative">
+              <TextInput
+                label="Employee code (optional)"
+                type="text"
+                maxLength={10}
+                value={employeeCode}
+                onChange={(e) => setEmployeeCode(e.target.value)}
+              />
+              <HelpPopover
+                title="Employee code"
+                side="right"
+                align="start"
+                className="absolute right-0 top-0"
+              >
+                Optional short code for matching this account to internal directory or HR records.
+              </HelpPopover>
+            </div>
 
             <TextInput
               label="Job description (optional)"

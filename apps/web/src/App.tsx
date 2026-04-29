@@ -24,6 +24,7 @@ import CreditsPage from "@/pages/credits/page.tsx";
 import DashboardPage from "@/pages/dashboard/page.tsx";
 import EmployeeDetailPage from "@/pages/employees/employee-detail.tsx";
 import EmployeesPage from "@/pages/employees/page.tsx";
+import HelpPage from "@/pages/help/page.tsx";
 import HeroLayout from "@/pages/hero/layout.tsx";
 import LoginFormPage from "@/pages/login.tsx";
 import NotificationsPage from "@/pages/notifications/page.tsx";
@@ -76,6 +77,7 @@ function adminNavItems() {
     { label: "User Management", to: "/users" },
     { label: "Tags", to: "/tags" },
     { label: "Dashboard", to: "/dashboard" },
+    { label: "Help", to: "/help" },
     { label: "About", to: "/about" },
     { label: "Credits", to: "/credits" },
   ];
@@ -87,6 +89,7 @@ function employeeNavItems() {
     { label: "Content", to: "/hero/content" },
     { label: "Notifications", to: "/notifications" },
     { label: "Coworkers", to: "/employees" },
+    { label: "Help", to: "/help" },
     { label: "About", to: "/about" },
     { label: "Credits", to: "/credits" },
   ];
@@ -180,9 +183,10 @@ function App() {
           </Route>
 
           {/* Shared */}
-          <Route path="/dashboard/" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/help" element={<HelpPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/credits" element={<CreditsPage />} />
 
@@ -191,8 +195,7 @@ function App() {
           <Route path="/content/new" element={<Navigate to="/hero/content/new" replace />} />
           <Route path="/content/:id/edit" element={<LegacyContentEditRedirect />} />
           <Route path="/businessAnalyst" element={<Navigate to="/business-analyst" replace />} />
-          <Route path="/dashboard" element={<Navigate to="/hero" replace />} />
-          <Route path="/admin/metrics" element={<Navigate to="/dashboard/" replace />} />
+          <Route path="/admin/metrics" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/hero" replace />} />
         </Route>
       </Routes>

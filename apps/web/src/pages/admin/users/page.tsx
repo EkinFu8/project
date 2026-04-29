@@ -1,3 +1,4 @@
+import { HelpPopover } from "@myapp/ui/components/help-popover";
 import { Loader2, Pencil, Plus, Search, Trash2, User, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -32,9 +33,13 @@ function UsersPage() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-3 text-3xl font-bold text-foreground">
+            <h1 className="flex flex-wrap items-center gap-3 text-3xl font-bold text-foreground">
               <Users className="h-8 w-8 text-hanover-green" />
               User Management
+              <HelpPopover title="User management" side="right" align="center">
+                Admins can create, edit, and remove application users. Role and directory fields
+                control app access and profile metadata.
+              </HelpPopover>
             </h1>
             <p className="mt-1 text-muted-foreground">Supabase accounts and directory fields</p>
           </div>
@@ -55,8 +60,16 @@ function UsersPage() {
               placeholder="Search by email, name, role, or employee code..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded border border-border bg-background py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
+              className="w-full rounded border border-border bg-background py-2 pl-10 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
             />
+            <HelpPopover
+              title="User search"
+              side="bottom"
+              align="end"
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+            >
+              Search by email, display name, assigned role, or employee code.
+            </HelpPopover>
           </div>
         </div>
 
@@ -83,8 +96,23 @@ function UsersPage() {
                     <th className="w-12 px-4 py-3" />
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Email</th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Role</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Code</th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">
+                      <div className="flex items-center gap-1.5">
+                        Role
+                        <HelpPopover title="User role" side="bottom" align="center">
+                          Roles determine which app areas and content audiences a user can access.
+                        </HelpPopover>
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-left font-semibold text-foreground">
+                      <div className="flex items-center gap-1.5">
+                        Code
+                        <HelpPopover title="Employee code" side="bottom" align="center">
+                          Optional internal identifier used to match users with employee directory
+                          records.
+                        </HelpPopover>
+                      </div>
+                    </th>
                     <th className="px-4 py-3 text-left font-semibold text-foreground">Actions</th>
                   </tr>
                 </thead>

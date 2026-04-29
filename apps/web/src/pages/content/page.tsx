@@ -1,12 +1,14 @@
-import { Plus, Search } from "lucide-react";
+import { HelpPopover } from "@myapp/ui/components/help-popover";
+import { Loader2, Plus, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { trpc } from "@/lib/trpc.ts";
 import { useFavorites } from "@/store/favorites";
+import type { ContentItem } from "@/types/content";
 import { normalizeContent } from "@/utils/normalizeContent.ts";
 import { ContentFilters } from "./components/ContentFilters";
-import { ContentGrid } from "./components/ContentGrid";
+import { PositionGroup } from "./components/PositionGroup";
 import { useContentFilters } from "./hooks/useContentFilters";
 import { useDebouncedValue } from "./hooks/useDebouncedValue";
 
@@ -17,6 +19,68 @@ const ROLE_TABS = [
   { key: "actuarial-analyst", label: "Actuarial Analyst" },
   { key: "exl-operations", label: "EXL Operations" },
 ];
+
+const ROLE_LABEL_BY_KEY = new Map(ROLE_TABS.map((role) => [role.key, role.label]));
+const ROLE_ORDER_BY_KEY = new Map(ROLE_TABS.slice(1).map((role, index) => [role.key, index]));
+
+function getPositionKey(position?: string): string {
+  const trimmed = position?.trim();
+
+  if (!trimmed) return "unassigned";
+
+  return trimmed.toLowerCase().replace(/[\s_]+/g, "-");
+}
+
+function getPositionLabel(position?: string): string {
+  const trimmed = position?.trim();
+
+  if (!trimmed) return "Unassigned";
+
+  const key = getPositionKey(trimmed);
+  const knownLabel = ROLE_LABEL_BY_KEY.get(key);
+
+  if (knownLabel) return knownLabel;
+
+  return trimmed
+    .replace(/[-_]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function getPositionRank(key: string): number {
+  if (key === "unassigned") return Number.MAX_SAFE_INTEGER;
+
+  return ROLE_ORDER_BY_KEY.get(key) ?? ROLE_ORDER_BY_KEY.size + 1;
+}
+
+function groupContentByPosition(items: ContentItem[]) {
+  const groups = new Map<
+    string,
+    { key: string; label: string; rank: number; items: ContentItem[] }
+  >();
+
+  for (const item of items) {
+    const key = getPositionKey(item.job_position);
+    const existing = groups.get(key);
+
+    if (existing) {
+      existing.items.push(item);
+    } else {
+      groups.set(key, {
+        key,
+        label: getPositionLabel(item.job_position),
+        rank: getPositionRank(key),
+        items: [item],
+      });
+    }
+  }
+
+  return Array.from(groups.values()).sort(
+    (a, b) => a.rank - b.rank || a.label.localeCompare(b.label),
+  );
+}
 
 function getStatusBadge(status?: string | null) {
   switch (status) {
@@ -113,6 +177,7 @@ export default function ContentPage() {
     const bDate = b.next_review_date ? new Date(b.next_review_date).getTime() : Infinity;
     return dir * (aDate - bDate);
   });
+  const positionGroups = groupContentByPosition(filtered);
 
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
@@ -136,9 +201,9 @@ export default function ContentPage() {
     <div className="border-t border-border/60 py-6 sm:py-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-6 flex justify-end">
-          <div className="flex w-full max-w-4xl items-center gap-3">
+          <div className="flex w-full max-w-4xl flex-wrap items-center gap-3">
             {/* SEARCH */}
-            <div className="relative flex-[2]">
+            <div className="relative min-w-64 flex-[2]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={filters.search}
@@ -147,9 +212,23 @@ export default function ContentPage() {
                 className="w-full rounded border border-border bg-background py-2 pl-10 pr-4 text-sm"
               />
             </div>
+            <HelpPopover title="Content search" side="bottom" align="start">
+              Search looks across filenames and extracted document text when OCR content is
+              available.
+            </HelpPopover>
 
             {/* SORT DROPDOWN + DIRECTION */}
             <div className="relative flex items-center" ref={sortRef}>
+              <HelpPopover
+                title="Sorting"
+                side="bottom"
+                align="end"
+                className="mr-1"
+                contentClassName="w-64"
+              >
+                Favorites stay at the top. The sort menu orders the remaining content by due date,
+                name, or created date.
+              </HelpPopover>
               <button
                 type="button"
                 onClick={() => setSortOpen((o) => !o)}
@@ -345,17 +424,33 @@ export default function ContentPage() {
             ROLE_TABS={ROLE_TABS}
           />
 
-          {/* Grid view */}
-          <ContentGrid
-            contents={contents}
-            filtered={filtered}
-            filters={filters}
-            currentUserId={currentUserId}
-            searchQuery={debouncedSearch}
-            toggleFavorite={toggleFavorite}
-            checkin={checkin}
-            getStatusBadge={getStatusBadge}
-          />
+          <main className="min-w-0 flex-1">
+            {contents.isLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
+              </div>
+            ) : positionGroups.length > 0 ? (
+              <div className="space-y-5">
+                {positionGroups.map((group) => (
+                  <PositionGroup
+                    key={group.key}
+                    label={group.label}
+                    items={group.items}
+                    view={filters.view}
+                    currentUserId={currentUserId}
+                    searchQuery={debouncedSearch}
+                    toggleFavorite={toggleFavorite}
+                    checkin={checkin}
+                    getStatusBadge={getStatusBadge}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded border border-border bg-card px-4 py-12 text-center text-sm text-muted-foreground">
+                No content found.
+              </div>
+            )}
+          </main>
         </div>
       </div>
     </div>

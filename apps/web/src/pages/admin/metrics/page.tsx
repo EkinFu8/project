@@ -1,5 +1,8 @@
+import { InfoPopover } from "@myapp/ui/components/info-popover";
 import { Loader2 } from "lucide-react";
+import type { ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { RouterOutputs } from "@/lib/trpc";
 import { trpc } from "@/lib/trpc";
 
 const TOOLTIP_STYLE = {
@@ -11,15 +14,487 @@ const TOOLTIP_STYLE = {
   padding: "0.5rem 0.625rem",
 } as const;
 
+type ContentRow = RouterOutputs["content"]["list"][number];
+type AuditEventRow = RouterOutputs["audit"]["getRecent"][number];
+
+type ReportGroupRow = {
+  owner: string;
+  role: string;
+  total: number;
+  current: number;
+  stale: number;
+  missingDates: number;
+  expired: number;
+  expiringSoon: number;
+  reviewOverdue: number;
+  reviewSoon: number;
+  nextExpiration: Date | null;
+  nextReview: Date | null;
+};
+
+type ActivityReportRow = {
+  owner: string;
+  role: string;
+  uploads: number;
+  downloads: number;
+  edits: number;
+  deletes: number;
+  ownershipUpdates: number;
+  other: number;
+  total: number;
+  latestAt: Date | null;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const REVIEW_WINDOW_DAYS = 30;
+const STALE_AFTER_DAYS = 180;
+
 function formatAction(action: string) {
   const map: Record<string, string> = {
     upload: "uploaded",
     download: "downloaded",
     edit: "edited",
     delete: "deleted",
+    "ownership-update": "updated ownership for",
   };
 
   return map[action] ?? action;
+}
+
+function LabelWithInfo({
+  label,
+  title,
+  children,
+}: {
+  label: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span>{label}</span>
+      <InfoPopover title={title}>{children}</InfoPopover>
+    </span>
+  );
+}
+
+function formatRole(role?: string | null) {
+  const value = role?.trim();
+  if (!value) return "Unassigned";
+  return value
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function toDate(value: Date | string | null | undefined) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function startOfToday() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+function isBefore(date: Date | null, threshold: Date) {
+  return Boolean(date && date.getTime() < threshold.getTime());
+}
+
+function isWithinDays(date: Date | null, threshold: Date, days: number) {
+  if (!date) return false;
+  const diff = date.getTime() - threshold.getTime();
+  return diff >= 0 && diff <= days * DAY_MS;
+}
+
+function earliestFutureDate(current: Date | null, candidate: Date | null, threshold: Date) {
+  if (!candidate || candidate.getTime() < threshold.getTime()) return current;
+  if (!current || candidate.getTime() < current.getTime()) return candidate;
+  return current;
+}
+
+function formatDate(value: Date | string | null | undefined) {
+  const date = toDate(value);
+  return date ? date.toLocaleDateString() : "-";
+}
+
+function ownerNameForContent(item: ContentRow) {
+  return item.owner?.name?.trim() || "Unassigned";
+}
+
+function roleForContent(item: ContentRow) {
+  return formatRole(item.owner?.role ?? item.job_position);
+}
+
+function groupKey(owner: string, role: string) {
+  return `${owner}\u0000${role}`;
+}
+
+function sortedRows<T extends { total: number; owner: string; role: string }>(rows: T[]) {
+  return rows.sort(
+    (a, b) => b.total - a.total || a.owner.localeCompare(b.owner) || a.role.localeCompare(b.role),
+  );
+}
+
+function getOrCreateReportGroup(groups: Map<string, ReportGroupRow>, owner: string, role: string) {
+  const key = groupKey(owner, role);
+  let row = groups.get(key);
+  if (!row) {
+    row = {
+      owner,
+      role,
+      total: 0,
+      current: 0,
+      stale: 0,
+      missingDates: 0,
+      expired: 0,
+      expiringSoon: 0,
+      reviewOverdue: 0,
+      reviewSoon: 0,
+      nextExpiration: null,
+      nextReview: null,
+    };
+    groups.set(key, row);
+  }
+  return row;
+}
+
+function contentDateReport(item: ContentRow, today: Date, staleBefore: Date) {
+  const expirationDate = toDate(item.expiration_date);
+  const reviewDate = toDate(item.next_review_date);
+  const modifiedDate = toDate(item.last_modified);
+  const expired = isBefore(expirationDate, today);
+  const reviewOverdue = isBefore(reviewDate, today);
+  const stale = isBefore(modifiedDate, staleBefore);
+
+  return {
+    expirationDate,
+    reviewDate,
+    current: Boolean(expirationDate && reviewDate && !expired && !reviewOverdue && !stale),
+    stale,
+    missingDates: !expirationDate || !reviewDate,
+    expired,
+    expiringSoon: isWithinDays(expirationDate, today, REVIEW_WINDOW_DAYS),
+    reviewOverdue,
+    reviewSoon: isWithinDays(reviewDate, today, REVIEW_WINDOW_DAYS),
+  };
+}
+
+export function buildContentReportRows(content: ContentRow[]) {
+  const today = startOfToday();
+  const staleBefore = new Date(today.getTime() - STALE_AFTER_DAYS * DAY_MS);
+  const groups = new Map<string, ReportGroupRow>();
+
+  for (const item of content) {
+    const owner = ownerNameForContent(item);
+    const role = roleForContent(item);
+    const row = getOrCreateReportGroup(groups, owner, role);
+
+    const report = contentDateReport(item, today, staleBefore);
+
+    row.total += 1;
+    row.current += Number(report.current);
+    row.stale += Number(report.stale);
+    row.missingDates += Number(report.missingDates);
+    row.expired += Number(report.expired);
+    row.expiringSoon += Number(report.expiringSoon);
+    row.reviewOverdue += Number(report.reviewOverdue);
+    row.reviewSoon += Number(report.reviewSoon);
+    row.nextExpiration = earliestFutureDate(row.nextExpiration, report.expirationDate, today);
+    row.nextReview = earliestFutureDate(row.nextReview, report.reviewDate, today);
+  }
+
+  return sortedRows(Array.from(groups.values()));
+}
+
+function getEventOwnerAndRole(event: AuditEventRow, contentByFilename: Map<string, ContentRow>) {
+  const enriched = event as AuditEventRow & {
+    owner?: { name?: string | null; role?: string | null } | null;
+    ownerName?: string | null;
+    ownerRole?: string | null;
+    role?: string | null;
+    job_position?: string | null;
+  };
+  const relatedContent = event.fileName ? contentByFilename.get(event.fileName) : undefined;
+  const owner =
+    enriched.owner?.name?.trim() ||
+    enriched.ownerName?.trim() ||
+    (relatedContent ? ownerNameForContent(relatedContent) : event.user?.name?.trim()) ||
+    "Unknown User";
+
+  return {
+    owner,
+    role: formatRole(
+      enriched.owner?.role ??
+        enriched.ownerRole ??
+        enriched.role ??
+        enriched.job_position ??
+        relatedContent?.owner?.role ??
+        relatedContent?.job_position,
+    ),
+  };
+}
+
+function getOrCreateActivityGroup(
+  groups: Map<string, ActivityReportRow>,
+  owner: string,
+  role: string,
+) {
+  const key = groupKey(owner, role);
+  let row = groups.get(key);
+  if (!row) {
+    row = {
+      owner,
+      role,
+      uploads: 0,
+      downloads: 0,
+      edits: 0,
+      deletes: 0,
+      ownershipUpdates: 0,
+      other: 0,
+      total: 0,
+      latestAt: null,
+    };
+    groups.set(key, row);
+  }
+  return row;
+}
+
+export function buildActivityReportRows(auditEvents: AuditEventRow[], content: ContentRow[]) {
+  const contentByFilename = new Map(
+    content.flatMap((item) => (item.filename ? [[item.filename, item] as const] : [])),
+  );
+  const groups = new Map<string, ActivityReportRow>();
+
+  for (const event of auditEvents) {
+    const { owner, role } = getEventOwnerAndRole(event, contentByFilename);
+    const row = getOrCreateActivityGroup(groups, owner, role);
+    const createdAt = toDate(event.createdAt);
+
+    row.total += 1;
+    if (event.action === "upload") row.uploads += 1;
+    else if (event.action === "download") row.downloads += 1;
+    else if (event.action === "edit") row.edits += 1;
+    else if (event.action === "delete") row.deletes += 1;
+    else if (event.action === "ownership-update") row.ownershipUpdates += 1;
+    else row.other += 1;
+
+    if (createdAt && (!row.latestAt || createdAt.getTime() > row.latestAt.getTime())) {
+      row.latestAt = createdAt;
+    }
+  }
+
+  return sortedRows(Array.from(groups.values()));
+}
+
+export function DashboardReports({
+  content,
+  auditEvents,
+}: {
+  content: ContentRow[];
+  auditEvents: AuditEventRow[];
+}) {
+  const contentRows = buildContentReportRows(content);
+  const activityRows = buildActivityReportRows(auditEvents, content);
+  const currentCount = contentRows.reduce((sum, row) => sum + row.current, 0);
+  const staleCount = contentRows.reduce((sum, row) => sum + row.stale, 0);
+  const expiredCount = contentRows.reduce((sum, row) => sum + row.expired, 0);
+  const reviewDueCount = contentRows.reduce(
+    (sum, row) => sum + row.reviewOverdue + row.reviewSoon,
+    0,
+  );
+
+  return (
+    <div className="mb-8 space-y-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded border border-border bg-card p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">
+            <LabelWithInfo label="Current Content" title="Current Content">
+              Records with expiration and review dates that are not expired, review overdue, or
+              stale.
+            </LabelWithInfo>
+          </p>
+          <p className="text-2xl font-bold text-hanover-green">{currentCount}</p>
+        </div>
+        <div className="rounded border border-border bg-card p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">
+            <LabelWithInfo label="Stale Content" title="Stale Content">
+              Records whose last modified date is older than 180 days.
+            </LabelWithInfo>
+          </p>
+          <p className="text-2xl font-bold text-foreground">{staleCount}</p>
+        </div>
+        <div className="rounded border border-border bg-card p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">
+            <LabelWithInfo label="Expired" title="Expired Content">
+              Records with expiration dates before today.
+            </LabelWithInfo>
+          </p>
+          <p className="text-2xl font-bold text-red-600">{expiredCount}</p>
+        </div>
+        <div className="rounded border border-border bg-card p-4 shadow-sm">
+          <p className="text-sm text-muted-foreground">
+            <LabelWithInfo label="Review Due" title="Review Due">
+              Records with overdue review dates or review dates in the next 30 days.
+            </LabelWithInfo>
+          </p>
+          <p className="text-2xl font-bold text-[#9A6B00]">{reviewDueCount}</p>
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <div className="overflow-x-auto rounded border border-border bg-card p-4 shadow-sm">
+          <h2 className="mb-3 flex items-center gap-2 text-xl font-semibold text-foreground">
+            Transactions By Owner And Role
+            <InfoPopover title="Transactions By Owner And Role">
+              Audit transactions grouped by content owner and role.
+            </InfoPopover>
+          </h2>
+          {activityRows.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No recent transaction activity.
+            </p>
+          ) : (
+            <table className="w-full min-w-[720px] text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-2 py-3 text-left font-semibold text-foreground">Owner</th>
+                  <th className="px-2 py-3 text-left font-semibold text-foreground">Role</th>
+                  <th className="px-2 py-3 text-right font-semibold text-foreground">Total</th>
+                  <th className="px-2 py-3 text-right font-semibold text-foreground">Uploads</th>
+                  <th className="px-2 py-3 text-right font-semibold text-foreground">Downloads</th>
+                  <th className="px-2 py-3 text-right font-semibold text-foreground">Edits</th>
+                  <th className="px-2 py-3 text-right font-semibold text-foreground">
+                    Owner Changes
+                  </th>
+                  <th className="px-2 py-3 text-right font-semibold text-foreground">Latest</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activityRows.slice(0, 8).map((row) => (
+                  <tr key={groupKey(row.owner, row.role)} className="border-b border-border">
+                    <td className="px-2 py-3 text-foreground">{row.owner}</td>
+                    <td className="px-2 py-3 text-muted-foreground">{row.role}</td>
+                    <td className="px-2 py-3 text-right font-medium text-foreground">
+                      {row.total}
+                    </td>
+                    <td className="px-2 py-3 text-right text-muted-foreground">{row.uploads}</td>
+                    <td className="px-2 py-3 text-right text-muted-foreground">{row.downloads}</td>
+                    <td className="px-2 py-3 text-right text-muted-foreground">{row.edits}</td>
+                    <td className="px-2 py-3 text-right text-muted-foreground">
+                      {row.ownershipUpdates}
+                    </td>
+                    <td className="px-2 py-3 text-right text-muted-foreground">
+                      {formatDate(row.latestAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="overflow-x-auto rounded border border-border bg-card p-4 shadow-sm">
+          <h2 className="mb-3 flex items-center gap-2 text-xl font-semibold text-foreground">
+            Content Currency By Owner And Role
+            <InfoPopover title="Content Currency By Owner And Role">
+              Current, stale, missing-date, and expired records grouped by owner and role.
+            </InfoPopover>
+          </h2>
+          {contentRows.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No content records.</p>
+          ) : (
+            <table className="w-full min-w-[680px] text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-2 py-3 text-left font-semibold text-foreground">Owner</th>
+                  <th className="px-2 py-3 text-left font-semibold text-foreground">Role</th>
+                  <th className="px-2 py-3 text-right font-semibold text-foreground">Total</th>
+                  <th className="px-2 py-3 text-right font-semibold text-foreground">Current</th>
+                  <th className="px-2 py-3 text-right font-semibold text-foreground">Stale</th>
+                  <th className="px-2 py-3 text-right font-semibold text-foreground">
+                    Missing Dates
+                  </th>
+                  <th className="px-2 py-3 text-right font-semibold text-foreground">Expired</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contentRows.slice(0, 8).map((row) => (
+                  <tr key={groupKey(row.owner, row.role)} className="border-b border-border">
+                    <td className="px-2 py-3 text-foreground">{row.owner}</td>
+                    <td className="px-2 py-3 text-muted-foreground">{row.role}</td>
+                    <td className="px-2 py-3 text-right font-medium text-foreground">
+                      {row.total}
+                    </td>
+                    <td className="px-2 py-3 text-right text-hanover-green">{row.current}</td>
+                    <td className="px-2 py-3 text-right text-muted-foreground">{row.stale}</td>
+                    <td className="px-2 py-3 text-right text-muted-foreground">
+                      {row.missingDates}
+                    </td>
+                    <td className="px-2 py-3 text-right text-red-600">{row.expired}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded border border-border bg-card p-4 shadow-sm">
+        <h2 className="mb-3 flex items-center gap-2 text-xl font-semibold text-foreground">
+          Expiration And Review Dates By Owner And Role
+          <InfoPopover title="Expiration And Review Dates">
+            Upcoming and overdue expiration and review dates grouped by owner and role.
+          </InfoPopover>
+        </h2>
+        {contentRows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            No expiration or review dates.
+          </p>
+        ) : (
+          <table className="w-full min-w-[820px] text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-2 py-3 text-left font-semibold text-foreground">Owner</th>
+                <th className="px-2 py-3 text-left font-semibold text-foreground">Role</th>
+                <th className="px-2 py-3 text-right font-semibold text-foreground">Expired</th>
+                <th className="px-2 py-3 text-right font-semibold text-foreground">Expires 30d</th>
+                <th className="px-2 py-3 text-right font-semibold text-foreground">
+                  Review Overdue
+                </th>
+                <th className="px-2 py-3 text-right font-semibold text-foreground">Review 30d</th>
+                <th className="px-2 py-3 text-right font-semibold text-foreground">
+                  Next Expiration
+                </th>
+                <th className="px-2 py-3 text-right font-semibold text-foreground">Next Review</th>
+              </tr>
+            </thead>
+            <tbody>
+              {contentRows.slice(0, 10).map((row) => (
+                <tr key={groupKey(row.owner, row.role)} className="border-b border-border">
+                  <td className="px-2 py-3 text-foreground">{row.owner}</td>
+                  <td className="px-2 py-3 text-muted-foreground">{row.role}</td>
+                  <td className="px-2 py-3 text-right text-red-600">{row.expired}</td>
+                  <td className="px-2 py-3 text-right text-muted-foreground">{row.expiringSoon}</td>
+                  <td className="px-2 py-3 text-right text-red-600">{row.reviewOverdue}</td>
+                  <td className="px-2 py-3 text-right text-muted-foreground">{row.reviewSoon}</td>
+                  <td className="px-2 py-3 text-right text-muted-foreground">
+                    {formatDate(row.nextExpiration)}
+                  </td>
+                  <td className="px-2 py-3 text-right text-muted-foreground">
+                    {formatDate(row.nextReview)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function MetricsView() {
@@ -38,6 +513,13 @@ export function MetricsView() {
   const auditRecent = trpc.audit.getRecent.useQuery(undefined, {
     refetchInterval: 5000,
   });
+
+  const content = trpc.content.list.useQuery(
+    {},
+    {
+      refetchInterval: 30000,
+    },
+  );
 
   if (metrics.isLoading || auditSummary.isLoading) {
     return (
@@ -80,29 +562,50 @@ export function MetricsView() {
     <>
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
         <div className="rounded border border-border bg-card p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Requests</p>
+          <p className="text-sm text-muted-foreground">
+            <LabelWithInfo label="Requests" title="Requests">
+              Total API requests captured by the metrics middleware.
+            </LabelWithInfo>
+          </p>
           <p className="text-xl font-bold text-foreground">{metrics.data.totalRequests ?? 0}</p>
         </div>
 
         <div className="rounded border border-border bg-card p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Errors</p>
+          <p className="text-sm text-muted-foreground">
+            <LabelWithInfo label="Errors" title="Errors">
+              API requests recorded with an error status.
+            </LabelWithInfo>
+          </p>
           <p className="text-xl font-bold text-red-600">{metrics.data.errors ?? 0}</p>
         </div>
 
         <div className="rounded border border-border bg-card p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Active Users</p>
+          <p className="text-sm text-muted-foreground">
+            <LabelWithInfo label="Active Users" title="Active Users">
+              Distinct users represented in recent metrics events.
+            </LabelWithInfo>
+          </p>
           <p className="text-xl font-bold text-hanover-green">{metrics.data.activeUsers ?? 0}</p>
         </div>
 
         <div className="rounded border border-border bg-card p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Error Rate</p>
+          <p className="text-sm text-muted-foreground">
+            <LabelWithInfo label="Error Rate" title="Error Rate">
+              Percentage of tracked requests that resulted in an error.
+            </LabelWithInfo>
+          </p>
           <p className="text-xl font-bold text-foreground">{(errorRate * 100).toFixed(2)}%</p>
         </div>
       </div>
 
       <div className="mb-8 grid gap-4 lg:grid-cols-2">
         <div className="rounded border border-border bg-card p-4 shadow-sm">
-          <h2 className="mb-3 text-xl font-semibold text-foreground">Document Activity</h2>
+          <h2 className="mb-3 flex items-center gap-2 text-xl font-semibold text-foreground">
+            Document Activity
+            <InfoPopover title="Document Activity">
+              Upload, download, edit, and delete audit counts.
+            </InfoPopover>
+          </h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -130,7 +633,12 @@ export function MetricsView() {
         </div>
 
         <div className="rounded border border-border bg-card p-4 shadow-sm">
-          <h2 className="mb-3 text-xl font-semibold text-foreground">Top Active Users</h2>
+          <h2 className="mb-3 flex items-center gap-2 text-xl font-semibold text-foreground">
+            Top Active Users
+            <InfoPopover title="Top Active Users">
+              Users with the most recent document activity events.
+            </InfoPopover>
+          </h2>
           <div className="h-72">
             {topUsersData.length === 0 ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -167,6 +675,8 @@ export function MetricsView() {
           </div>
         </div>
       </div>
+
+      <DashboardReports content={content.data ?? []} auditEvents={auditRecent.data ?? []} />
 
       <div className="mb-8">
         <h2 className="mb-3 text-xl font-semibold text-foreground">Recent Activity</h2>
