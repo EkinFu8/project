@@ -26,14 +26,7 @@ function checkedOutLabel(isCheckedOutByMe: boolean, name: string | undefined): s
   return "Checked out";
 }
 
-export function ContentCard({
-  item,
-  currentUserId,
-  searchQuery,
-  toggleFavorite,
-  checkin,
-  getStatusBadge,
-}: Props) {
+export function ContentCard({ item, currentUserId, searchQuery, toggleFavorite, checkin }: Props) {
   const MAX_VISIBLE_TAGS = 3;
   const tags = item.content_tags ?? [];
   const visibleTags = tags.slice(0, MAX_VISIBLE_TAGS);
@@ -76,36 +69,26 @@ export function ContentCard({
           {item.filename ?? "Untitled"}
         </h3>
 
-        <div className="flex shrink-0 items-center gap-1">
-          <span
-            className={`rounded px-2 py-0.5 text-xs font-semibold ${getStatusBadge(
-              item.document_status,
-            )}`}
-          >
-            {item.document_status ?? "—"}
-          </span>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-
-              toggleFavorite.mutate({
-                fileID: item.fileID,
-              });
-            }}
-            className="text-yellow-400"
-          >
-            {isFavorited(item.fileID) ? "★" : "☆"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleFavorite.mutate({ fileID: item.fileID });
+          }}
+          className="text-yellow-400 transition-transform hover:scale-125"
+        >
+          {isFavorited(item.fileID) ? "★" : "☆"}
+        </button>
       </div>
 
       {/* META */}
       <p className="mb-1 truncate text-xs text-muted-foreground">{item.url}</p>
-      <p className="mb-1 text-xs text-muted-foreground">
+      <p className="mb-0.5 text-xs text-muted-foreground">
         {item.content_type ?? "—"} · {item.job_position ?? "—"}
+      </p>
+      <p className="mb-2 text-xs text-muted-foreground">
+        Created: {item.created_at ? new Date(item.created_at).toLocaleDateString() : "—"}
       </p>
 
       {/* TAGS */}
@@ -199,8 +182,52 @@ export function ContentCard({
         )}
       </div>
 
+      <div className="flex-1" />
+
+      {/* STATUS + DOTS */}
+      <div className="mb-3 flex items-center justify-between">
+        {(() => {
+          const steps = [
+            { key: "Created", label: "CREATED", color: "#C9A84C" },
+            { key: "in-progress", label: "IN PROGRESS", color: "#4A90D9" },
+            { key: "Finalized", label: "FINALIZED", color: "#2D6A4F" },
+            { key: "Archived", label: "ARCHIVED", color: "#64748B" },
+          ];
+          const idx = Math.max(
+            0,
+            steps.findIndex((s) => s.key === item.document_status),
+          );
+          const active = steps[idx];
+          return (
+            <>
+              <span
+                className="text-xs font-semibold tracking-widest uppercase"
+                style={{ color: active.color }}
+              >
+                {active.label}
+              </span>
+              <div className="flex items-center gap-1.5">
+                {steps.map((s, i) => (
+                  <div
+                    key={s.key}
+                    style={{
+                      width: i === idx ? 8 : 7,
+                      height: i === idx ? 8 : 7,
+                      borderRadius: "50%",
+                      backgroundColor: i <= idx ? active.color : "transparent",
+                      border: `1.5px solid ${i <= idx ? active.color : "#D1D5DB"}`,
+                      opacity: i < idx ? 0.4 : 1,
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          );
+        })()}
+      </div>
+
       {/* FOOTER */}
-      <div className="mt-auto pt-3 border-t border-border flex items-center justify-between gap-2 text-xs text-muted-foreground">
+      <div className="pt-3 border-t border-border flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span className="truncate max-w-[60%]">{item.owner?.name ?? "Unassigned"}</span>
 
         <div className="flex items-center gap-1 shrink-0">

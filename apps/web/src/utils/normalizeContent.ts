@@ -4,6 +4,7 @@ type RawContentItem = Partial<ContentItem> & {
   url?: string;
   expiration_date?: string;
   next_review_date?: string | null;
+  created_at?: string | null;
 };
 
 export function normalizeContent(item: unknown): ContentItem {
@@ -29,5 +30,6 @@ export function normalizeContent(item: unknown): ContentItem {
     ocr_status: (data.ocr_status ?? "pending") as OcrStatus,
     matched_in_content: data.matched_in_content ?? false,
     next_review_date: data.next_review_date ?? null,
+    created_at: data.created_at ?? null,
   };
 }

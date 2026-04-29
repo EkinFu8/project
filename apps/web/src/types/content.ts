@@ -12,6 +12,7 @@ export type ContentItem = {
   checked_out_by_user?: { id: string; name: string } | null;
   checked_out_at?: string | null;
   last_modified?: string;
+  created_at?: string | null;
   owner?: { name?: string };
   content_tags?: { tag: { id: number; name: string } }[];
   url?: string;
