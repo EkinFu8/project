@@ -1,5 +1,5 @@
 import { InfoPopover } from "@myapp/ui/components/info-popover";
-import { Activity, LayoutGrid, Loader2 } from "lucide-react";
+import { Activity, LayoutGrid, Loader2, Tag } from "lucide-react";
 import { Link } from "react-router";
 import {
   Bar,
@@ -16,6 +16,7 @@ import {
 import type { RouterOutputs } from "@/lib/trpc.ts";
 import { trpc } from "@/lib/trpc.ts";
 import { DashboardReports, MetricsView } from "@/pages/admin/metrics/page.tsx";
+import TagsPage from "@/pages/tags/TagsPage";
 import { type DashboardTab, useAppPreferences } from "@/store/app-preferences";
 
 type EmployeeRow = RouterOutputs["employee"]["list"][number];
@@ -388,7 +389,8 @@ function DashboardPage() {
 
   const access = trpc.user.myAccess.useQuery();
   const isAdmin = access.data?.role === "admin";
-  const activeTab: DashboardTab = tab === "metrics" && !isAdmin ? "overview" : tab;
+  const activeTab: DashboardTab =
+    (tab === "metrics" || tab === "tags") && !isAdmin ? "overview" : tab;
 
   const employees = trpc.employee.list.useQuery({}, { enabled: activeTab === "overview" });
   const allContent = trpc.content.list.useQuery({}, { enabled: activeTab === "overview" });
@@ -404,6 +406,7 @@ function DashboardPage() {
   const tabs: { key: DashboardTab; label: string; icon: typeof LayoutGrid }[] = [
     { key: "overview", label: "Overview", icon: LayoutGrid },
     ...(isAdmin ? [{ key: "metrics" as const, label: "Metrics", icon: Activity }] : []),
+    { key: "tags" as const, label: "Tags", icon: Tag },
   ];
 
   return (
@@ -451,6 +454,10 @@ function DashboardPage() {
           {activeTab === "metrics" ? (
             <div className="animate-fade-in">
               <MetricsView />
+            </div>
+          ) : activeTab === "tags" ? (
+            <div className="animate-fade-in">
+              <TagsPage />
             </div>
           ) : isLoading ? (
             <div className="flex animate-fade-in items-center justify-center py-16">

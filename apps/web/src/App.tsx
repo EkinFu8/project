@@ -34,7 +34,6 @@ import HelpPage from "@/pages/help/page.tsx";
 import HeroLayout from "@/pages/hero/layout.tsx";
 import LoginFormPage from "@/pages/login.tsx";
 import NotificationsPage from "@/pages/notifications/page.tsx";
-import TagsPage from "@/pages/tags/TagsPage";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
 
 function LegacyContentEditRedirect() {
@@ -380,7 +379,6 @@ function adminNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
     { label: "Users", to: "/users" },
-    { label: "Tags", to: "/tags" },
     { label: "Dashboard", to: "/dashboard" },
     { label: "Help", to: "/help" },
   ];
@@ -675,7 +673,6 @@ function App() {
             <Route path="/users" element={<UsersPage />} />
             <Route path="/users/new" element={<UserFormPage />} />
             <Route path="/users/:id" element={<UserFormPage />} />
-            <Route path="/tags" element={<TagsPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
           </Route>
 
