@@ -13,84 +13,146 @@ interface CompletionInput {
   onToken: (content: string) => void;
 }
 
+interface SharedEngineState {
+  engine: webllm.MLCEngineInterface | null;
+  hasGpu: boolean;
+  initPromise: Promise<webllm.MLCEngineInterface> | null;
+  listeners: Set<() => void>;
+  modelId: string;
+  progress: number;
+  status: AssistantStatus;
+}
+
+interface AssistantSnapshot {
+  hasGpu: boolean;
+  progress: number;
+  status: AssistantStatus;
+}
+
+const sharedEngines = new Map<string, SharedEngineState>();
+
+// Keep WebLLM warm across chat switches and component remounts in this tab.
 function supportsWebGpu(): boolean {
-  return Boolean((navigator as Navigator & { gpu?: unknown }).gpu);
+  return (
+    typeof navigator !== "undefined" && Boolean((navigator as Navigator & { gpu?: unknown }).gpu)
+  );
+}
+
+function getSharedEngine(modelId: string) {
+  const existing = sharedEngines.get(modelId);
+  if (existing) return existing;
+
+  const shared: SharedEngineState = {
+    engine: null,
+    hasGpu: true,
+    initPromise: null,
+    listeners: new Set(),
+    modelId,
+    progress: 0,
+    status: "loading",
+  };
+  sharedEngines.set(modelId, shared);
+  return shared;
+}
+
+function snapshot(shared: SharedEngineState): AssistantSnapshot {
+  return {
+    hasGpu: shared.hasGpu,
+    progress: shared.progress,
+    status: shared.status,
+  };
+}
+
+function notify(shared: SharedEngineState) {
+  for (const listener of shared.listeners) listener();
+}
+
+function startEngine(shared: SharedEngineState) {
+  if (shared.engine || shared.initPromise) {
+    return shared.initPromise ?? Promise.resolve(shared.engine);
+  }
+
+  if (!supportsWebGpu()) {
+    shared.hasGpu = false;
+    shared.status = "error";
+    notify(shared);
+    return null;
+  }
+
+  shared.hasGpu = true;
+  shared.status = "loading";
+  notify(shared);
+
+  shared.initPromise = webllm
+    .CreateMLCEngine(shared.modelId, {
+      initProgressCallback: ({ progress }) => {
+        shared.progress = Math.round(progress * 100);
+        notify(shared);
+      },
+    })
+    .then((engine) => {
+      shared.engine = engine;
+      shared.progress = 100;
+      shared.status = "ready";
+      notify(shared);
+      return engine;
+    })
+    .catch((error) => {
+      console.error("WebLLM init error:", error);
+      shared.engine = null;
+      shared.status = "error";
+      notify(shared);
+      throw error;
+    })
+    .finally(() => {
+      shared.initPromise = null;
+    });
+
+  return shared.initPromise;
 }
 
 export function useWebLlmAssistant({ modelId, onReady, enabled }: UseWebLlmAssistantInput) {
-  const [status, setStatus] = useState<AssistantStatus>("loading");
-  const [progress, setProgress] = useState(0);
-  const [hasGpu, setHasGpu] = useState(true);
-  const engineRef = useRef<webllm.MLCEngineInterface | null>(null);
+  const sharedRef = useRef(getSharedEngine(modelId));
   const readyNotifiedRef = useRef(false);
+  const [state, setState] = useState<AssistantSnapshot>(() => snapshot(sharedRef.current));
 
   useEffect(() => {
-    if (!enabled) {
-      return;
-    }
-
-    let cancelled = false;
+    sharedRef.current = getSharedEngine(modelId);
     readyNotifiedRef.current = false;
-    setStatus("loading");
-    setProgress(0);
+    setState(snapshot(sharedRef.current));
+  }, [modelId]);
 
-    async function initEngine() {
-      if (!supportsWebGpu()) {
-        setHasGpu(false);
-        setStatus("error");
-        return;
-      }
+  useEffect(() => {
+    if (!enabled) return;
 
-      setHasGpu(true);
-
-      try {
-        const engine = await webllm.CreateMLCEngine(modelId, {
-          initProgressCallback: ({ progress: nextProgress }) => {
-            if (!cancelled) {
-              setProgress(Math.round(nextProgress * 100));
-            }
-          },
-        });
-
-        if (cancelled) {
-          engine.unload();
-          return;
-        }
-
-        engineRef.current = engine;
-        setProgress(100);
-        setStatus("ready");
-      } catch (error) {
-        if (!cancelled) {
-          console.error("WebLLM init error:", error);
-          setStatus("error");
-        }
-      }
-    }
-
-    initEngine();
+    const shared = getSharedEngine(modelId);
+    sharedRef.current = shared;
+    const listener = () => setState(snapshot(shared));
+    shared.listeners.add(listener);
+    listener();
+    void startEngine(shared)?.catch(() => undefined);
 
     return () => {
-      cancelled = true;
-      engineRef.current?.unload();
-      engineRef.current = null;
+      shared.listeners.delete(listener);
     };
   }, [enabled, modelId]);
 
   useEffect(() => {
-    if (status === "ready" && !readyNotifiedRef.current) {
+    if (state.status === "ready" && !readyNotifiedRef.current) {
       readyNotifiedRef.current = true;
       onReady();
     }
-  }, [onReady, status]);
+  }, [onReady, state.status]);
 
   const complete = useCallback(async ({ messages, onToken }: CompletionInput) => {
-    const engine = engineRef.current;
+    const shared = sharedRef.current;
+    const engine = shared.engine ?? (shared.initPromise ? await shared.initPromise : null);
     if (!engine) {
       throw new Error("Assistant model is not ready.");
     }
 
-    setStatus("generating");
+    shared.status = "generating";
+    notify(shared);
 
     try {
       const stream = await engine.chat.completions.create({
@@ -107,14 +169,15 @@ export function useWebLlmAssistant({ modelId, onReady, enabled }: UseWebLlmAssis
         onToken(accumulated);
       }
     } finally {
-      setStatus("ready");
+      shared.status = "ready";
+      notify(shared);
     }
   }, []);
 
   return {
     complete,
-    hasGpu,
-    progress,
-    status,
+    hasGpu: state.hasGpu,
+    progress: state.progress,
+    status: state.status,
   };
 }
