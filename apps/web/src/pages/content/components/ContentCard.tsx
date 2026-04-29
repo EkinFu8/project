@@ -40,6 +40,15 @@ export function ContentCard({
   const { isFavorited } = useFavorites();
   const isCheckedOutByMe = !!(item.is_checked_out && item.checked_out_by === currentUserId);
   const checkedOutByName = item.checked_out_by_user?.name;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isOverdue =
+    !!item.next_review_date &&
+    (() => {
+      const [year, month, day] = item.next_review_date!.split("-").map(Number);
+      const reviewDate = new Date(year, month - 1, day);
+      return reviewDate < today;
+    })();
 
   const detailHref = searchQuery
     ? `/hero/content/${item.fileID}/edit?q=${encodeURIComponent(searchQuery)}`
@@ -48,7 +57,11 @@ export function ContentCard({
   return (
     <Link
       to={detailHref}
-      className={`group flex flex-col rounded border bg-card shadow-sm transition-all hover:border-hanover-green hover:shadow-md p-5`}
+      className={`group flex flex-col rounded border bg-card shadow-sm transition-all p-5 ${
+        isOverdue
+          ? "border-red-800 bg-red-50 hover:border-red-900"
+          : "hover:border-hanover-green hover:shadow-md"
+      }`}
     >
       {/* HEADER */}
       <div className="mb-3 flex items-start justify-between gap-2">
@@ -183,9 +196,33 @@ export function ContentCard({
       <div className="mt-auto pt-3 border-t border-border flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span className="truncate max-w-[60%]">{item.owner?.name ?? "Unassigned"}</span>
 
-        <span className="shrink-0">
-          Due: {item.next_review_date ? new Date(item.next_review_date).toLocaleDateString() : "—"}
-        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {isOverdue && (
+            <div className="relative group/clock">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#991B1B"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <title>Overdue</title>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              <div className="pointer-events-none absolute bottom-5 right-0 hidden group-hover/clock:block bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                Overdue
+              </div>
+            </div>
+          )}
+          <span className={isOverdue ? "font-medium text-red-800" : ""}>
+            Due:{" "}
+            {item.next_review_date ? new Date(item.next_review_date).toLocaleDateString() : "—"}
+          </span>
+        </div>
       </div>
     </Link>
   );
