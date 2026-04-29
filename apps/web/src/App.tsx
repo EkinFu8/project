@@ -13,6 +13,7 @@ import {
 import { useSession } from "@/auth/session-context";
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
+import AboutPage from "@/pages/about/page.tsx";
 import AccountPage from "@/pages/account/page.tsx";
 import UsersPage from "@/pages/admin/users/page.tsx";
 import UserFormPage from "@/pages/admin/users/user-form.tsx";
@@ -74,6 +75,7 @@ function adminNavItems() {
     { label: "User Management", to: "/users" },
     { label: "Tags", to: "/tags" },
     { label: "Dashboard", to: "/dashboard" },
+    { label: "About", to: "/about" },
   ];
 }
 
@@ -83,6 +85,7 @@ function employeeNavItems() {
     { label: "Content", to: "/hero/content" },
     { label: "Notifications", to: "/notifications" },
     { label: "Coworkers", to: "/employees" },
+    { label: "About", to: "/about" },
   ];
 }
 
@@ -177,6 +180,7 @@ function App() {
           <Route path="/dashboard/" element={<DashboardPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/about" element={<AboutPage />} />
 
           {/* Legacy redirects */}
           <Route path="/content" element={<Navigate to="/hero/content" replace />} />
