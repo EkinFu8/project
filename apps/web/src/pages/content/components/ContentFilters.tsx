@@ -1,5 +1,6 @@
+import { HelpPopover } from "@myapp/ui/components/help-popover";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { trpc } from "@/lib/trpc.ts";
 import { normalizeTag, renderTag } from "@/utils/tag";
 
@@ -56,6 +57,36 @@ type Props = {
   ROLE_TABS: RoleTab[];
 };
 
+function FilterSectionHeader({
+  label,
+  open,
+  onToggle,
+  helpTitle,
+  children,
+}: {
+  label: ReactNode;
+  open: boolean;
+  onToggle: () => void;
+  helpTitle: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="mb-2 flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex min-w-0 flex-1 items-center justify-between text-left text-sm font-semibold"
+      >
+        <span className="min-w-0">{label}</span>
+        <span className="ml-2 text-muted-foreground">{open ? "−" : "+"}</span>
+      </button>
+      <HelpPopover title={helpTitle} side="right" align="start" contentClassName="w-64">
+        {children}
+      </HelpPopover>
+    </div>
+  );
+}
+
 export function ContentFilters({
   filters,
   openRole,
@@ -97,20 +128,21 @@ export function ContentFilters({
   const selectedFormatLabel = ALL_FORMATS.find((f) => f.key === filters.format)?.label;
 
   return (
-    <aside className="w-64 shrink-0 rounded border border-border bg-card p-4 h-fit sticky top-4">
+    <aside className="sticky top-4 h-fit w-64 shrink-0 rounded border border-border bg-card p-4">
       <p className="mb-2 text-sm font-semibold">Filters</p>
       <hr className="mb-3" />
 
       {/* ROLE */}
       <div className="mb-4">
-        <button
-          type="button"
-          onClick={() => setOpenRole(!openRole)}
-          className="mb-2 flex w-full justify-between text-sm font-semibold"
+        <FilterSectionHeader
+          label="Role"
+          open={openRole}
+          onToggle={() => setOpenRole(!openRole)}
+          helpTitle="Role filter"
         >
-          Role
-          <span className="text-muted-foreground">{openRole ? "−" : "+"}</span>
-        </button>
+          Limits results to content intended for a selected audience. All Users shows content across
+          every role.
+        </FilterSectionHeader>
         <AnimatePresence initial={false}>
           {openRole && (
             <motion.div
@@ -128,7 +160,7 @@ export function ContentFilters({
                     type="button"
                     key={tab.key}
                     onClick={() => filters.setRole(tab.key)}
-                    className="relative flex items-start text-left rounded px-2 py-1 text-sm hover:bg-muted"
+                    className="relative flex items-start rounded px-2 py-1 text-left text-sm hover:bg-muted"
                   >
                     {active && (
                       <span className="absolute left-0 top-1.5 h-5 w-1 rounded bg-hanover-green" />
@@ -150,14 +182,15 @@ export function ContentFilters({
 
       {/* STATUS */}
       <div className="mb-4 mt-4">
-        <button
-          type="button"
-          onClick={() => setOpenStatus(!openStatus)}
-          className="mb-2 flex w-full justify-between text-sm font-semibold"
+        <FilterSectionHeader
+          label="Status"
+          open={openStatus}
+          onToggle={() => setOpenStatus(!openStatus)}
+          helpTitle="Status filter"
         >
-          Status
-          <span className="text-muted-foreground">{openStatus ? "−" : "+"}</span>
-        </button>
+          Narrows content by workflow state, from newly created drafts through finalized or archived
+          material.
+        </FilterSectionHeader>
         <AnimatePresence initial={false}>
           {openStatus && (
             <motion.div
@@ -176,7 +209,7 @@ export function ContentFilters({
                     type="button"
                     key={s || "all"}
                     onClick={() => filters.setStatus(s)}
-                    className="relative flex items-start text-left rounded px-2 py-1 text-sm hover:bg-muted"
+                    className="relative flex items-start rounded px-2 py-1 text-left text-sm hover:bg-muted"
                   >
                     {active && (
                       <span className="absolute left-0 top-1.5 h-5 w-1 rounded bg-hanover-green" />
@@ -195,14 +228,14 @@ export function ContentFilters({
 
       {/* TYPE */}
       <div className="mb-4 mt-4">
-        <button
-          type="button"
-          onClick={() => setOpenType(!openType)}
-          className="mb-2 flex w-full justify-between text-sm font-semibold"
+        <FilterSectionHeader
+          label="Type"
+          open={openType}
+          onToggle={() => setOpenType(!openType)}
+          helpTitle="Content type filter"
         >
-          Type
-          <span className="text-muted-foreground">{openType ? "−" : "+"}</span>
-        </button>
+          Reference content is informational. Workflow content is tied to a process or task.
+        </FilterSectionHeader>
         <AnimatePresence initial={false}>
           {openType && (
             <motion.div
@@ -220,7 +253,7 @@ export function ContentFilters({
                     type="button"
                     key={t || "all"}
                     onClick={() => filters.setType(t)}
-                    className="relative flex items-start text-left rounded px-2 py-1 text-sm hover:bg-muted"
+                    className="relative flex items-start rounded px-2 py-1 text-left text-sm hover:bg-muted"
                   >
                     {active && (
                       <span className="absolute left-0 top-1.5 h-5 w-1 rounded bg-hanover-green" />
@@ -239,21 +272,23 @@ export function ContentFilters({
 
       {/* FORMAT */}
       <div className="mb-4 mt-4">
-        <button
-          type="button"
-          onClick={() => setOpenFormat(!openFormat)}
-          className="mb-2 flex w-full justify-between text-sm font-semibold"
+        <FilterSectionHeader
+          label={
+            <>
+              Format
+              {selectedFormatLabel && (
+                <span className="ml-1.5 text-xs font-normal text-hanover-green">
+                  {selectedFormatLabel}
+                </span>
+              )}
+            </>
+          }
+          open={openFormat}
+          onToggle={() => setOpenFormat(!openFormat)}
+          helpTitle="Format filter"
         >
-          <span>
-            Format
-            {selectedFormatLabel && (
-              <span className="ml-1.5 text-xs font-normal text-hanover-green">
-                {selectedFormatLabel}
-              </span>
-            )}
-          </span>
-          <span className="text-muted-foreground">{openFormat ? "−" : "+"}</span>
-        </button>
+          Filters by the uploaded file's detected format, such as PDF, Word, Excel, or image.
+        </FilterSectionHeader>
         <AnimatePresence initial={false}>
           {openFormat && (
             <motion.div
@@ -315,21 +350,24 @@ export function ContentFilters({
 
       {/* TAGS */}
       <div className="mt-4">
-        <button
-          type="button"
-          onClick={() => setOpenTags(!openTags)}
-          className="mb-2 flex w-full justify-between text-sm font-semibold"
+        <FilterSectionHeader
+          label={
+            <>
+              Tags
+              {filters.tagIds.length > 0 && (
+                <span className="ml-1.5 text-xs font-normal text-hanover-green">
+                  {filters.tagIds.length} selected
+                </span>
+              )}
+            </>
+          }
+          open={openTags}
+          onToggle={() => setOpenTags(!openTags)}
+          helpTitle="Tag filters"
         >
-          <span>
-            Tags
-            {filters.tagIds.length > 0 && (
-              <span className="ml-1.5 text-xs font-normal text-hanover-green">
-                {filters.tagIds.length} selected
-              </span>
-            )}
-          </span>
-          <span className="text-muted-foreground">{openTags ? "−" : "+"}</span>
-        </button>
+          Match any returns content with at least one selected tag. Match all requires every
+          selected tag. Pin tag to top prioritizes one tag in the results.
+        </FilterSectionHeader>
         <AnimatePresence initial={false}>
           {openTags && (
             <motion.div
@@ -379,7 +417,7 @@ export function ContentFilters({
                 />
                 {tagDropdownOpen && (
                   <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded border border-border bg-card shadow-md">
-                    <div className="max-h-44 overflow-y-auto p-2 flex flex-wrap gap-1.5">
+                    <div className="flex max-h-44 flex-wrap gap-1.5 overflow-y-auto p-2">
                       {tagsQuery.isLoading && (
                         <span className="text-xs text-muted-foreground">Loading…</span>
                       )}
@@ -450,7 +488,7 @@ export function ContentFilters({
               )}
 
               {/* Pin-to-top dropdown */}
-              <div className="flex flex-col gap-1 pt-2 border-t border-border">
+              <div className="flex flex-col gap-1 border-t border-border pt-2">
                 <label className="flex flex-col gap-1 text-xs font-semibold">
                   Pin tag to top
                   <select

@@ -64,13 +64,13 @@ function AboutPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-[calc(100vh-2.75rem)] bg-background">
       {/* Hero header */}
-      <div className="border-b border-border bg-card px-6 py-12 text-center shadow-sm">
+      <div className="border-b border-border bg-card px-4 py-8 text-center shadow-sm animate-fade-in-down sm:px-6">
         <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-red-700">
           WPI Computer Science Department
         </p>
-        <h1 className="mb-1 text-4xl font-bold tracking-tight text-foreground">
+        <h1 className="mb-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           CS3733-D26 Software Engineering
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -79,24 +79,29 @@ function AboutPage() {
       </div>
 
       {/* Team grid */}
-      <div className="mx-auto max-w-6xl px-6 py-12">
-        <h2 className="mb-8 text-center text-lg font-semibold uppercase tracking-widest text-muted-foreground">
-          Meet the Team
-        </h2>
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <div className="mb-6 flex flex-col items-center gap-2">
+          <span className="h-1 w-12 rounded-full bg-hanover-green" />
+          <h2 className="text-center text-lg font-semibold uppercase tracking-widest text-muted-foreground">
+            Meet the Team
+          </h2>
+        </div>
+        <div className="grid grid-cols-2 gap-4 stagger-children sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {members.map((m) => (
             <div
               key={m.title}
-              className="group flex flex-col items-center rounded-xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
+              className="group hover-lift flex flex-col items-center rounded-lg border border-border bg-card p-4 shadow-sm hover:border-hanover-green/40 hover:shadow-md"
             >
-              <div className="mb-4 h-20 w-20 overflow-hidden rounded-full border-2 border-hanover-green/30 ring-2 ring-offset-2 ring-hanover-green/10">
+              <div className="mb-3 h-16 w-16 overflow-hidden rounded-full border-2 border-hanover-green/30 ring-2 ring-hanover-green/10 ring-offset-2 ring-offset-card transition-all duration-300 group-hover:border-hanover-green/60 group-hover:ring-hanover-green/20 sm:h-20 sm:w-20">
                 <img
                   src={m.image}
                   alt={m.title}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
               </div>
-              <p className="text-center text-sm font-semibold text-foreground">{m.title}</p>
+              <p className="text-center text-sm font-semibold text-foreground transition-colors duration-200 group-hover:text-hanover-green">
+                {m.title}
+              </p>
               <p className="mt-0.5 text-center text-xs text-muted-foreground">{m.subtitle}</p>
             </div>
           ))}
@@ -104,7 +109,7 @@ function AboutPage() {
       </div>
 
       {/* Acknowledgement */}
-      <div className="border-t border-border bg-muted/40 px-6 py-10 text-center">
+      <div className="border-t border-border bg-muted/40 px-4 py-8 text-center sm:px-6">
         <p className="mx-auto max-w-xl text-sm leading-relaxed text-muted-foreground">
           Special thanks to <span className="font-medium text-foreground">Hanover Insurance</span>{" "}
           and their representatives,{" "}

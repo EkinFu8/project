@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { protectedProcedure, router } from "../lib/trpc";
 
 // Prisma loses row types when `where` is Record<string, unknown> (see content.list); cast keeps callbacks typed.
@@ -5,6 +6,7 @@ type ContentSummaryRow = {
   fileID: string;
   filename: string | null;
   expiration_date: Date | null;
+  next_review_date: Date | null;
 };
 
 type AuditChangeEventRow = {
@@ -42,6 +44,42 @@ function roleVariants(role?: string | null) {
 const REVIEW_LOOKAHEAD_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const notificationsRouter = router({
+  markViewed: protectedProcedure
+    .input(
+      z.object({
+        notifications: z
+          .array(
+            z.object({
+              id: z.string().min(1),
+              type: z.string().min(1),
+              fileID: z.string().optional(),
+              fileName: z.string().optional(),
+              createdAt: z.coerce.date(),
+            }),
+          )
+          .max(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.notifications.length === 0) return { success: true, count: 0 };
+
+      await ctx.prisma.auditEvent.createMany({
+        data: input.notifications.map((notification) => ({
+          userId: ctx.user.id,
+          action: "notification-view",
+          documentId: notification.fileID || null,
+          fileName: notification.fileName || null,
+          metadata: {
+            notificationId: notification.id,
+            notificationType: notification.type,
+            notificationCreatedAt: notification.createdAt.toISOString(),
+          },
+        })),
+      });
+
+      return { success: true, count: input.notifications.length };
+    }),
+
   myList: protectedProcedure.query(async ({ ctx }) => {
     const profile = await ctx.prisma.userProfile.findUnique({
       where: { id: ctx.user.id },
@@ -62,6 +100,7 @@ export const notificationsRouter = router({
         fileID: true,
         filename: true,
         expiration_date: true,
+        next_review_date: true,
       },
       orderBy: { fileID: "asc" },
     })) as ContentSummaryRow[];
@@ -128,21 +167,41 @@ export const notificationsRouter = router({
       }),
       ...content
         .filter((row) => {
+          if (!row.next_review_date) return false;
+          return row.next_review_date.getTime() <= reviewHorizon;
+        })
+        .map((row) => {
+          const t = (row.next_review_date as Date).getTime();
+          const overdue = t < now;
+          return {
+            id: `review-${row.fileID}`,
+            type: "expiration" as const,
+            createdAt: row.next_review_date as Date,
+            fileID: row.fileID,
+            fileName: row.filename ?? row.fileID,
+            message: overdue
+              ? "Review date passed — follow up."
+              : "Review due in the next 30 days.",
+            actorName: null,
+          };
+        }),
+      ...content
+        .filter((row) => {
           if (!row.expiration_date) return false;
           return row.expiration_date.getTime() <= reviewHorizon;
         })
         .map((row) => {
           const t = (row.expiration_date as Date).getTime();
-          const overdue = t < now;
+          const expired = t < now;
           return {
             id: `expiration-${row.fileID}`,
             type: "expiration" as const,
             createdAt: row.expiration_date as Date,
             fileID: row.fileID,
             fileName: row.filename ?? row.fileID,
-            message: overdue
-              ? "Review date passed — follow up."
-              : "Review due in the next 30 days.",
+            message: expired
+              ? "Document expired — follow up with the owner."
+              : "Document expires in the next 30 days.",
             actorName: null,
           };
         }),

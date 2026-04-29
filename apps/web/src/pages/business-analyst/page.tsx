@@ -17,26 +17,34 @@ function BusinessAnalystPage() {
       <div className="py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Page Header */}
-          <h1 className="mb-2 text-3xl font-bold text-foreground">Business Analyst Resources</h1>
-          <p className="mb-8 text-muted-foreground">
-            Tools and references for Business Ops & Tech Integration
-          </p>
+          <div className="mb-8 animate-fade-in-down">
+            <h1 className="mb-2 text-3xl font-bold tracking-tight text-foreground">
+              Business Analyst Resources
+            </h1>
+            <p className="text-muted-foreground">
+              Tools and references for Business Ops & Tech Integration
+            </p>
+          </div>
 
           {/* Link Cards Grid */}
-          <div className="mb-8 grid gap-4 md:grid-cols-2">
+          <div className="mb-6 grid gap-3 stagger-children md:grid-cols-2">
             {businessAnalystLinks.map((link) => (
               <div
                 key={link}
-                className="cursor-pointer rounded border border-border bg-card p-4 transition-all hover:border-l-4 hover:border-l-primary"
+                className="group cursor-pointer rounded-lg border border-border border-l-4 border-l-transparent bg-card px-4 py-3 shadow-sm transition-colors duration-150 hover:border-l-hanover-green hover:bg-muted/25"
               >
-                <span className="font-bold text-foreground">{link}</span>
+                <span className="font-bold text-foreground transition-colors duration-200 group-hover:text-hanover-green">
+                  {link}
+                </span>
               </div>
             ))}
           </div>
 
           {/* Persona Summary Card */}
-          <div className="rounded border border-border border-l-4 border-l-[#C9A84C] bg-card p-6">
-            <h2 className="mb-4 text-xl font-bold text-foreground">About the Business Analyst</h2>
+          <div className="animate-fade-in-up rounded-lg border border-border border-l-4 border-l-[#C9A84C] bg-card p-5 shadow-sm transition-shadow duration-200 hover:shadow-md sm:p-6">
+            <h2 className="mb-4 text-xl font-bold tracking-tight text-foreground">
+              About the Business Analyst
+            </h2>
             <div className="space-y-3">
               <div>
                 <span className="font-semibold text-foreground">Traits: </span>

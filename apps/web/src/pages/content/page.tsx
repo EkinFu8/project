@@ -1,6 +1,18 @@
-import { Layers, Plus, Search } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+import { HelpPopover } from "@myapp/ui/components/help-popover";
+import {
+  ArrowDownNarrowWide,
+  ArrowUpNarrowWide,
+  Check,
+  ChevronDown,
+  Command,
+  Layers,
+  LayoutGrid,
+  List,
+  Plus,
+  Search,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { trpc } from "@/lib/trpc.ts";
 import { useFavorites } from "@/store/favorites";
@@ -19,6 +31,8 @@ const ROLE_TABS = [
   { key: "exl-operations", label: "EXL Operations" },
 ];
 
+const CONTENT_SEARCH_FOCUS_EVENT = "content-search:focus";
+
 function getStatusBadge(status?: string | null) {
   switch (status) {
     case "Finalized":
@@ -33,9 +47,12 @@ function getStatusBadge(status?: string | null) {
       return "bg-muted text-muted-foreground";
   }
 }
+
 export default function ContentPage() {
   const accessQuery = trpc.user.myAccess.useQuery();
   const currentUserRole = accessQuery.data?.role ?? null;
+  const location = useLocation();
+  const navigate = useNavigate();
   const filters = useContentFilters();
   const debouncedSearch = useDebouncedValue(filters.search, 300);
   const { session } = useSession();
@@ -101,8 +118,8 @@ export default function ContentPage() {
     const aFav = isFavorited(a.fileID) ? 1 : 0;
     const bFav = isFavorited(b.fileID) ? 1 : 0;
     if (bFav !== aFav) return bFav - aFav;
-    const aPos = a.job_position ?? "\uffff";
-    const bPos = b.job_position ?? "\uffff";
+    const aPos = a.job_position ?? "￿";
+    const bPos = b.job_position ?? "￿";
     if (aPos !== bPos) return aPos.localeCompare(bPos);
 
     const dir = filters.sortDir === "asc" ? 1 : -1;
@@ -119,7 +136,6 @@ export default function ContentPage() {
     const bDate = b.next_review_date ? new Date(b.next_review_date).getTime() : Infinity;
     return dir * (aDate - bDate);
   });
-  //we might need the following on this line: return new Date(b.last_modified ?? 0).getTime() - new Date(a.last_modified ?? 0).getTime();
 
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
@@ -127,6 +143,14 @@ export default function ContentPage() {
   const viewRef = useRef<HTMLDivElement>(null);
   const [groupOpen, setGroupOpen] = useState(false);
   const groupRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const focusSearchInput = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    });
+  }, []);
 
   useEffect(() => {
     if (!viewOpen) return;
@@ -150,75 +174,112 @@ export default function ContentPage() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [groupOpen]);
 
+  useEffect(() => {
+    function handleSearchFocus() {
+      focusSearchInput();
+    }
+
+    window.addEventListener(CONTENT_SEARCH_FOCUS_EVENT, handleSearchFocus);
+    return () => window.removeEventListener(CONTENT_SEARCH_FOCUS_EVENT, handleSearchFocus);
+  }, [focusSearchInput]);
+
+  useEffect(() => {
+    const state = location.state as { focusContentSearch?: boolean } | null;
+    if (state?.focusContentSearch) {
+      focusSearchInput();
+      navigate(
+        { pathname: location.pathname, search: location.search },
+        { replace: true, state: null },
+      );
+    }
+  }, [focusSearchInput, location.pathname, location.search, location.state, navigate]);
+
   const currentSortLabel = SORT_OPTIONS.find((o) => o.key === filters.sort)?.label ?? "Due date";
   const currentGroupLabel = filters.group === "role" ? "Role" : "None";
 
   return (
-    <div className="border-t border-border/60 py-6 sm:py-8">
+    <div className="animate-fade-in border-t border-border/60 py-6 sm:py-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-6 flex justify-end">
-          <div className="flex w-full max-w-4xl items-center gap-3">
+        <div className="mb-6">
+          <div className="flex w-full items-center gap-3">
             {/* SEARCH */}
-            <div className="relative flex-[2]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div className="group relative min-w-0 flex-[2]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors duration-200 group-focus-within:text-hanover-green" />
               <input
+                ref={searchInputRef}
                 value={filters.search}
                 onChange={(e) => filters.setSearch(e.target.value)}
                 placeholder="Search by filename or document content..."
-                className="w-full rounded border border-border bg-background py-2 pl-10 pr-4 text-sm"
+                className="w-full rounded-md border border-border bg-background py-2 pl-10 pr-16 text-sm transition-all duration-200 hover:border-foreground/30 focus:border-hanover-green focus:outline-none focus:ring-2 focus:ring-hanover-green/30"
               />
+              <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 text-[11px] font-medium leading-none text-muted-foreground sm:inline-flex">
+                <Command className="size-3" aria-hidden strokeWidth={2} />
+                <span>K</span>
+              </kbd>
             </div>
+            <HelpPopover title="Content search" side="bottom" align="start">
+              Search looks across filenames and extracted document text when OCR content is
+              available.
+            </HelpPopover>
 
-            {/* SORT DROPDOWN + DIRECTION */}
-            <div className="relative flex items-center" ref={sortRef}>
-              <button
-                type="button"
-                onClick={() => setSortOpen((o) => !o)}
-                className="flex items-center gap-1.5 rounded-l border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted"
-              >
-                <span>{currentSortLabel}</span>
-                <svg
-                  width="10"
-                  height="6"
-                  viewBox="0 0 10 6"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-muted-foreground"
+            {/* SORT DROPDOWN + DIRECTION (unified control) */}
+            <div className="relative flex items-center gap-1.5" ref={sortRef}>
+              <div className="inline-flex overflow-hidden rounded-md border border-border bg-background shadow-sm transition-colors duration-150 hover:border-foreground/25 focus-within:border-hanover-green focus-within:ring-2 focus-within:ring-hanover-green/30">
+                <button
+                  type="button"
+                  onClick={() => setSortOpen((o) => !o)}
+                  aria-expanded={sortOpen}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium outline-none transition-colors duration-150 hover:bg-muted"
                 >
-                  <title>Sort direction</title>
-                  <path d="M1 1l4 4 4-4" />
-                </svg>
-              </button>
+                  <span>{currentSortLabel}</span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`}
+                    aria-hidden
+                  />
+                </button>
 
-              <button
-                type="button"
-                onClick={() => filters.setSortDir(filters.sortDir === "asc" ? "desc" : "asc")}
-                className="flex h-[37px] w-8 items-center justify-center rounded-r border border-l-0 border-border bg-background text-sm hover:bg-muted"
-              >
-                {filters.sortDir === "asc" ? "↑" : "↓"}
-              </button>
+                <span className="my-1 w-px bg-border" aria-hidden />
+
+                <button
+                  type="button"
+                  onClick={() => filters.setSortDir(filters.sortDir === "asc" ? "desc" : "asc")}
+                  className="flex h-[37px] w-9 items-center justify-center text-muted-foreground outline-none transition-colors duration-150 hover:bg-muted hover:text-foreground"
+                  aria-label={`Sort direction: ${filters.sortDir === "asc" ? "ascending" : "descending"}. Click to toggle.`}
+                  title={filters.sortDir === "asc" ? "Ascending" : "Descending"}
+                >
+                  <span key={filters.sortDir} className="inline-flex animate-scale-in">
+                    {filters.sortDir === "asc" ? (
+                      <ArrowUpNarrowWide className="h-4 w-4" aria-hidden />
+                    ) : (
+                      <ArrowDownNarrowWide className="h-4 w-4" aria-hidden />
+                    )}
+                  </span>
+                </button>
+              </div>
+              <HelpPopover title="Sorting" side="bottom" align="start" contentClassName="w-64">
+                Favorites stay at the top. The sort menu orders the remaining content by due date,
+                name, or created date.
+              </HelpPopover>
 
               {sortOpen && (
-                <div className="absolute left-0 top-full z-20 mt-1 w-44 rounded border border-border bg-background shadow-md">
-                  {SORT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      onClick={() => {
-                        filters.setSort(opt.key);
-                        setSortOpen(false);
-                      }}
-                      className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-muted"
-                    >
-                      <span>{opt.label}</span>
-                      {filters.sort === opt.key && (
-                        <span className="font-bold text-hanover-green">✓</span>
-                      )}
-                    </button>
-                  ))}
+                <div className="absolute left-7 top-full z-20 mt-1.5 w-44 origin-top-left animate-pop overflow-hidden rounded-md border border-border bg-background shadow-lg shadow-black/10">
+                  {SORT_OPTIONS.map((opt) => {
+                    const active = filters.sort === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => {
+                          filters.setSort(opt.key);
+                          setSortOpen(false);
+                        }}
+                        className={`flex w-full items-center justify-between px-3 py-2 text-sm transition-colors duration-150 hover:bg-muted ${active ? "text-hanover-green" : ""}`}
+                      >
+                        <span className={active ? "font-medium" : ""}>{opt.label}</span>
+                        {active && <Check className="h-4 w-4 text-hanover-green" aria-hidden />}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -298,113 +359,48 @@ export default function ContentPage() {
               <button
                 type="button"
                 onClick={() => setViewOpen((o) => !o)}
-                className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted"
+                aria-expanded={viewOpen}
+                className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium shadow-sm outline-none transition-colors duration-150 hover:bg-muted hover:border-foreground/25 focus-visible:border-hanover-green focus-visible:ring-2 focus-visible:ring-hanover-green/30"
               >
-                {filters.view === "grid" ? (
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                  >
-                    <title>Card view</title>
-                    <rect x="0.5" y="0.5" width="5" height="5" rx="1" />
-                    <rect x="8.5" y="0.5" width="5" height="5" rx="1" />
-                    <rect x="0.5" y="8.5" width="5" height="5" rx="1" />
-                    <rect x="8.5" y="8.5" width="5" height="5" rx="1" />
-                  </svg>
-                ) : (
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    fill="currentColor"
-                    className="text-foreground"
-                  >
-                    <title>List view</title>
-                    <circle cx="1.5" cy="2.5" r="1.5" />
-                    <rect x="4" y="1.5" width="10" height="2" rx="1" />
-                    <circle cx="1.5" cy="7" r="1.5" />
-                    <rect x="4" y="6" width="10" height="2" rx="1" />
-                    <circle cx="1.5" cy="11.5" r="1.5" />
-                    <rect x="4" y="10.5" width="10" height="2" rx="1" />
-                  </svg>
-                )}
+                <span key={filters.view} className="inline-flex animate-scale-in">
+                  {filters.view === "grid" ? (
+                    <LayoutGrid className="h-4 w-4 text-foreground" aria-hidden />
+                  ) : (
+                    <List className="h-4 w-4 text-foreground" aria-hidden />
+                  )}
+                </span>
                 <span>{filters.view === "grid" ? "Card view" : "List view"}</span>
-                <svg
-                  width="10"
-                  height="6"
-                  viewBox="0 0 10 6"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-muted-foreground"
-                >
-                  <title>Chevron</title>
-                  <path d="M1 1l4 4 4-4" />
-                </svg>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${viewOpen ? "rotate-180" : ""}`}
+                  aria-hidden
+                />
               </button>
 
               {viewOpen && (
-                <div className="absolute right-0 top-full z-20 mt-1 w-36 rounded border border-border bg-background shadow-md">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      filters.setView("grid");
-                      setViewOpen(false);
-                    }}
-                    className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-muted"
-                  >
-                    <div className="flex items-center gap-2">
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 14 14"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1"
+                <div className="absolute right-0 top-full z-20 mt-1.5 w-40 origin-top-right animate-pop overflow-hidden rounded-md border border-border bg-background shadow-lg shadow-black/10">
+                  {[
+                    { key: "grid" as const, label: "Card view", icon: LayoutGrid },
+                    { key: "list" as const, label: "List view", icon: List },
+                  ].map(({ key, label, icon: Icon }) => {
+                    const active = filters.view === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          filters.setView(key);
+                          setViewOpen(false);
+                        }}
+                        className={`flex w-full items-center justify-between px-3 py-2 text-sm transition-colors duration-150 hover:bg-muted ${active ? "text-hanover-green" : ""}`}
                       >
-                        <title>Card view</title>
-                        <rect x="0.5" y="0.5" width="5" height="5" rx="1" />
-                        <rect x="8.5" y="0.5" width="5" height="5" rx="1" />
-                        <rect x="0.5" y="8.5" width="5" height="5" rx="1" />
-                        <rect x="8.5" y="8.5" width="5" height="5" rx="1" />
-                      </svg>
-                      <span>Card view</span>
-                    </div>
-                    {filters.view === "grid" && (
-                      <span className="font-bold text-hanover-green">✓</span>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      filters.setView("list");
-                      setViewOpen(false);
-                    }}
-                    className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-muted"
-                  >
-                    <div className="flex items-center gap-2">
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-                        <title>List view</title>
-                        <circle cx="1.5" cy="2.5" r="1.5" />
-                        <rect x="4" y="1.5" width="10" height="2" rx="1" />
-                        <circle cx="1.5" cy="7" r="1.5" />
-                        <rect x="4" y="6" width="10" height="2" rx="1" />
-                        <circle cx="1.5" cy="11.5" r="1.5" />
-                        <rect x="4" y="10.5" width="10" height="2" rx="1" />
-                      </svg>
-                      <span>List view</span>
-                    </div>
-                    {filters.view === "list" && (
-                      <span className="font-bold text-hanover-green">✓</span>
-                    )}
-                  </button>
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-4 w-4" aria-hidden />
+                          <span className={active ? "font-medium" : ""}>{label}</span>
+                        </div>
+                        {active && <Check className="h-4 w-4 text-hanover-green" aria-hidden />}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -412,9 +408,9 @@ export default function ContentPage() {
             {/* NEW CONTENT */}
             <Link
               to="/hero/content/new"
-              className="flex shrink-0 items-center gap-2 rounded bg-hanover-green px-4 py-2 text-sm font-semibold text-white"
+              className="group flex shrink-0 items-center gap-2 rounded-md bg-hanover-green px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-hanover-green/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-hanover-green/90 hover:shadow-md hover:shadow-hanover-green/30 active:translate-y-0 active:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hanover-green/40 focus-visible:ring-offset-2"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90" />
               New Content
             </Link>
           </div>
@@ -436,7 +432,7 @@ export default function ContentPage() {
             ROLE_TABS={ROLE_TABS}
           />
 
-          {/* Grid view */}
+          {/* Grid / List view */}
           <ContentGrid
             contents={contents}
             filtered={filtered}
