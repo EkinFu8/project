@@ -1,4 +1,4 @@
-import { Plus, Search } from "lucide-react";
+import { Layers, Plus, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useSession } from "@/auth/session-context";
@@ -9,6 +9,7 @@ import { ContentFilters } from "./components/ContentFilters";
 import { ContentGrid } from "./components/ContentGrid";
 import { useContentFilters } from "./hooks/useContentFilters";
 import { useDebouncedValue } from "./hooks/useDebouncedValue";
+import { usePersistedState } from "./hooks/usePersistedState";
 
 const ROLE_TABS = [
   { key: "all", label: "All Users" },
@@ -33,17 +34,19 @@ function getStatusBadge(status?: string | null) {
   }
 }
 export default function ContentPage() {
-  trpc.user.myAccess.useQuery();
+  const accessQuery = trpc.user.myAccess.useQuery();
+  const currentUserRole = accessQuery.data?.role ?? null;
   const filters = useContentFilters();
   const debouncedSearch = useDebouncedValue(filters.search, 300);
   const { session } = useSession();
   const currentUserId = session?.user?.id;
 
-  const [openRole, setOpenRole] = useState(true);
-  const [openStatus, setOpenStatus] = useState(true);
-  const [openType, setOpenType] = useState(true);
-  const [openFormat, setOpenFormat] = useState(true);
-  const [openTags, setOpenTags] = useState(true);
+  // Persist the sidebar collapsibles so toggling sections survives navigation.
+  const [openRole, setOpenRole] = usePersistedState("content.filters.role.open", true);
+  const [openStatus, setOpenStatus] = usePersistedState("content.filters.status.open", true);
+  const [openType, setOpenType] = usePersistedState("content.filters.type.open", true);
+  const [openFormat, setOpenFormat] = usePersistedState("content.filters.format.open", true);
+  const [openTags, setOpenTags] = usePersistedState("content.filters.tags.open", true);
 
   const utils = trpc.useUtils();
 
@@ -122,6 +125,8 @@ export default function ContentPage() {
   const sortRef = useRef<HTMLDivElement>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const viewRef = useRef<HTMLDivElement>(null);
+  const [groupOpen, setGroupOpen] = useState(false);
+  const groupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!viewOpen) return;
@@ -134,7 +139,19 @@ export default function ContentPage() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [viewOpen]);
 
+  useEffect(() => {
+    if (!groupOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (groupRef.current && !groupRef.current.contains(e.target as Node)) {
+        setGroupOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [groupOpen]);
+
   const currentSortLabel = SORT_OPTIONS.find((o) => o.key === filters.sort)?.label ?? "Due date";
+  const currentGroupLabel = filters.group === "role" ? "Role" : "None";
 
   return (
     <div className="border-t border-border/60 py-6 sm:py-8">
@@ -202,6 +219,76 @@ export default function ContentPage() {
                       )}
                     </button>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* GROUP DROPDOWN */}
+            <div className="relative" ref={groupRef}>
+              <button
+                type="button"
+                onClick={() => setGroupOpen((o) => !o)}
+                className={`flex items-center gap-1.5 rounded border px-3 py-2 text-sm font-medium transition-colors ${
+                  filters.group === "role"
+                    ? "border-hanover-green/50 bg-hanover-green/5 text-foreground"
+                    : "border-border bg-background hover:bg-muted"
+                }`}
+                title={
+                  filters.group === "role"
+                    ? "Documents are grouped into collapsible sections by role"
+                    : "Documents shown as a single flat list"
+                }
+              >
+                <Layers
+                  className={`h-4 w-4 ${
+                    filters.group === "role" ? "text-hanover-green" : "text-muted-foreground"
+                  }`}
+                />
+                <span>Group: {currentGroupLabel}</span>
+                <svg
+                  width="10"
+                  height="6"
+                  viewBox="0 0 10 6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-muted-foreground"
+                >
+                  <title>Group menu</title>
+                  <path d="M1 1l4 4 4-4" />
+                </svg>
+              </button>
+
+              {groupOpen && (
+                <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded border border-border bg-background shadow-md">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      filters.setGroup("role");
+                      setGroupOpen(false);
+                    }}
+                    className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    <span>By role</span>
+                    {filters.group === "role" && (
+                      <span className="font-bold text-hanover-green">✓</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      filters.setGroup("none");
+                      setGroupOpen(false);
+                    }}
+                    className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    <span>None</span>
+                    {filters.group === "none" && (
+                      <span className="font-bold text-hanover-green">✓</span>
+                    )}
+                  </button>
                 </div>
               )}
             </div>
@@ -355,6 +442,7 @@ export default function ContentPage() {
             filtered={filtered}
             filters={filters}
             currentUserId={currentUserId}
+            currentUserRole={currentUserRole}
             searchQuery={debouncedSearch}
             toggleFavorite={toggleFavorite}
             checkin={checkin}
