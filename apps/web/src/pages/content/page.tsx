@@ -167,6 +167,7 @@ export default function ContentPage() {
                   strokeLinejoin="round"
                   className="text-muted-foreground"
                 >
+                  <title>Sort direction</title>
                   <path d="M1 1l4 4 4-4" />
                 </svg>
               </button>
@@ -217,6 +218,7 @@ export default function ContentPage() {
                     stroke="currentColor"
                     strokeWidth="1"
                   >
+                    <title>Card view</title>
                     <rect x="0.5" y="0.5" width="5" height="5" rx="1" />
                     <rect x="8.5" y="0.5" width="5" height="5" rx="1" />
                     <rect x="0.5" y="8.5" width="5" height="5" rx="1" />
@@ -230,6 +232,7 @@ export default function ContentPage() {
                     fill="currentColor"
                     className="text-foreground"
                   >
+                    <title>List view</title>
                     <circle cx="1.5" cy="2.5" r="1.5" />
                     <rect x="4" y="1.5" width="10" height="2" rx="1" />
                     <circle cx="1.5" cy="7" r="1.5" />
@@ -250,6 +253,7 @@ export default function ContentPage() {
                   strokeLinejoin="round"
                   className="text-muted-foreground"
                 >
+                  <title>Chevron</title>
                   <path d="M1 1l4 4 4-4" />
                 </svg>
               </button>
@@ -273,6 +277,7 @@ export default function ContentPage() {
                         stroke="currentColor"
                         strokeWidth="1"
                       >
+                        <title>Card view</title>
                         <rect x="0.5" y="0.5" width="5" height="5" rx="1" />
                         <rect x="8.5" y="0.5" width="5" height="5" rx="1" />
                         <rect x="0.5" y="8.5" width="5" height="5" rx="1" />
@@ -295,6 +300,7 @@ export default function ContentPage() {
                   >
                     <div className="flex items-center gap-2">
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+                        <title>List view</title>
                         <circle cx="1.5" cy="2.5" r="1.5" />
                         <rect x="4" y="1.5" width="10" height="2" rx="1" />
                         <circle cx="1.5" cy="7" r="1.5" />
