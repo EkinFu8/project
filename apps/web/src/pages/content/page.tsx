@@ -201,19 +201,19 @@ export default function ContentPage() {
     <div className="animate-fade-in border-t border-border/60 py-6 sm:py-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
-          <div className="flex w-full items-center gap-3">
+          <div className="flex w-full items-center gap-2.5">
             {/* SEARCH */}
             <div className="group relative min-w-0 flex-[2]">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors duration-200 group-focus-within:text-hanover-green" />
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/80 transition-colors duration-200 group-focus-within:text-hanover-green" />
               <input
                 ref={searchInputRef}
                 value={filters.search}
                 onChange={(e) => filters.setSearch(e.target.value)}
-                placeholder="Search by filename or document content..."
-                className="w-full rounded-md border border-border bg-background py-2 pl-10 pr-16 text-sm transition-all duration-200 hover:border-foreground/30 focus:border-hanover-green focus:outline-none focus:ring-2 focus:ring-hanover-green/30"
+                placeholder="Search filenames or document contents…"
+                className="h-10 w-full rounded-lg border border-border bg-background py-2 pl-10 pr-16 text-sm shadow-sm shadow-black/[0.02] transition-all duration-200 placeholder:text-muted-foreground/70 hover:border-foreground/25 focus:border-hanover-green focus:outline-none focus:ring-2 focus:ring-hanover-green/25"
               />
-              <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 text-[11px] font-medium leading-none text-muted-foreground sm:inline-flex">
-                <Command className="size-3" aria-hidden strokeWidth={2} />
+              <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded-md border border-border bg-muted/70 px-1.5 py-0.5 text-[10.5px] font-medium leading-none text-muted-foreground sm:inline-flex">
+                <Command className="size-3" aria-hidden strokeWidth={2.25} />
                 <span>K</span>
               </kbd>
             </div>
@@ -224,12 +224,12 @@ export default function ContentPage() {
 
             {/* SORT DROPDOWN + DIRECTION (unified control) */}
             <div className="relative flex items-center gap-1.5" ref={sortRef}>
-              <div className="inline-flex overflow-hidden rounded-md border border-border bg-background shadow-sm transition-colors duration-150 hover:border-foreground/25 focus-within:border-hanover-green focus-within:ring-2 focus-within:ring-hanover-green/30">
+              <div className="inline-flex h-10 overflow-hidden rounded-lg border border-border bg-background shadow-sm shadow-black/[0.02] transition-colors duration-150 hover:border-foreground/25 focus-within:border-hanover-green focus-within:ring-2 focus-within:ring-hanover-green/25">
                 <button
                   type="button"
                   onClick={() => setSortOpen((o) => !o)}
                   aria-expanded={sortOpen}
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium outline-none transition-colors duration-150 hover:bg-muted"
+                  className="flex items-center gap-1.5 px-3 text-sm font-medium outline-none transition-colors duration-150 hover:bg-muted/70"
                 >
                   <span>{currentSortLabel}</span>
                   <ChevronDown
@@ -238,12 +238,12 @@ export default function ContentPage() {
                   />
                 </button>
 
-                <span className="my-1 w-px bg-border" aria-hidden />
+                <span className="my-2 w-px bg-border" aria-hidden />
 
                 <button
                   type="button"
                   onClick={() => filters.setSortDir(filters.sortDir === "asc" ? "desc" : "asc")}
-                  className="flex h-[37px] w-9 items-center justify-center text-muted-foreground outline-none transition-colors duration-150 hover:bg-muted hover:text-foreground"
+                  className="flex w-10 items-center justify-center text-muted-foreground outline-none transition-colors duration-150 hover:bg-muted/70 hover:text-foreground"
                   aria-label={`Sort direction: ${filters.sortDir === "asc" ? "ascending" : "descending"}. Click to toggle.`}
                   title={filters.sortDir === "asc" ? "Ascending" : "Descending"}
                 >
@@ -262,7 +262,7 @@ export default function ContentPage() {
               </HelpPopover>
 
               {sortOpen && (
-                <div className="absolute left-7 top-full z-20 mt-1.5 w-44 origin-top-left animate-pop overflow-hidden rounded-md border border-border bg-background shadow-lg shadow-black/10">
+                <div className="absolute left-7 top-full z-20 mt-2 w-44 origin-top-left animate-pop overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-lg shadow-black/10 ring-1 ring-black/[0.02]">
                   {SORT_OPTIONS.map((opt) => {
                     const active = filters.sort === opt.key;
                     return (
@@ -273,7 +273,7 @@ export default function ContentPage() {
                           filters.setSort(opt.key);
                           setSortOpen(false);
                         }}
-                        className={`flex w-full items-center justify-between px-3 py-2 text-sm transition-colors duration-150 hover:bg-muted ${active ? "text-hanover-green" : ""}`}
+                        className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition-colors duration-150 hover:bg-muted ${active ? "bg-hanover-green/8 text-hanover-green" : ""}`}
                       >
                         <span className={active ? "font-medium" : ""}>{opt.label}</span>
                         {active && <Check className="h-4 w-4 text-hanover-green" aria-hidden />}
@@ -289,10 +289,11 @@ export default function ContentPage() {
               <button
                 type="button"
                 onClick={() => setGroupOpen((o) => !o)}
-                className={`flex items-center gap-1.5 rounded border px-3 py-2 text-sm font-medium transition-colors ${
+                aria-expanded={groupOpen}
+                className={`flex h-10 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium shadow-sm shadow-black/[0.02] transition-colors duration-150 ${
                   filters.group === "role"
-                    ? "border-hanover-green/50 bg-hanover-green/5 text-foreground"
-                    : "border-border bg-background hover:bg-muted"
+                    ? "border-hanover-green/40 bg-hanover-green/[0.06] text-foreground"
+                    : "border-border bg-background hover:border-foreground/25 hover:bg-muted/70"
                 }`}
                 title={
                   filters.group === "role"
@@ -305,51 +306,40 @@ export default function ContentPage() {
                     filters.group === "role" ? "text-hanover-green" : "text-muted-foreground"
                   }`}
                 />
-                <span>Group: {currentGroupLabel}</span>
-                <svg
-                  width="10"
-                  height="6"
-                  viewBox="0 0 10 6"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-muted-foreground"
-                >
-                  <title>Group menu</title>
-                  <path d="M1 1l4 4 4-4" />
-                </svg>
+                <span>
+                  Group:{" "}
+                  <span className={filters.group === "role" ? "text-hanover-green" : ""}>
+                    {currentGroupLabel}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${groupOpen ? "rotate-180" : ""}`}
+                  aria-hidden
+                />
               </button>
 
               {groupOpen && (
-                <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded border border-border bg-background shadow-md">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      filters.setGroup("role");
-                      setGroupOpen(false);
-                    }}
-                    className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-muted"
-                  >
-                    <span>By role</span>
-                    {filters.group === "role" && (
-                      <span className="font-bold text-hanover-green">✓</span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      filters.setGroup("none");
-                      setGroupOpen(false);
-                    }}
-                    className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-muted"
-                  >
-                    <span>None</span>
-                    {filters.group === "none" && (
-                      <span className="font-bold text-hanover-green">✓</span>
-                    )}
-                  </button>
+                <div className="absolute right-0 top-full z-20 mt-2 w-44 origin-top-right animate-pop overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-lg shadow-black/10 ring-1 ring-black/[0.02]">
+                  {[
+                    { key: "role" as const, label: "By role" },
+                    { key: "none" as const, label: "None" },
+                  ].map(({ key, label }) => {
+                    const active = filters.group === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          filters.setGroup(key);
+                          setGroupOpen(false);
+                        }}
+                        className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition-colors duration-150 hover:bg-muted ${active ? "bg-hanover-green/8 text-hanover-green" : ""}`}
+                      >
+                        <span className={active ? "font-medium" : ""}>{label}</span>
+                        {active && <Check className="h-4 w-4 text-hanover-green" aria-hidden />}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -360,7 +350,7 @@ export default function ContentPage() {
                 type="button"
                 onClick={() => setViewOpen((o) => !o)}
                 aria-expanded={viewOpen}
-                className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium shadow-sm outline-none transition-colors duration-150 hover:bg-muted hover:border-foreground/25 focus-visible:border-hanover-green focus-visible:ring-2 focus-visible:ring-hanover-green/30"
+                className="flex h-10 items-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-medium shadow-sm shadow-black/[0.02] outline-none transition-colors duration-150 hover:border-foreground/25 hover:bg-muted/70 focus-visible:border-hanover-green focus-visible:ring-2 focus-visible:ring-hanover-green/25"
               >
                 <span key={filters.view} className="inline-flex animate-scale-in">
                   {filters.view === "grid" ? (
@@ -369,7 +359,7 @@ export default function ContentPage() {
                     <List className="h-4 w-4 text-foreground" aria-hidden />
                   )}
                 </span>
-                <span>{filters.view === "grid" ? "Card view" : "List view"}</span>
+                <span>{filters.view === "grid" ? "Cards" : "List"}</span>
                 <ChevronDown
                   className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${viewOpen ? "rotate-180" : ""}`}
                   aria-hidden
@@ -377,7 +367,7 @@ export default function ContentPage() {
               </button>
 
               {viewOpen && (
-                <div className="absolute right-0 top-full z-20 mt-1.5 w-40 origin-top-right animate-pop overflow-hidden rounded-md border border-border bg-background shadow-lg shadow-black/10">
+                <div className="absolute right-0 top-full z-20 mt-2 w-40 origin-top-right animate-pop overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-lg shadow-black/10 ring-1 ring-black/[0.02]">
                   {[
                     { key: "grid" as const, label: "Card view", icon: LayoutGrid },
                     { key: "list" as const, label: "List view", icon: List },
@@ -391,7 +381,7 @@ export default function ContentPage() {
                           filters.setView(key);
                           setViewOpen(false);
                         }}
-                        className={`flex w-full items-center justify-between px-3 py-2 text-sm transition-colors duration-150 hover:bg-muted ${active ? "text-hanover-green" : ""}`}
+                        className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition-colors duration-150 hover:bg-muted ${active ? "bg-hanover-green/8 text-hanover-green" : ""}`}
                       >
                         <div className="flex items-center gap-2">
                           <Icon className="h-4 w-4" aria-hidden />
@@ -408,10 +398,10 @@ export default function ContentPage() {
             {/* NEW CONTENT */}
             <Link
               to="/hero/content/new"
-              className="group flex shrink-0 items-center gap-2 rounded-md bg-hanover-green px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-hanover-green/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-hanover-green/90 hover:shadow-md hover:shadow-hanover-green/30 active:translate-y-0 active:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hanover-green/40 focus-visible:ring-offset-2"
+              className="group flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-hanover-green px-4 text-sm font-semibold text-white shadow-sm shadow-hanover-green/25 ring-1 ring-inset ring-white/10 transition-all duration-200 hover:-translate-y-px hover:bg-hanover-green/95 hover:shadow-md hover:shadow-hanover-green/30 active:translate-y-0 active:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hanover-green/40 focus-visible:ring-offset-2"
             >
               <Plus className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90" />
-              New Content
+              New
             </Link>
           </div>
         </div>

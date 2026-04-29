@@ -1,4 +1,4 @@
-import { AlertTriangle, Loader2, Lock, Sparkles, Unlock } from "lucide-react";
+import { AlertTriangle, Clock, Loader2, Lock, Sparkles, Star, Unlock } from "lucide-react";
 import { Link } from "react-router";
 import { useFavorites } from "@/store/favorites";
 import type { ContentItem } from "@/types/content";
@@ -78,11 +78,13 @@ export function ContentListRow({
 
   const stripeClass = ROLE_STRIPE[item.job_position ?? ""] ?? "border-l-zinc-300";
 
+  const favorited = isFavorited(item.fileID);
+
   return (
     <Link
       to={detailHref}
-      className={`${CONTENT_LIST_GRID} border-l-2 ${stripeClass} px-4 py-2.5 text-sm transition-colors hover:bg-muted/50 ${
-        overdue ? "bg-red-50/40" : ""
+      className={`${CONTENT_LIST_GRID} group/row relative border-l-[3px] ${stripeClass} px-4 py-2.5 text-sm transition-colors duration-150 hover:bg-muted/50 ${
+        overdue ? "bg-red-50/40 hover:bg-red-50/60" : ""
       }`}
     >
       {/* 1 — STAR */}
@@ -93,21 +95,28 @@ export function ContentListRow({
           e.stopPropagation();
           toggleFavorite.mutate({ fileID: item.fileID });
         }}
-        title={isFavorited(item.fileID) ? "Remove from favorites" : "Add to favorites"}
-        aria-label={isFavorited(item.fileID) ? "Remove from favorites" : "Add to favorites"}
-        className="leading-none text-base text-yellow-400"
+        title={favorited ? "Remove from favorites" : "Add to favorites"}
+        aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
+        aria-pressed={favorited}
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-amber-400 transition-all hover:scale-110 hover:bg-amber-50 active:scale-95 dark:hover:bg-amber-950/40"
       >
-        {isFavorited(item.fileID) ? "★" : "☆"}
+        <Star
+          className={`h-3.5 w-3.5 transition-all ${
+            favorited
+              ? "fill-amber-400 text-amber-400 drop-shadow-[0_0_4px_rgba(251,191,36,0.4)]"
+              : "fill-transparent text-muted-foreground/50"
+          }`}
+        />
       </button>
 
       {/* 2 — DOCUMENT (filename + small inline status icons) */}
       <div className="flex min-w-0 items-center gap-2">
         {/* Filename + fast custom tooltip on truncation hover */}
         <div className="group/filename relative min-w-0 flex-1">
-          <span className="block truncate font-medium text-foreground">
+          <span className="block truncate font-medium tracking-tight text-foreground transition-colors group-hover/row:text-hanover-green">
             {item.filename ?? "Untitled"}
           </span>
-          <div className="invisible absolute left-0 top-full z-30 mt-1 max-w-xs rounded border border-border bg-popover px-2.5 py-1.5 text-xs font-medium text-popover-foreground opacity-0 shadow-md transition-opacity duration-75 group-hover/filename:visible group-hover/filename:opacity-100">
+          <div className="invisible absolute left-0 top-full z-30 mt-1 max-w-xs rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs font-medium text-popover-foreground opacity-0 shadow-lg shadow-black/10 ring-1 ring-black/[0.02] transition-opacity duration-75 group-hover/filename:visible group-hover/filename:opacity-100">
             {item.filename ?? "Untitled"}
           </div>
         </div>
@@ -137,18 +146,18 @@ export function ContentListRow({
       {/* 3 — TYPE */}
       <div className="min-w-0">
         {item.content_type ? (
-          <span className="inline-flex max-w-full items-center truncate rounded border border-border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="inline-flex max-w-full items-center truncate rounded-md border border-border bg-background/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
             {item.content_type}
           </span>
         ) : (
-          <span className="text-xs text-muted-foreground">—</span>
+          <span className="text-xs text-muted-foreground/70">—</span>
         )}
       </div>
 
       {/* 4 — STATUS */}
       <div className="min-w-0">
         <span
-          className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${getStatusBadge(
+          className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ring-black/[0.04] ${getStatusBadge(
             item.document_status,
           )}`}
         >
@@ -162,24 +171,24 @@ export function ContentListRow({
           <>
             <span
               style={{ backgroundColor: firstTagStyles.bg, color: firstTagStyles.text }}
-              className="inline-flex min-w-0 max-w-full items-center truncate rounded-full px-2 py-0.5 text-xs font-medium"
+              className="inline-flex min-w-0 max-w-full items-center truncate rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ring-black/[0.04]"
             >
               {firstTag.name}
             </span>
             {hiddenCount > 0 && (
-              <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ring-1 ring-inset ring-border">
                 +{hiddenCount}
               </span>
             )}
             {hiddenCount > 0 && (
-              <div className="invisible absolute left-0 top-full z-20 mt-1 flex max-w-[260px] flex-wrap gap-1 rounded border border-border bg-background p-2 opacity-0 shadow-md transition-opacity duration-150 group-hover/tags:visible group-hover/tags:opacity-100">
+              <div className="invisible absolute left-0 top-full z-20 mt-1.5 flex max-w-[260px] origin-top-left flex-wrap gap-1 rounded-lg border border-border bg-popover p-2 opacity-0 shadow-lg shadow-black/10 ring-1 ring-black/[0.02] transition-opacity duration-150 group-hover/tags:visible group-hover/tags:opacity-100">
                 {tags.map((ct) => {
                   const styles = renderTag(ct.tag);
                   return (
                     <span
                       key={ct.tag.id}
                       style={{ backgroundColor: styles.bg, color: styles.text }}
-                      className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                      className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
                     >
                       {ct.tag.name}
                     </span>
@@ -189,7 +198,7 @@ export function ContentListRow({
             )}
           </>
         ) : (
-          <span className="text-xs text-muted-foreground">—</span>
+          <span className="text-xs text-muted-foreground/70">—</span>
         )}
       </div>
 
@@ -203,7 +212,7 @@ export function ContentListRow({
         {item.is_checked_out && !isCheckedOutByMe && (
           <span
             title={checkedOutLabel(false, checkedOutByName)}
-            className="inline-flex min-w-0 max-w-full items-center gap-1 rounded bg-amber-50 px-1 py-px text-[11px] font-medium text-amber-700"
+            className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200/70 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900/50"
           >
             <Lock className="h-3 w-3 shrink-0" aria-hidden="true" />
             <span className="truncate">{checkedOutByName ?? "in use"}</span>
@@ -217,23 +226,26 @@ export function ContentListRow({
               e.stopPropagation();
               checkin.mutate({ fileID: item.fileID });
             }}
-            className="inline-flex items-center gap-1 rounded bg-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-900 hover:bg-amber-300"
+            className="inline-flex items-center gap-1 rounded-md bg-amber-200/80 px-2 py-0.5 text-[11px] font-semibold text-amber-900 transition-all hover:bg-amber-300 active:scale-95 dark:bg-amber-900/40 dark:text-amber-100 dark:hover:bg-amber-900/60"
             title="Click to check this document back in"
           >
             <Unlock className="h-3 w-3" />
-            Check In
+            Check in
           </button>
         )}
       </div>
 
-      {/* 8 — DATE (overdue ⚠ + red tint absorbs the standalone overdue chip) */}
+      {/* 8 — DATE (overdue tint absorbs the standalone overdue chip) */}
       {overdue ? (
         <span className="flex items-center justify-end gap-1 text-xs font-semibold text-red-700">
-          <span aria-hidden="true">⚠</span>
+          <Clock className="h-3 w-3" aria-hidden />
           <span>{dateString}</span>
         </span>
       ) : (
-        <span className="text-right text-xs text-muted-foreground">{dateString}</span>
+        <span className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+          <Clock className="h-3 w-3 opacity-60" aria-hidden />
+          {dateString}
+        </span>
       )}
     </Link>
   );

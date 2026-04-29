@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 
 type Props = {
   label: string;
@@ -25,24 +25,25 @@ export function GroupHeader({ label, count, overdueCount = 0, accent, expanded, 
       type="button"
       onClick={onToggle}
       aria-expanded={expanded}
-      className="group flex w-full items-center gap-3 rounded border border-border bg-card px-4 py-2.5 text-left transition-colors hover:bg-muted/50"
+      className="group flex w-full items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5 text-left shadow-sm shadow-black/[0.02] transition-all duration-150 hover:border-foreground/20 hover:bg-muted/40"
     >
       <span aria-hidden="true" className={`h-5 w-1 shrink-0 rounded-full ${accent}`} />
 
       <span className="text-sm font-semibold tracking-tight text-foreground">{label}</span>
 
-      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-inset ring-border">
         {count} {count === 1 ? "document" : "documents"}
       </span>
 
       {overdueCount > 0 && (
-        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+        <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 ring-1 ring-inset ring-red-200/70 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900/50">
+          <AlertTriangle className="h-3 w-3" aria-hidden />
           {overdueCount} overdue
         </span>
       )}
 
       <ChevronDown
-        className={`ml-auto h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+        className={`ml-auto h-4 w-4 text-muted-foreground transition-transform duration-200 group-hover:text-foreground ${
           expanded ? "rotate-0" : "-rotate-90"
         }`}
       />
