@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
 import * as webllm from "@mlc-ai/web-llm";
+import { useCallback, useEffect, useRef, useState } from "react";
 import appGuide from "../assets/chatbotContext.txt?raw";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -336,6 +336,7 @@ ${appGuide ? `\n## App guide\n${appGuide}` : ""}\``;
           <div style={styles.header}>
             <div style={styles.avatar}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                <title>Assistant avatar</title>
                 <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
               </svg>
             </div>
@@ -429,7 +430,7 @@ ${appGuide ? `\n## App guide\n${appGuide}` : ""}\``;
               <div style={{ display: "flex", gap: 4, alignItems: "center", padding: "4px 0" }}>
                 {[0, 0.15, 0.3].map((delay, i) => (
                   <div
-                    key={i}
+                    key={delay}
                     style={{
                       width: 6,
                       height: 6,
@@ -471,11 +472,13 @@ ${appGuide ? `\n## App guide\n${appGuide}` : ""}\``;
               }}
             />
             <button
+              type="button"
               onClick={sendMessage}
               disabled={isDisabled}
               style={{ ...styles.sendBtn, opacity: isDisabled ? 0.35 : 1 }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="white">
+                <title>Assistant avatar</title>
                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
               </svg>
             </button>
@@ -484,8 +487,14 @@ ${appGuide ? `\n## App guide\n${appGuide}` : ""}\``;
       )}
 
       {/* FAB toggle */}
-      <button style={styles.fab} onClick={() => setOpen((o) => !o)} title="Toggle AI assistant">
+      <button
+        type="button"
+        style={styles.fab}
+        onClick={() => setOpen((o) => !o)}
+        title="Toggle AI assistant"
+      >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+          <title>{open ? "Close assistant" : "Open assistant"}</title>
           {open ? (
             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
           ) : (

@@ -1,5 +1,5 @@
-import { TopNav } from "@myapp/ui/components/top-nav";
 import CMSChatbot from "@myapp/ui/components/chatbot";
+import { TopNav } from "@myapp/ui/components/top-nav";
 import { Loader2 } from "lucide-react";
 import {
   BrowserRouter,
