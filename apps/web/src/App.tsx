@@ -13,6 +13,7 @@ import {
 import { useSession } from "@/auth/session-context";
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
+import AboutPage from "@/pages/about/page.tsx";
 import AccountPage from "@/pages/account/page.tsx";
 import UsersPage from "@/pages/admin/users/page.tsx";
 import UserFormPage from "@/pages/admin/users/user-form.tsx";
@@ -28,7 +29,6 @@ import LoginFormPage from "@/pages/login.tsx";
 import NotificationsPage from "@/pages/notifications/page.tsx";
 import TagsPage from "@/pages/tags/TagsPage";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
-import AboutPage from "@/pages/about/page.tsx";
 
 function LegacyContentEditRedirect() {
   const { id } = useParams<{ id: string }>();
