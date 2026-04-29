@@ -78,24 +78,15 @@ function roleVariants(role: string) {
   ];
 }
 
-function assertCanViewRole(userRole: string | null | undefined, jobPosition: string | null) {
-  if (isAdminRole(userRole)) return;
-  if (!canEditForRole(userRole, jobPosition)) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this content" });
-  }
-}
-
 export const contentRouter = router({
   toggleFavorite: protectedProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     const userId = ctx.user.id;
-    const userRole = ctx.profile?.role;
 
     const file = await ctx.prisma.contentManagement.findUnique({
       where: { fileID: input.fileID },
       select: { job_position: true },
     });
     if (!file) throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
-    assertCanViewRole(userRole, file.job_position);
 
     const existing = await ctx.prisma.favorite.findUnique({
       where: {
@@ -128,14 +119,12 @@ export const contentRouter = router({
 
   trackDownload: protectedProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     const userId = ctx.user.id;
-    const userRole = ctx.profile?.role;
 
     const file = await ctx.prisma.contentManagement.findUnique({
       where: { fileID: input.fileID },
       select: { filename: true, job_position: true },
     });
     if (!file) throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
-    assertCanViewRole(userRole, file.job_position);
 
     await ctx.prisma.auditEvent.create({
       data: {
@@ -151,13 +140,11 @@ export const contentRouter = router({
 
   trackView: protectedProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     const userId = ctx.user.id;
-    const userRole = ctx.profile?.role;
     const currentFile = await ctx.prisma.contentManagement.findUnique({
       where: { fileID: input.fileID },
       select: { job_position: true },
     });
     if (!currentFile) throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
-    assertCanViewRole(userRole, currentFile.job_position);
 
     const viewedAt = new Date();
     const file = await ctx.prisma.contentManagement.update({
@@ -353,7 +340,6 @@ export const contentRouter = router({
   list: protectedProcedure.input(contentListQuerySchema).query(async ({ ctx, input }) => {
     const where: Record<string, unknown> = {};
     const userId = ctx.user.id;
-    const userRole = ctx.profile?.role;
 
     if (input.document_status) {
       where.document_status = input.document_status;
@@ -368,23 +354,9 @@ export const contentRouter = router({
     }
 
     const requestedRole = input.role && input.role !== "all" ? input.role : undefined;
-    if (
-      !isAdminRole(userRole) &&
-      requestedRole &&
-      normalizeRole(requestedRole) !== normalizeRole(userRole)
-    ) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "You cannot view content for another role",
-      });
-    }
-
-    const effectiveRole = isAdminRole(userRole) ? requestedRole : userRole;
-    if (effectiveRole) {
-      const role = effectiveRole.toLowerCase();
-
+    if (requestedRole) {
       where.job_position = {
-        in: roleVariants(role),
+        in: roleVariants(requestedRole.toLowerCase()),
       };
     }
 
@@ -527,7 +499,6 @@ export const contentRouter = router({
       },
       // extracted_text and ocr_status are plain scalar fields — included by default.
     });
-    assertCanViewRole(ctx.profile?.role, row.job_position);
     return row;
   }),
 
