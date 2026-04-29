@@ -5,9 +5,9 @@ import {
   Check,
   ChevronDown,
   Command,
+  Layers,
   LayoutGrid,
   List,
-  Loader2,
   Plus,
   Search,
 } from "lucide-react";
@@ -16,12 +16,12 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { trpc } from "@/lib/trpc.ts";
 import { useFavorites } from "@/store/favorites";
-import type { ContentItem } from "@/types/content";
 import { normalizeContent } from "@/utils/normalizeContent.ts";
 import { ContentFilters } from "./components/ContentFilters";
-import { PositionGroup } from "./components/PositionGroup";
+import { ContentGrid } from "./components/ContentGrid";
 import { useContentFilters } from "./hooks/useContentFilters";
 import { useDebouncedValue } from "./hooks/useDebouncedValue";
+import { usePersistedState } from "./hooks/usePersistedState";
 
 const ROLE_TABS = [
   { key: "all", label: "All Users" },
@@ -31,68 +31,7 @@ const ROLE_TABS = [
   { key: "exl-operations", label: "EXL Operations" },
 ];
 
-const ROLE_LABEL_BY_KEY = new Map(ROLE_TABS.map((role) => [role.key, role.label]));
-const ROLE_ORDER_BY_KEY = new Map(ROLE_TABS.slice(1).map((role, index) => [role.key, index]));
 const CONTENT_SEARCH_FOCUS_EVENT = "content-search:focus";
-
-function getPositionKey(position?: string): string {
-  const trimmed = position?.trim();
-
-  if (!trimmed) return "unassigned";
-
-  return trimmed.toLowerCase().replace(/[\s_]+/g, "-");
-}
-
-function getPositionLabel(position?: string): string {
-  const trimmed = position?.trim();
-
-  if (!trimmed) return "Unassigned";
-
-  const key = getPositionKey(trimmed);
-  const knownLabel = ROLE_LABEL_BY_KEY.get(key);
-
-  if (knownLabel) return knownLabel;
-
-  return trimmed
-    .replace(/[-_]+/g, " ")
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-function getPositionRank(key: string): number {
-  if (key === "unassigned") return Number.MAX_SAFE_INTEGER;
-
-  return ROLE_ORDER_BY_KEY.get(key) ?? ROLE_ORDER_BY_KEY.size + 1;
-}
-
-function groupContentByPosition(items: ContentItem[]) {
-  const groups = new Map<
-    string,
-    { key: string; label: string; rank: number; items: ContentItem[] }
-  >();
-
-  for (const item of items) {
-    const key = getPositionKey(item.job_position);
-    const existing = groups.get(key);
-
-    if (existing) {
-      existing.items.push(item);
-    } else {
-      groups.set(key, {
-        key,
-        label: getPositionLabel(item.job_position),
-        rank: getPositionRank(key),
-        items: [item],
-      });
-    }
-  }
-
-  return Array.from(groups.values()).sort(
-    (a, b) => a.rank - b.rank || a.label.localeCompare(b.label),
-  );
-}
 
 function getStatusBadge(status?: string | null) {
   switch (status) {
@@ -108,8 +47,10 @@ function getStatusBadge(status?: string | null) {
       return "bg-muted text-muted-foreground";
   }
 }
+
 export default function ContentPage() {
-  trpc.user.myAccess.useQuery();
+  const accessQuery = trpc.user.myAccess.useQuery();
+  const currentUserRole = accessQuery.data?.role ?? null;
   const location = useLocation();
   const navigate = useNavigate();
   const filters = useContentFilters();
@@ -117,11 +58,12 @@ export default function ContentPage() {
   const { session } = useSession();
   const currentUserId = session?.user?.id;
 
-  const [openRole, setOpenRole] = useState(true);
-  const [openStatus, setOpenStatus] = useState(true);
-  const [openType, setOpenType] = useState(true);
-  const [openFormat, setOpenFormat] = useState(true);
-  const [openTags, setOpenTags] = useState(true);
+  // Persist the sidebar collapsibles so toggling sections survives navigation.
+  const [openRole, setOpenRole] = usePersistedState("content.filters.role.open", true);
+  const [openStatus, setOpenStatus] = usePersistedState("content.filters.status.open", true);
+  const [openType, setOpenType] = usePersistedState("content.filters.type.open", true);
+  const [openFormat, setOpenFormat] = usePersistedState("content.filters.format.open", true);
+  const [openTags, setOpenTags] = usePersistedState("content.filters.tags.open", true);
 
   const utils = trpc.useUtils();
 
@@ -176,8 +118,8 @@ export default function ContentPage() {
     const aFav = isFavorited(a.fileID) ? 1 : 0;
     const bFav = isFavorited(b.fileID) ? 1 : 0;
     if (bFav !== aFav) return bFav - aFav;
-    const aPos = a.job_position ?? "\uffff";
-    const bPos = b.job_position ?? "\uffff";
+    const aPos = a.job_position ?? "￿";
+    const bPos = b.job_position ?? "￿";
     if (aPos !== bPos) return aPos.localeCompare(bPos);
 
     const dir = filters.sortDir === "asc" ? 1 : -1;
@@ -194,12 +136,13 @@ export default function ContentPage() {
     const bDate = b.next_review_date ? new Date(b.next_review_date).getTime() : Infinity;
     return dir * (aDate - bDate);
   });
-  const positionGroups = groupContentByPosition(filtered);
 
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const viewRef = useRef<HTMLDivElement>(null);
+  const [groupOpen, setGroupOpen] = useState(false);
+  const groupRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const focusSearchInput = useCallback(() => {
@@ -219,6 +162,17 @@ export default function ContentPage() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [viewOpen]);
+
+  useEffect(() => {
+    if (!groupOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (groupRef.current && !groupRef.current.contains(e.target as Node)) {
+        setGroupOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [groupOpen]);
 
   useEffect(() => {
     function handleSearchFocus() {
@@ -241,14 +195,15 @@ export default function ContentPage() {
   }, [focusSearchInput, location.pathname, location.search, location.state, navigate]);
 
   const currentSortLabel = SORT_OPTIONS.find((o) => o.key === filters.sort)?.label ?? "Due date";
+  const currentGroupLabel = filters.group === "role" ? "Role" : "None";
 
   return (
     <div className="animate-fade-in border-t border-border/60 py-6 sm:py-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-6 flex justify-end">
-          <div className="flex w-full max-w-4xl flex-wrap items-center gap-3">
+        <div className="mb-6">
+          <div className="flex w-full items-center gap-3">
             {/* SEARCH */}
-            <div className="group relative min-w-64 flex-[2]">
+            <div className="group relative min-w-0 flex-[2]">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors duration-200 group-focus-within:text-hanover-green" />
               <input
                 ref={searchInputRef}
@@ -325,6 +280,76 @@ export default function ContentPage() {
                       </button>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+            {/* GROUP DROPDOWN */}
+            <div className="relative" ref={groupRef}>
+              <button
+                type="button"
+                onClick={() => setGroupOpen((o) => !o)}
+                className={`flex items-center gap-1.5 rounded border px-3 py-2 text-sm font-medium transition-colors ${
+                  filters.group === "role"
+                    ? "border-hanover-green/50 bg-hanover-green/5 text-foreground"
+                    : "border-border bg-background hover:bg-muted"
+                }`}
+                title={
+                  filters.group === "role"
+                    ? "Documents are grouped into collapsible sections by role"
+                    : "Documents shown as a single flat list"
+                }
+              >
+                <Layers
+                  className={`h-4 w-4 ${
+                    filters.group === "role" ? "text-hanover-green" : "text-muted-foreground"
+                  }`}
+                />
+                <span>Group: {currentGroupLabel}</span>
+                <svg
+                  width="10"
+                  height="6"
+                  viewBox="0 0 10 6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-muted-foreground"
+                >
+                  <title>Group menu</title>
+                  <path d="M1 1l4 4 4-4" />
+                </svg>
+              </button>
+
+              {groupOpen && (
+                <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded border border-border bg-background shadow-md">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      filters.setGroup("role");
+                      setGroupOpen(false);
+                    }}
+                    className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    <span>By role</span>
+                    {filters.group === "role" && (
+                      <span className="font-bold text-hanover-green">✓</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      filters.setGroup("none");
+                      setGroupOpen(false);
+                    }}
+                    className="flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    <span>None</span>
+                    {filters.group === "none" && (
+                      <span className="font-bold text-hanover-green">✓</span>
+                    )}
+                  </button>
                 </div>
               )}
             </div>
@@ -407,33 +432,18 @@ export default function ContentPage() {
             ROLE_TABS={ROLE_TABS}
           />
 
-          <main className="min-w-0 flex-1">
-            {contents.isLoading ? (
-              <div className="flex animate-fade-in items-center justify-center py-16">
-                <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
-              </div>
-            ) : positionGroups.length > 0 ? (
-              <div className="animate-fade-in-up space-y-4">
-                {positionGroups.map((group) => (
-                  <PositionGroup
-                    key={group.key}
-                    label={group.label}
-                    items={group.items}
-                    view={filters.view}
-                    currentUserId={currentUserId}
-                    searchQuery={debouncedSearch}
-                    toggleFavorite={toggleFavorite}
-                    checkin={checkin}
-                    getStatusBadge={getStatusBadge}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="animate-fade-in-up rounded-lg border border-dashed border-border bg-card px-4 py-10 text-center text-sm text-muted-foreground">
-                No content found.
-              </div>
-            )}
-          </main>
+          {/* Grid / List view */}
+          <ContentGrid
+            contents={contents}
+            filtered={filtered}
+            filters={filters}
+            currentUserId={currentUserId}
+            currentUserRole={currentUserRole}
+            searchQuery={debouncedSearch}
+            toggleFavorite={toggleFavorite}
+            checkin={checkin}
+            getStatusBadge={getStatusBadge}
+          />
         </div>
       </div>
     </div>
