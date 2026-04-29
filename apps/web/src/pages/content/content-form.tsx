@@ -2,9 +2,9 @@ import DocViewer, { DocViewerRenderers } from "@iamjariwala/react-doc-viewer";
 import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
 import "@iamjariwala/react-doc-viewer/dist/index.css";
-import { ArrowLeft, Loader2, Lock, Pencil, Unlock } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Loader2, Lock, Pencil, Unlock, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { type RouterOutputs, trpc } from "@/lib/trpc.ts";
@@ -26,6 +26,12 @@ function displayDateLabel(value: string): string {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString();
 }
 
+function todayDateInputValue(): string {
+  const today = new Date();
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+  return today.toISOString().split("T")[0];
+}
+
 type TagShape = { id: number; name: string; color?: string };
 
 type ContentFormFieldsProps = {
@@ -44,6 +50,8 @@ type ContentFormFieldsProps = {
   setLastModified: (v: string) => void;
   expirationDate: string;
   setExpirationDate: (v: string) => void;
+  nextReviewDate: string;
+  setNextReviewDate: (v: string) => void;
   contentType: string;
   setContentType: (v: string) => void;
   documentStatus: string;
@@ -61,7 +69,71 @@ type ContentFormFieldsProps = {
   isSaving: boolean;
   onDelete: () => void;
   onSubmit: (e: React.FormEvent) => void;
+  extractedText?: string | null;
 };
+
+// Walk DOM text nodes and wrap matches in <mark> without touching React-managed nodes.
+function highlightTextNodes(root: Element, re: RegExp) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const matches: [Text, string][] = [];
+
+  let node: Node | null;
+  // biome-ignore lint/suspicious/noAssignInExpressions: standard TreeWalker pattern
+  while ((node = walker.nextNode())) {
+    const text = (node as Text).textContent ?? "";
+    if (re.test(text)) matches.push([node as Text, text]);
+    re.lastIndex = 0;
+  }
+
+  for (const [textNode, raw] of matches) {
+    const span = document.createElement("span");
+    span.innerHTML = raw.replace(
+      re,
+      '<mark style="background:#fef08a;border-radius:2px;padding:0 1px">$1</mark>',
+    );
+    re.lastIndex = 0;
+    textNode.parentNode?.replaceChild(span, textNode);
+  }
+}
+
+function HighlightedExcerpt({ text, query }: { text: string; query: string }) {
+  const CONTEXT = 120;
+  const lower = text.toLowerCase();
+  const queryLower = query.toLowerCase().trim();
+
+  if (!queryLower) return null;
+
+  // Find the first occurrence to anchor the excerpt.
+  const idx = lower.indexOf(queryLower);
+  if (idx === -1) return null;
+
+  const start = Math.max(0, idx - CONTEXT);
+  const end = Math.min(text.length, idx + queryLower.length + CONTEXT);
+  const excerpt = (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
+
+  // Split excerpt on all occurrences of the query word (case-insensitive) for highlighting.
+  const parts = excerpt.split(new RegExp(`(${queryLower})`, "gi"));
+
+  return (
+    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
+      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-blue-600">
+        Matched in document content
+      </p>
+      <p className="leading-relaxed text-foreground">
+        {parts.map((part, i) =>
+          part.toLowerCase() === queryLower ? (
+            // biome-ignore lint/suspicious/noArrayIndexKey: split-on-regex parts have no stable identity
+            <mark key={i} className="rounded bg-yellow-200 px-0.5 text-foreground">
+              {part}
+            </mark>
+          ) : (
+            part
+          ),
+        )}
+      </p>
+    </div>
+  );
+}
 
 function ContentMetadataReadonlyTable({
   fileID,
@@ -71,6 +143,7 @@ function ContentMetadataReadonlyTable({
   jobPosition,
   lastModified,
   expirationDate,
+  nextReviewDate,
   contentType,
   documentStatus,
   selectedTags,
@@ -82,6 +155,7 @@ function ContentMetadataReadonlyTable({
   jobPosition: string;
   lastModified: string;
   expirationDate: string;
+  nextReviewDate: string;
   contentType: string;
   documentStatus: string;
   selectedTags: TagShape[];
@@ -167,6 +241,15 @@ function ContentMetadataReadonlyTable({
               scope="row"
               className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
             >
+              Next Review Date
+            </th>
+            <td className="px-4 py-3 text-foreground">{displayDateLabel(nextReviewDate)}</td>
+          </tr>
+          <tr className="border-b border-border last:border-b-0">
+            <th
+              scope="row"
+              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
+            >
               Content type
             </th>
             <td className="px-4 py-3 text-foreground">{contentType || "—"}</td>
@@ -226,6 +309,7 @@ function ContentFormSummarySection({
   jobPosition,
   lastModified,
   expirationDate,
+  nextReviewDate,
   contentType,
   documentStatus,
   selectedTags,
@@ -236,7 +320,6 @@ function ContentFormSummarySection({
   createError,
   updateError,
   mutationError,
-  submitLabel,
   onDelete,
 }: {
   filename: string;
@@ -246,6 +329,7 @@ function ContentFormSummarySection({
   jobPosition: string;
   lastModified: string;
   expirationDate: string;
+  nextReviewDate: string;
   contentType: string;
   documentStatus: string;
   selectedTags: TagShape[];
@@ -259,7 +343,6 @@ function ContentFormSummarySection({
   createError: unknown;
   updateError: unknown;
   mutationError: string;
-  submitLabel: string;
   onDelete: () => void;
 }) {
   return (
@@ -288,6 +371,7 @@ function ContentFormSummarySection({
         jobPosition={jobPosition}
         lastModified={lastModified}
         expirationDate={expirationDate}
+        nextReviewDate={nextReviewDate}
         contentType={contentType}
         documentStatus={documentStatus}
         selectedTags={selectedTags}
@@ -298,28 +382,19 @@ function ContentFormSummarySection({
           {mutationError}
         </div>
       )}
-
-      {canEdit ? (
+      {canEdit && (
         <div className="flex justify-between">
           <button
             type="button"
             onClick={() => onDelete()}
             disabled={isSaving || isUploading}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-500/90 disabled:opacity-60"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-red-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-500/90 disabled:opacity-0"
           >
             {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
             Delete Content
           </button>
-          <button
-            type="submit"
-            disabled={isSaving || isUploading}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-6 py-3 font-semibold text-white transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
-          >
-            {(isSaving || isUploading) && <Loader2 className="h-4 w-4 animate-spin" />}
-            {submitLabel}
-          </button>
         </div>
-      ) : null}
+      )}
     </>
   );
 }
@@ -389,6 +464,8 @@ function ContentFormMetadataSection({
   setLastModified,
   expirationDate,
   setExpirationDate,
+  nextReviewDate,
+  setNextReviewDate,
   contentType,
   setContentType,
   documentStatus,
@@ -420,6 +497,8 @@ function ContentFormMetadataSection({
   setLastModified: (v: string) => void;
   expirationDate: string;
   setExpirationDate: (v: string) => void;
+  nextReviewDate: string;
+  setNextReviewDate: (v: string) => void;
   contentType: string;
   setContentType: (v: string) => void;
   documentStatus: string;
@@ -497,7 +576,13 @@ function ContentFormMetadataSection({
         value={expirationDate}
         onChange={(e) => setExpirationDate(e.target.value)}
       />
-
+      <TextInput
+        label="Next Review Date"
+        type="date"
+        value={nextReviewDate}
+        onChange={(e) => setNextReviewDate(e.target.value)}
+        min={todayDateInputValue()}
+      />
       <div>
         <label htmlFor="content-type" className="mb-2 block text-sm font-semibold text-foreground">
           Content Type
@@ -610,6 +695,8 @@ function ContentFormFields({
   setLastModified,
   expirationDate,
   setExpirationDate,
+  nextReviewDate,
+  setNextReviewDate,
   contentType,
   setContentType,
   documentStatus,
@@ -627,8 +714,12 @@ function ContentFormFields({
   isSaving,
   onDelete,
   onSubmit,
+  extractedText,
 }: ContentFormFieldsProps) {
   const [metadataEditMode, setMetadataEditMode] = useState(false);
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get("q") ?? "";
+  const trackDownload = trpc.content.trackDownload.useMutation();
   const showFileSummary = isEditing && Boolean(url) && !metadataEditMode;
   const ownerDisplayName =
     employees?.find((e) => e.id === ownerId)?.name ?? (ownerId ? ownerId : "Unassigned");
@@ -648,6 +739,7 @@ function ContentFormFields({
       newBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         e.stopPropagation();
+        trackDownload.mutate({ fileID });
         const res = await fetch(url);
         const blob = await res.blob();
         const blobUrl = URL.createObjectURL(blob);
@@ -664,7 +756,72 @@ function ContentFormFields({
 
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [url, filename]);
+  }, [url, filename, fileID, trackDownload.mutate]);
+
+  // Highlight search terms inside the DocViewer once it finishes rendering.
+  useEffect(() => {
+    if (!searchQuery || !url) return;
+
+    const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+    const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const queryRe = new RegExp(`(${escaped})`, "gi");
+
+    function applyHighlights() {
+      // ── Plain text / CSV ────────────────────────────────────────────────
+      const txtContainer = document.querySelector(".rdv-txt-container");
+      if (txtContainer && (ext === "txt" || ext === "csv")) {
+        const raw = txtContainer.textContent ?? "";
+        if (!raw) return false;
+        txtContainer.innerHTML = raw.replace(
+          queryRe,
+          '<mark style="background:#fef08a;border-radius:2px;padding:0 1px">$1</mark>',
+        );
+        txtContainer.querySelector("mark")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return true;
+      }
+
+      // ── DOCX / DOC ──────────────────────────────────────────────────────
+      const msdocContainer = document.querySelector(".rdv-msdoc-content");
+      if (msdocContainer && (ext === "docx" || ext === "doc")) {
+        highlightTextNodes(msdocContainer, queryRe);
+        msdocContainer
+          .querySelector("mark")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return true;
+      }
+
+      // ── PDF text layer ──────────────────────────────────────────────────
+      // PDF.js renders an invisible text layer (.textLayer) on top of the canvas.
+      // We tint matching spans so the highlight aligns with the visible glyphs.
+      if (ext === "pdf") {
+        const textLayerSpans = document.querySelectorAll<HTMLElement>(
+          ".textLayer span, .text-layer span",
+        );
+        if (textLayerSpans.length === 0) return false;
+
+        let firstMatch: HTMLElement | null = null;
+        for (const span of textLayerSpans) {
+          if (queryRe.test(span.textContent ?? "")) {
+            span.style.backgroundColor = "#fef08a";
+            span.style.borderRadius = "2px";
+            if (!firstMatch) firstMatch = span;
+          }
+          queryRe.lastIndex = 0; // reset stateful regex after each test
+        }
+        firstMatch?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return true;
+      }
+
+      return false;
+    }
+
+    // Retry until the DocViewer finishes rendering, then stop.
+    const observer = new MutationObserver(() => {
+      if (applyHighlights()) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [searchQuery, url, filename]);
 
   const docs = [{ uri: url }];
   return (
@@ -683,17 +840,60 @@ function ContentFormFields({
         </h1>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-md sm:p-8">
+          {searchQuery && extractedText && (
+            <HighlightedExcerpt text={extractedText} query={searchQuery} />
+          )}
           {url && canDisplayDocument(url) ? (
-            <div className="mb-6 text-black overflow-hidden rounded-lg border border-border bg-muted">
-              <style>{`.rdv-txt-container { white-space: pre; font-family: monospace; }`}</style>
+            <div className="mb-6 overflow-hidden rounded-lg border border-gray-300 bg-muted text-black max-w-4xl mx-auto shadow-lg">
+              <style>{`.rdv-txt-container { white-space: pre; font-family: monospace; }
+    button.rdv-toolbar-btn[title='Download'],
+    button.rdv-toolbar-btn[title='Print'],
+    #pdf-download,
+    #pdf-print { display: none !important; }`}</style>
+
               <DocViewer
                 documents={docs}
                 pluginRenderers={DocViewerRenderers}
                 config={{
                   header: { disableHeader: true, disableFileName: true },
                 }}
-                style={{ height: "70vh", minHeight: 800, width: "100%" }}
+                style={{ height: "80vh", minHeight: 500, width: "100%" }}
               />
+
+              <div className="flex justify-end border-t border-border bg-background px-4 py-2.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    trackDownload.mutate({ fileID });
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = blobUrl;
+                    a.download = filename || "download";
+                    a.click();
+                    URL.revokeObjectURL(blobUrl);
+                  }}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-hanover-green px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-hanover-green/90 active:scale-95"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Download
+                </button>
+              </div>
             </div>
           ) : null}
           <form className="space-y-6" onSubmit={onSubmit}>
@@ -706,6 +906,7 @@ function ContentFormFields({
                 jobPosition={jobPosition}
                 lastModified={lastModified}
                 expirationDate={expirationDate}
+                nextReviewDate={nextReviewDate}
                 contentType={contentType}
                 documentStatus={documentStatus}
                 selectedTags={selectedTags}
@@ -719,7 +920,6 @@ function ContentFormFields({
                 createError={createError}
                 updateError={updateError}
                 mutationError={mutationError}
-                submitLabel={submitLabel}
                 onDelete={onDelete}
               />
             ) : (
@@ -758,6 +958,8 @@ function ContentFormFields({
                 setLastModified={setLastModified}
                 expirationDate={expirationDate}
                 setExpirationDate={setExpirationDate}
+                nextReviewDate={nextReviewDate}
+                setNextReviewDate={setNextReviewDate}
                 contentType={contentType}
                 setContentType={setContentType}
                 documentStatus={documentStatus}
@@ -797,12 +999,14 @@ function ContentFormPage() {
   const [jobPosition, setJobPosition] = useState("");
   const [lastModified, setLastModified] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
+  const [nextReviewDate, setNextReviewDate] = useState("");
   const [contentType, setContentType] = useState("");
   const [documentStatus, setDocumentStatus] = useState("");
   const [selectedTags, setSelectedTags] = useState<{ id: number; name: string }[]>([]);
   const [askConfirmation, setAskConfirmation] = useState(false);
   const [pendingData, setPendingData] = useState<Parameters<typeof update.mutate>[0] | null>(null);
   const [operation, setOperation] = useState("");
+  const [showReminder, setShowReminder] = useState(false);
 
   const handleUploadSuccess = useCallback(
     (result: { publicUrl: string; storagePath: string; fileName: string }) => {
@@ -825,6 +1029,14 @@ function ContentFormPage() {
     onSuccess: handleUploadSuccess,
   });
 
+  function handleExpirationReminder(expiration_date: string | null): void {
+    if (expiration_date) {
+      const expiration = new Date(expiration_date);
+      const today = new Date();
+      if (expiration <= today) setShowReminder(true);
+    }
+  }
+
   useEffect(() => {
     const d = existing.data;
     if (!d) return;
@@ -835,9 +1047,11 @@ function ContentFormPage() {
     setJobPosition(d.job_position ?? "");
     setLastModified(formatDateField(d.last_modified));
     setExpirationDate(formatDateField(d.expiration_date));
+    setNextReviewDate(formatDateField(d.next_review_date));
     setContentType(d.content_type ?? "");
     setDocumentStatus(d.document_status ?? "");
     setSelectedTags(d.content_tags?.map((ct) => ct.tag) ?? []);
+    handleExpirationReminder(d.expiration_date);
   }, [existing.data]);
 
   const utils = trpc.useUtils();
@@ -923,6 +1137,11 @@ function ContentFormPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    if (nextReviewDate && nextReviewDate < todayDateInputValue()) {
+      alert("Next review date cannot be in the past");
+      return;
+    }
+
     let finalID = fileID;
     if (!fileID) {
       finalID = url.slice(-64);
@@ -937,6 +1156,7 @@ function ContentFormPage() {
       job_position: toNullable(jobPosition),
       last_modified: lastModified ? new Date(lastModified) : null,
       expiration_date: expirationDate ? new Date(expirationDate) : null,
+      next_review_date: nextReviewDate ? new Date(nextReviewDate) : null,
       content_type: toNullable<"Reference" | "Workflow">(contentType as "Reference" | "Workflow"),
       document_status: toNullable<"Created" | "in-progress" | "Finalized" | "Archived">(
         documentStatus as "Created" | "in-progress" | "Finalized" | "Archived",
@@ -963,9 +1183,29 @@ function ContentFormPage() {
   }
 
   const checkoutError = checkout.error || checkin.error || forceUnlock.error;
-
   return (
     <>
+      {showReminder && (
+        <div className="fixed bottom-2 right-2 gap-2 rounded-lg border border-destructive/40 bg-destructive/10 pl-10 pr-8 py-5 text-sm font-medium text-destructive">
+          <div className="absolute right-1 top-1">
+            <button
+              type="button"
+              className="hover:bg-destructive/30 rounded-md"
+              onClick={() => setShowReminder(false)}
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+          <div className="flex flex-row">
+            <div className="absolute left-1">
+              <AlertTriangle />
+            </div>
+            <div>
+              <p className="text-lg">Expired content. Review needed.</p>
+            </div>
+          </div>
+        </div>
+      )}
       {isEditing && (
         <div className="mx-auto max-w-4xl px-4 pt-4 sm:px-6 lg:px-8">
           {!hasRoleAccess && (
@@ -1074,6 +1314,8 @@ function ContentFormPage() {
         setLastModified={setLastModified}
         expirationDate={expirationDate}
         setExpirationDate={setExpirationDate}
+        nextReviewDate={nextReviewDate}
+        setNextReviewDate={setNextReviewDate}
         contentType={contentType}
         setContentType={setContentType}
         documentStatus={documentStatus}
@@ -1091,6 +1333,7 @@ function ContentFormPage() {
         isSaving={isSaving}
         onDelete={handleDelete}
         onSubmit={handleSubmit}
+        extractedText={existing.data?.extracted_text}
       />
       {askConfirmation && (
         <div className="bg-black/50 fixed inset-0 flex items-center justify-center">
@@ -1110,6 +1353,8 @@ function ContentFormPage() {
                 type="button"
                 onClick={() => {
                   setAskConfirmation(false);
+                  const data = existing.data;
+                  if (data) handleExpirationReminder(data.expiration_date);
                   if (pendingData && operation === "update") update.mutate(pendingData);
                   if ((!isCheckedOut || isCheckedOutByMe) && operation === "delete")
                     remove.mutate({ fileID: id! });

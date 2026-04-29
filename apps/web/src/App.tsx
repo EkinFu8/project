@@ -13,7 +13,6 @@ import {
 import { useSession } from "@/auth/session-context";
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
-import AboutPage from "@/pages/about/page.tsx";
 import AccountPage from "@/pages/account/page.tsx";
 import UsersPage from "@/pages/admin/users/page.tsx";
 import UserFormPage from "@/pages/admin/users/user-form.tsx";
@@ -26,8 +25,11 @@ import EmployeeDetailPage from "@/pages/employees/employee-detail.tsx";
 import EmployeesPage from "@/pages/employees/page.tsx";
 import HeroLayout from "@/pages/hero/layout.tsx";
 import LoginFormPage from "@/pages/login.tsx";
+import NotificationsPage from "@/pages/notifications/page.tsx";
 import TagsPage from "@/pages/tags/TagsPage";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
+import AboutPage from "@/pages/about/page.tsx";
+
 
 function LegacyContentEditRedirect() {
   const { id } = useParams<{ id: string }>();
@@ -71,9 +73,11 @@ function LoginRoute() {
 function adminNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
+    { label: "Notifications", to: "/notifications" },
     { label: "User Management", to: "/users" },
     { label: "Tags", to: "/tags" },
     { label: "Dashboard", to: "/dashboard" },
+    { label: "About", to: "/about" },
   ];
 }
 
@@ -81,7 +85,9 @@ function adminNavItems() {
 function employeeNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
+    { label: "Notifications", to: "/notifications" },
     { label: "Coworkers", to: "/employees" },
+    { label: "About", to: "/about" },
   ];
 }
 
@@ -174,6 +180,7 @@ function App() {
 
           {/* Shared */}
           <Route path="/dashboard/" element={<DashboardPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/credits" element={<CreditsPage />} />
