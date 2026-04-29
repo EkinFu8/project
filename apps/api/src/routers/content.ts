@@ -222,6 +222,90 @@ export const contentRouter = router({
     return { success: true };
   }),
 
+  checkoutOverdue: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.user.id;
+    const userRole = ctx.profile?.role;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const roleWhere = isAdminRole(userRole)
+      ? {}
+      : {
+          job_position: {
+            in: roleVariants(userRole ?? ""),
+          },
+        };
+
+    const overdueFiles = await ctx.prisma.contentManagement.findMany({
+      where: {
+        ...roleWhere,
+        OR: [{ expiration_date: { lt: today } }, { next_review_date: { lt: today } }],
+      },
+      select: {
+        fileID: true,
+        filename: true,
+        job_position: true,
+        is_checked_out: true,
+        checked_out_by: true,
+        checked_out_by_user: { select: checkedOutByUserSelect },
+      },
+      orderBy: [{ next_review_date: "asc" }, { expiration_date: "asc" }],
+    });
+
+    const checkedOut: { fileID: string; filename: string | null }[] = [];
+    const skipped: { fileID: string; filename: string | null; reason: string }[] = [];
+
+    for (const file of overdueFiles) {
+      if (!canEditForRole(userRole, file.job_position)) {
+        skipped.push({
+          fileID: file.fileID,
+          filename: file.filename,
+          reason: "You do not have permission to edit this file.",
+        });
+        continue;
+      }
+
+      if (file.is_checked_out && file.checked_out_by && file.checked_out_by !== userId) {
+        skipped.push({
+          fileID: file.fileID,
+          filename: file.filename,
+          reason: `Already checked out by ${file.checked_out_by_user?.name ?? "another user"}.`,
+        });
+        continue;
+      }
+
+      const result = await ctx.prisma.contentManagement.updateMany({
+        where: {
+          fileID: file.fileID,
+          OR: [{ is_checked_out: false }, { checked_out_by: userId }],
+        },
+        data: {
+          is_checked_out: true,
+          checked_out_by: userId,
+          checked_out_at: new Date(),
+        },
+      });
+
+      if (result.count === 0) {
+        skipped.push({
+          fileID: file.fileID,
+          filename: file.filename,
+          reason: "Could not check out this file.",
+        });
+        continue;
+      }
+
+      checkedOut.push({ fileID: file.fileID, filename: file.filename });
+    }
+
+    return {
+      success: true,
+      checkedOut,
+      skipped,
+      totalOverdue: overdueFiles.length,
+    };
+  }),
+
   forceUnlock: protectedProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     const userRole = ctx.profile?.role;
     if (!isAdminRole(userRole)) {

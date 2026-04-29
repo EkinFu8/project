@@ -16,6 +16,12 @@ export const ASSISTANT_TOOLS: AssistantToolManifest[] = [
     availability: "available",
   },
   {
+    name: "checkout_overdue_content",
+    description:
+      "Available controlled action. Checks out overdue files the signed-in user is allowed to edit, then returns edit links for the checked-out files.",
+    availability: "available",
+  },
+  {
     name: "content_search",
     description:
       "Planned retrieval hook for searching indexed document bodies, metadata, and help articles with server-side permission checks.",
@@ -39,7 +45,7 @@ export const ASSISTANT_TOOLS: AssistantToolManifest[] = [
 export const APP_GUIDE = `
 Product
 - iBank is a content management app for employee-facing insurance documents.
-- The assistant is a native product guide. It can use the provided signed-in snapshot and render navigation buttons, but it cannot perform writes, bypass permissions, or invent live database results.
+- The assistant is a native product guide and action harness. It can use the signed-in snapshot, render navigation buttons, and perform explicitly available controlled site actions. It cannot bypass permissions or invent live database results.
 
 Roles and permissions
 - admin: can manage users, content, tags, dashboard metrics, and audit views.
@@ -71,6 +77,7 @@ Common workflows
 - Check notifications: open Notifications. The snapshot may include unread counts and recent items.
 - Check todos: use notification and due-review/expired counts in the snapshot. Do not pretend to have more todo data than the snapshot provides.
 - Check submitted documents: use the submitted-document count and highlights in the snapshot, then offer Content if they need the list.
+- Check out overdue files: when the user asks to check out all overdue or expired files, use the checkout_overdue_content action. Reply with what changed and render edit buttons for the checked-out files.
 
 Response boundaries
 - If the answer depends on live database state not present in the snapshot, say what you can see and offer a button to the right page.

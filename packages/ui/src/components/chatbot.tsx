@@ -5,8 +5,8 @@ import { ChatHistory } from "./chatbot/history";
 import { ASSISTANT_TOOLS, DEFAULT_MODEL } from "./chatbot/knowledge";
 import { ChatMessages } from "./chatbot/messages";
 import { buildGreeting, buildSystemPrompt } from "./chatbot/prompt";
-import { statusColor, statusLabel } from "./chatbot/status";
 import { styles } from "./chatbot/styles";
+import { ChatTitle } from "./chatbot/title";
 import type { ChatMessage, ChatRole, CMSChatbotProps } from "./chatbot/types";
 import { useWebLlmAssistant } from "./chatbot/use-web-llm-assistant";
 
@@ -64,6 +64,7 @@ export default function CMSChatbot({
   onNavigate,
   onNewConversation,
   onPersistMessage,
+  onRunSiteAction,
   onSelectConversation,
   onSubmitQuestion,
 }: CMSChatbotProps) {
@@ -140,6 +141,14 @@ export default function CMSChatbot({
       setIsTyping(true);
       await onPersistMessage?.({ role: "user", content: userMessage.content });
 
+      const siteActionResult = await onRunSiteAction?.({ prompt: text });
+      if (siteActionResult) {
+        setIsTyping(false);
+        updateMessage(assistantMessage.id, siteActionResult);
+        await onPersistMessage?.({ role: "assistant", content: siteActionResult });
+        return;
+      }
+
       const chatMessages: webllm.ChatCompletionMessageParam[] = [
         { role: "system", content: systemPrompt },
         ...messages.map((message) => ({ role: message.role, content: message.content })),
@@ -175,6 +184,7 @@ export default function CMSChatbot({
       input,
       messages,
       onPersistMessage,
+      onRunSiteAction,
       status,
       systemPrompt,
       updateMessage,
@@ -209,7 +219,9 @@ export default function CMSChatbot({
 
   return (
     <section style={styles.pageRoot}>
-      <div style={styles.pageShell}>
+      <ChatTitle progress={progress} status={status} />
+
+      <div style={styles.pageWorkspace}>
         <ChatHistory
           activeConversationId={activeConversationId}
           history={history}
@@ -219,28 +231,6 @@ export default function CMSChatbot({
         />
 
         <main style={styles.chatPanel}>
-          <header style={styles.chatHeader}>
-            <div style={styles.pageAvatar}>
-              <Bot size={18} aria-hidden="true" />
-            </div>
-            <div style={styles.chatHeaderText}>
-              <h1 style={styles.pageTitle}>Gompei</h1>
-              <p style={styles.pageSubtitle}>Ask about this workspace or what to do next.</p>
-            </div>
-            <div
-              aria-label={statusLabel(status, progress)}
-              role="status"
-              style={{
-                ...styles.statusDot,
-                background: statusColor(status),
-                animation:
-                  status === "loading" || status === "generating"
-                    ? "pulse 1s ease-in-out infinite"
-                    : "none",
-              }}
-            />
-          </header>
-
           {!hasGpu ? (
             <div style={styles.gpuWarning}>
               Gompei needs WebGPU locally. Use Chrome 113+ or Edge 113+ for chat.

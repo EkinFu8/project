@@ -154,6 +154,7 @@ function GompeiPage() {
   const addMessage = trpc.chat.addMessage.useMutation();
   const markRead = trpc.chat.markRead.useMutation();
   const deleteConversation = trpc.chat.delete.useMutation();
+  const checkoutOverdue = trpc.content.checkoutOverdue.useMutation();
 
   useEffect(() => {
     if (activeConversationId || !initialPrompt || createConversation.isPending) return;
@@ -257,6 +258,47 @@ function GompeiPage() {
           await utils.chat.get.invalidate({ conversationId: activeConversationId });
         }
         await utils.chat.unreadCount.invalidate();
+      }}
+      onRunSiteAction={async ({ prompt }) => {
+        const normalizedPrompt = prompt.toLowerCase();
+        const wantsCheckout =
+          /\bcheck\s*out\b/.test(normalizedPrompt) || /\bcheckout\b/.test(normalizedPrompt);
+        const wantsOverdue =
+          normalizedPrompt.includes("overdue") || normalizedPrompt.includes("expired");
+        const wantsBatch =
+          normalizedPrompt.includes("all") ||
+          normalizedPrompt.includes("files") ||
+          normalizedPrompt.includes("documents") ||
+          normalizedPrompt.includes("items");
+
+        if (!(wantsCheckout && wantsOverdue && wantsBatch)) return null;
+
+        const result = await checkoutOverdue.mutateAsync();
+        await utils.content.list.invalidate();
+        await utils.notifications.myList.invalidate();
+
+        if (result.checkedOut.length === 0) {
+          const skipped = result.skipped.slice(0, 3);
+          const details =
+            skipped.length > 0
+              ? ` ${skipped.map((item) => `${item.filename ?? item.fileID}: ${item.reason}`).join(" ")}`
+              : "";
+
+          return `I could not check out any overdue files.${details}\nACTION: /hero/content | Open content`;
+        }
+
+        const fileLines = result.checkedOut
+          .slice(0, 5)
+          .map(
+            (item) => `ACTION: /hero/content/${item.fileID}/edit | Open ${item.filename ?? "file"}`,
+          )
+          .join("\n");
+        const skippedText =
+          result.skipped.length > 0
+            ? ` ${result.skipped.length} overdue file${result.skipped.length === 1 ? " was" : "s were"} already checked out or unavailable.`
+            : "";
+
+        return `Done. I checked out ${result.checkedOut.length} overdue file${result.checkedOut.length === 1 ? "" : "s"} to you.${skippedText}\n${fileLines}`;
       }}
       onSelectConversation={(conversationId) => navigate(`/gompei?chat=${conversationId}`)}
     />

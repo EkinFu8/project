@@ -67,6 +67,7 @@ export interface CMSChatbotProps {
   context: CMSContext;
   modelId?: string;
   onNavigate?: (to: string) => void;
+  onRunSiteAction?: (input: { prompt: string }) => Promise<string | null>;
   initialPrompt?: string;
   initialMessages?: ChatMessage[];
   history?: ChatHistoryItem[];

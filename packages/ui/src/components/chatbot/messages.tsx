@@ -51,7 +51,13 @@ function parseAssistantMessage(content: string) {
 }
 
 function actionAllowed(action: AssistantAction, allActions: AssistantAction[]) {
-  return allActions.some((candidate) => candidate.to === action.to);
+  if (allActions.some((candidate) => candidate.to === action.to)) return true;
+
+  return (
+    action.to.startsWith("/hero/content/") &&
+    action.to.endsWith("/edit") &&
+    allActions.some((candidate) => candidate.to === "/hero/content")
+  );
 }
 
 function actionKey(action: AssistantAction) {
