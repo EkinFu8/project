@@ -1,5 +1,6 @@
 import {
   Bell,
+  Bot,
   Boxes,
   CircleHelp,
   FileText,
@@ -37,6 +38,7 @@ interface TopNavProps {
     photoUrl?: string | null;
     notificationsTo?: string;
     unreadNotificationCount?: number;
+    gompeiUnreadCount?: number;
   };
 }
 
@@ -62,6 +64,9 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const hasUnreadNotifications = Boolean(
     accountMenu?.unreadNotificationCount && accountMenu.unreadNotificationCount > 0,
+  );
+  const hasUnreadGompei = Boolean(
+    accountMenu?.gompeiUnreadCount && accountMenu.gompeiUnreadCount > 0,
   );
 
   useEffect(() => {
@@ -172,16 +177,25 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
                         />
                       </span>
                     )}
-                    {hasUnreadNotifications ? (
+                    {hasUnreadNotifications || hasUnreadGompei ? (
                       <span
                         className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-hanover-green ring-2 ring-hanover-deepblue"
                         aria-hidden
                       />
                     ) : null}
                   </span>
-                  {hasUnreadNotifications ? (
+                  {hasUnreadNotifications || hasUnreadGompei ? (
                     <span className="sr-only">
-                      {accountMenu.unreadNotificationCount} unread notifications
+                      {[
+                        hasUnreadNotifications
+                          ? `${accountMenu.unreadNotificationCount} unread notifications`
+                          : null,
+                        hasUnreadGompei
+                          ? `${accountMenu.gompeiUnreadCount} unread Gompei chats`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
                     </span>
                   ) : null}
                 </DropdownMenu.Trigger>
@@ -227,6 +241,16 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
                         <NavLink to={item.to} className={cn(menuItemClass, "gap-2 no-underline")}>
                           {item.label === "Credits" ? (
                             <Boxes className="size-4" aria-hidden strokeWidth={2} />
+                          ) : item.label === "Gompei" ? (
+                            <span className="relative inline-flex">
+                              <Bot className="size-4" aria-hidden strokeWidth={2} />
+                              {hasUnreadGompei ? (
+                                <span
+                                  className="absolute -right-1 -top-1 size-2 rounded-full bg-hanover-green"
+                                  aria-hidden
+                                />
+                              ) : null}
+                            </span>
                           ) : (
                             <CircleHelp className="size-4" aria-hidden strokeWidth={2} />
                           )}

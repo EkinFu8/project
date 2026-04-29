@@ -93,9 +93,9 @@ export function ContentGrid({
           ))}
         </div>
       ) : (
-        <div className="rounded border border-border bg-card">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm shadow-black/[0.02]">
           <ContentListHeader />
-          <div className="flex flex-col divide-y divide-border">
+          <div className="flex flex-col divide-y divide-border/70">
             {filtered.map((item) => (
               <ContentListRow
                 key={item.fileID}

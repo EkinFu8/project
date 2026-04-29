@@ -1,547 +1,335 @@
-import * as webllm from "@mlc-ai/web-llm";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type * as webllm from "@mlc-ai/web-llm";
+import { Bot, Send, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChatHistory } from "./chatbot/history";
+import { ASSISTANT_TOOLS, DEFAULT_MODEL } from "./chatbot/knowledge";
+import { ChatMessages } from "./chatbot/messages";
+import { buildGreeting, buildSystemPrompt } from "./chatbot/prompt";
+import { styles } from "./chatbot/styles";
+import { ChatTitle } from "./chatbot/title";
+import type { ChatMessage, ChatRole, CMSChatbotProps } from "./chatbot/types";
+import { useWebLlmAssistant } from "./chatbot/use-web-llm-assistant";
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type Status = "loading" | "ready" | "generating" | "error";
-
-interface Message {
-  id: number;
-  role: "user" | "assistant";
-  content: string;
+function resizeTextarea(textarea: HTMLTextAreaElement) {
+  textarea.style.height = "auto";
+  textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
 }
 
-interface CMSContext {
-  user: {
-    name: string;
-    role: string;
-  };
-}
+function Launcher({ onSubmitQuestion }: { onSubmitQuestion?: (question: string) => void }) {
+  const [value, setValue] = useState("");
 
-interface CMSChatbotProps {
-  context: CMSContext;
-  modelId?: string;
-}
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const DEFAULT_MODEL = "Phi-3.5-mini-instruct-q4f16_1-MLC";
-
-// ── Styles ───────────────────────────────────────────────────────────────────
-
-const styles: Record<string, React.CSSProperties> = {
-  root: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-end",
-    gap: 12,
-    fontFamily: "system-ui, sans-serif",
-    position: "fixed",
-    bottom: 24,
-    right: 24,
-    zIndex: 1000,
-  },
-  fab: {
-    width: 52,
-    height: 52,
-    borderRadius: "50%",
-    background: "#111",
-    border: "none",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transition: "transform 0.15s",
-    flexShrink: 0,
-  },
-  panel: {
-    width: 370,
-    border: "0.5px solid rgba(0,0,0,0.15)",
-    borderRadius: 12,
-    overflow: "hidden",
-    background: "#fff",
-    display: "flex",
-    flexDirection: "column",
-    boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
-  },
-  header: {
-    padding: "14px 16px 12px",
-    borderBottom: "0.5px solid rgba(0,0,0,0.08)",
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    background: "#fff",
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: "50%",
-    background: "#111",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  loadPane: {
-    padding: "16px 20px",
-    borderBottom: "0.5px solid rgba(0,0,0,0.08)",
-    background: "#f9f9f8",
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-  },
-  progressTrack: {
-    height: 4,
-    background: "rgba(0,0,0,0.08)",
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  messages: {
-    flex: 1,
-    overflowY: "auto",
-    padding: 16,
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-    maxHeight: 420,
-    minHeight: 0,
-  },
-  inputRow: {
-    padding: "10px 12px",
-    borderTop: "0.5px solid rgba(0,0,0,0.08)",
-    display: "flex",
-    gap: 8,
-    alignItems: "flex-end",
-  },
-  sendBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: "50%",
-    background: "#111",
-    border: "none",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-    transition: "opacity 0.15s, transform 0.12s",
-  },
-  gpuWarning: {
-    margin: "12px 16px 0",
-    padding: "10px 13px",
-    background: "#FFF8E6",
-    color: "#92600A",
-    borderRadius: 8,
-    fontSize: 12.5,
-    lineHeight: 1.5,
-  },
-};
-
-// ── Status dot color ─────────────────────────────────────────────────────────
-
-function statusColor(status: Status): string {
-  switch (status) {
-    case "loading":
-      return "#EF9F27";
-    case "ready":
-      return "#1D9E75";
-    case "generating":
-      return "#378ADD";
-    case "error":
-      return "#E24B4A";
+  function submit() {
+    const question = value.trim();
+    if (!question) return;
+    setValue("");
+    onSubmitQuestion?.(question);
   }
+
+  return (
+    <div style={styles.launcherRoot}>
+      <div style={styles.launcher}>
+        <div style={styles.launcherIcon}>
+          <Bot size={17} aria-hidden="true" />
+        </div>
+        <input
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              submit();
+            }
+          }}
+          placeholder="Ask Gompei..."
+          style={styles.launcherInput}
+          aria-label="Ask Gompei"
+        />
+        <button type="button" onClick={submit} style={styles.launcherButton} aria-label="Ask">
+          <Send size={15} aria-hidden="true" />
+        </button>
+      </div>
+    </div>
+  );
 }
 
-function statusLabel(status: Status, progress: number): string {
-  switch (status) {
-    case "loading":
-      return `Loading model… ${progress}%`;
-    case "ready":
-      return "Ready";
-    case "generating":
-      return "Thinking…";
-    case "error":
-      return "Error";
-  }
-}
-
-// ── Component ────────────────────────────────────────────────────────────────
-
-export default function CMSChatbot({ context, modelId = DEFAULT_MODEL }: CMSChatbotProps) {
-  const [open, setOpen] = useState(true);
-  const [status, setStatus] = useState<Status>("loading");
-  const [progress, setProgress] = useState(0);
-  const [messages, setMessages] = useState<Message[]>([]);
+export default function CMSChatbot({
+  context,
+  initialPrompt,
+  initialMessages,
+  history = [],
+  activeConversationId,
+  mode = "launcher",
+  modelId = DEFAULT_MODEL,
+  onDeleteConversation,
+  onNavigate,
+  onNewConversation,
+  onPersistMessage,
+  onRunSiteAction,
+  onSelectConversation,
+  onSubmitQuestion,
+}: CMSChatbotProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => initialMessages ?? []);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [hasGpu, setHasGpu] = useState(true);
 
-  const engineRef = useRef<webllm.MLCEngineInterface | null>(null);
-  const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const initialPromptSentRef = useRef(false);
+  const lastConversationIdRef = useRef(activeConversationId);
   const nextId = useRef(0);
 
-  // ── Scroll to bottom on new messages ──────────────────────────────────────
+  const availableActions = useMemo(() => context.actions ?? [], [context.actions]);
+  const systemPrompt = useMemo(
+    () => buildSystemPrompt({ context, tools: ASSISTANT_TOOLS }),
+    [context],
+  );
+
+  const appendMessage = useCallback((role: ChatRole, content: string) => {
+    const message: ChatMessage = { id: `local-${nextId.current}`, role, content };
+    nextId.current += 1;
+    setMessages((current) => [...current, message]);
+    return message;
+  }, []);
+
+  const updateMessage = useCallback((id: string | number, content: string) => {
+    setMessages((current) =>
+      current.map((message) => (message.id === id ? { ...message, content } : message)),
+    );
+  }, []);
+
+  const replaceMessage = useCallback((id: string | number, persistedMessage?: ChatMessage) => {
+    if (!persistedMessage) return;
+    setMessages((current) =>
+      current.map((message) => (message.id === id ? persistedMessage : message)),
+    );
+  }, []);
+
+  const persistMessage = useCallback(
+    async (message: { role: ChatRole; content: string }) => {
+      return onPersistMessage?.(message);
+    },
+    [onPersistMessage],
+  );
+
+  const handleReady = useCallback(() => {
+    setMessages((current) => {
+      if (current.length > 0 || initialPrompt?.trim()) {
+        return current;
+      }
+
+      const greeting: ChatMessage = {
+        id: `local-${nextId.current}`,
+        role: "assistant",
+        content: buildGreeting(context),
+      };
+      nextId.current += 1;
+      return [greeting];
+    });
+  }, [context, initialPrompt]);
+
+  const { complete, hasGpu, progress, status } = useWebLlmAssistant({
+    enabled: mode === "page",
+    modelId,
+    onReady: handleReady,
+  });
 
   useEffect(() => {
-    if (messagesRef.current) {
-      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
-    }
-  }, [messages, isTyping]);
-
-  // ── Initialize WebLLM engine ───────────────────────────────────────────────
+    if (lastConversationIdRef.current === activeConversationId) return;
+    lastConversationIdRef.current = activeConversationId;
+    initialPromptSentRef.current = false;
+    setMessages(initialMessages ?? []);
+  }, [activeConversationId, initialMessages]);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!initialMessages) return;
+    setMessages((current) => {
+      if (current.length > initialMessages.length) return current;
+      return initialMessages;
+    });
+  }, [initialMessages]);
 
-    async function init() {
-      if (!(navigator as Navigator & { gpu?: unknown }).gpu) {
-        setHasGpu(false);
-        setStatus("error");
+  const sendMessage = useCallback(
+    async (overrideText?: string) => {
+      const text = (overrideText ?? input).trim();
+      if (!text || status !== "ready") return;
+
+      setInput("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+      const userMessage = appendMessage("user", text);
+      const assistantMessage = appendMessage("assistant", "");
+      setIsTyping(true);
+
+      const persistUserMessage = persistMessage({ role: "user", content: userMessage.content })
+        .then((persistedMessage) => {
+          replaceMessage(userMessage.id, persistedMessage);
+          return persistedMessage;
+        })
+        .catch((error) => console.error("Gompei user message persist error:", error));
+
+      const siteActionResult = await onRunSiteAction?.({ prompt: text });
+      if (siteActionResult) {
+        setIsTyping(false);
+        updateMessage(assistantMessage.id, siteActionResult);
+        await persistUserMessage;
+        const persistedMessage = await persistMessage({
+          role: "assistant",
+          content: siteActionResult,
+        });
+        replaceMessage(assistantMessage.id, persistedMessage);
         return;
       }
 
+      const chatMessages: webllm.ChatCompletionMessageParam[] = [
+        { role: "system", content: systemPrompt },
+        ...messages.map((message) => ({ role: message.role, content: message.content })),
+        { role: "user", content: userMessage.content },
+      ];
+
       try {
-        const engine = await webllm.CreateMLCEngine(modelId, {
-          initProgressCallback: ({ progress: p }) => {
-            if (!cancelled) setProgress(Math.round(p * 100));
+        let finalContent = "";
+        await complete({
+          messages: chatMessages,
+          onToken: (content) => {
+            finalContent = content;
+            setIsTyping(false);
+            updateMessage(assistantMessage.id, content);
           },
         });
-        if (cancelled) {
-          engine.unload();
-          return;
+        if (finalContent.trim()) {
+          await persistUserMessage;
+          const persistedMessage = await persistMessage({
+            role: "assistant",
+            content: finalContent,
+          });
+          replaceMessage(assistantMessage.id, persistedMessage);
         }
-        engineRef.current = engine;
-        setStatus("ready");
-        setProgress(100);
-        addMessage(
-          "assistant",
-          `Hi ${context.user.name}! I'm here to help you navigate iBank. What can I help you with? [DISCLAIMER: This website has been created for WPI's CS 3733 Software Engineering as a class project and is not in use by Hanover Insurance.]`,
+      } catch (error) {
+        console.error("Gompei chat error:", error);
+        updateMessage(
+          assistantMessage.id,
+          "I could not finish that response. Give me a moment, then try again.",
         );
-      } catch (err) {
-        if (!cancelled) {
-          console.error("WebLLM init error:", err);
-          setStatus("error");
-        }
+      } finally {
+        setIsTyping(false);
       }
-    }
+    },
+    [
+      appendMessage,
+      complete,
+      input,
+      messages,
+      onRunSiteAction,
+      persistMessage,
+      replaceMessage,
+      status,
+      systemPrompt,
+      updateMessage,
+    ],
+  );
 
-    init();
-    return () => {
-      cancelled = true;
-    };
-  }, [modelId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const question = initialPrompt?.trim();
+    if (!question || status !== "ready" || initialPromptSentRef.current) return;
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+    initialPromptSentRef.current = true;
+    void sendMessage(question);
+  }, [initialPrompt, sendMessage, status]);
 
-  function addMessage(role: "user" | "assistant", content: string): Message {
-    const msg: Message = { id: nextId.current++, role, content };
-    setMessages((prev) => [...prev, msg]);
-    return msg;
+  function handleTextareaChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    setInput(event.target.value);
+    resizeTextarea(event.target);
   }
 
-  function updateLastMessage(content: string) {
-    setMessages((prev) => {
-      const updated = [...prev];
-      const last = updated[updated.length - 1];
-      if (last) updated[updated.length - 1] = { ...last, content };
-      return updated;
-    });
-  }
-
-  function buildSystemPrompt(): string {
-    return `You are a helpful support assistant built into a content management system (ibank).
-Current user: ${context.user.name} (role: ${context.user.role})
-Help the user navigate ibank, find features, and understand how things work. Keep responses to one paragraph and be practical.
-Rules:
-- Keep responses to 1-3 sentences unless a step-by-step is strictly necessary
-- Never guess — if something isn't in the app guide, say "I'm not sure, check with your admin"
-- Do not make up features, pages, or workflows that aren't listed below
-
-App Guide
-
-Roles
-- admin: can add, remove, and modify content, users, and tags
-- Underwriter, Actuarial analyst, Business analyst: can view and download any content, but can only check out and modify content assigned to their role. can create content assigned to any role
-
-## Pages
-- /hero — the starting home page
-- /hero/content — see sorted and filtered content cards which show the expiration date, tags, status, owner, checked out status and checker, favorited status, and role
-- /users — admin only: manage user accounts
-- /tags — admin only: manage content tags
-- /dashboard — admin only: usage metrics and audit log
-- /employees — view coworker directory
-- /account — update your own profile
-
-Common Tasks
--How to create content
-1. Go to Content in the top nav
-2. Click New Content
-3. Fill in the form (upload a file or input a URL) and click Save content
-
--How to add a user (admin only)
-1. Go to User Management
-2. Click New User
-3. Fill in their details and assign a role
-
--How to modify content
-1. go to Content
-2. select the content to modify
-3. select 'check out' at the top of the page
-    Users with the wrong role cannot check out content
-    Content that is checked out by another person cannot be modified
-4. download the content
-5. edit the content outside the app
-6. upload the edited content
-7. press the save content button`;
-  }
-
-  // ── Send message ──────────────────────────────────────────────────────────
-
-  const sendMessage = useCallback(async () => {
-    const text = input.trim();
-    if (!text || status !== "ready" || !engineRef.current) return;
-
-    setInput("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
-
-    addMessage("user", text);
-    setIsTyping(true);
-    setStatus("generating");
-
-    const chatMessages: webllm.ChatCompletionMessageParam[] = [
-      { role: "system", content: buildSystemPrompt() },
-      ...messages.map(
-        (m) => ({ role: m.role, content: m.content }) as webllm.ChatCompletionMessageParam,
-      ),
-      { role: "user", content: text },
-    ];
-
-    try {
-      const stream = await engineRef.current.chat.completions.create({
-        messages: chatMessages,
-        stream: true,
-      });
-
-      setIsTyping(false);
-      addMessage("assistant", "");
-
-      let accumulated = "";
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content ?? "";
-        accumulated += delta;
-        updateLastMessage(accumulated);
-      }
-    } catch (err) {
-      console.error("Chat error:", err);
-      setIsTyping(false);
-      addMessage("assistant", "Something went wrong. Please try again.");
-    }
-
-    setStatus("ready");
-  }, [input, status, messages, context]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Textarea auto-resize ──────────────────────────────────────────────────
-
-  function handleTextareaChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setInput(e.target.value);
-    e.target.style.height = "auto";
-    e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
+  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void sendMessage();
     }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  if (mode === "launcher") {
+    return <Launcher onSubmitQuestion={onSubmitQuestion} />;
+  }
 
   const isDisabled = status !== "ready";
 
   return (
-    <div style={styles.root}>
-      {/* Chat panel */}
-      {open && (
-        <div style={styles.panel}>
-          {/* Header */}
-          <div style={styles.header}>
-            <div style={styles.avatar}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                <title>Assistant avatar</title>
-                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>Content Assistant</div>
-              <div style={{ fontSize: 12, color: "#888", marginTop: 1 }}>
-                {statusLabel(status, progress)}
-              </div>
-            </div>
-            <div
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: "50%,",
-                background: statusColor(status),
-                flexShrink: 0,
-                animation:
-                  status === "loading" || status === "generating"
-                    ? "pulse 1s ease-in-out infinite"
-                    : "none",
-              }}
-            />
-          </div>
+    <section style={styles.pageRoot}>
+      <ChatTitle progress={progress} status={status} />
 
-          {/* No GPU warning */}
-          {!hasGpu && (
+      <div style={styles.pageWorkspace}>
+        <ChatHistory
+          activeConversationId={activeConversationId}
+          history={history}
+          onDeleteConversation={onDeleteConversation}
+          onNewConversation={onNewConversation}
+          onSelectConversation={onSelectConversation}
+        />
+
+        <main style={styles.chatPanel}>
+          {!hasGpu ? (
             <div style={styles.gpuWarning}>
-              Your browser doesn't support WebGPU. The AI assistant requires Chrome 113+ or Edge
-              113+.
+              Gompei needs WebGPU locally. Use Chrome 113+ or Edge 113+ for chat.
             </div>
-          )}
+          ) : null}
 
-          {/* Load progress */}
-          {status === "loading" && (
+          {status === "loading" ? (
             <div style={styles.loadPane}>
-              <p style={{ fontSize: 13, color: "#666", margin: 0, lineHeight: 1.5 }}>
-                Setting up your AI assistant. Keep working while it loads.
-              </p>
+              <div style={styles.loadHeader}>
+                <Sparkles size={15} aria-hidden="true" />
+                <span>Preparing Gompei</span>
+              </div>
               <div style={styles.progressTrack}>
                 <div
                   style={{
                     height: "100%",
                     width: `${progress}%`,
-                    background: "#111",
-                    borderRadius: 2,
+                    background: "#164734",
+                    borderRadius: 999,
                     transition: "width 0.3s",
                   }}
                 />
               </div>
-              <div style={{ fontSize: 12, color: "#888", textAlign: "right" }}>{progress}%</div>
+              <div style={styles.progressLabel}>{progress}%</div>
             </div>
-          )}
+          ) : null}
 
-          {/* Messages */}
-          <div ref={messagesRef} style={styles.messages}>
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  maxWidth: "86%",
-                  alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-                  alignItems: msg.role === "user" ? "flex-end" : "flex-start",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "#999", marginBottom: 4, padding: "0 2px" }}>
-                  {msg.role === "user" ? context.user.name : "AI Assistant"}
-                </div>
-                <div
-                  style={{
-                    padding: "9px 13px",
-                    borderRadius: 14,
-                    borderBottomRightRadius: msg.role === "user" ? 4 : 14,
-                    borderBottomLeftRadius: msg.role === "assistant" ? 4 : 14,
-                    fontSize: 13.5,
-                    lineHeight: 1.55,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    background: msg.role === "user" ? "#111" : "#f4f4f2",
-                    color: msg.role === "user" ? "#fff" : "#111",
-                  }}
-                >
-                  {msg.content}
-                </div>
-              </div>
-            ))}
+          <ChatMessages
+            availableActions={availableActions}
+            contextUserName={context.user.name}
+            isTyping={isTyping}
+            messages={messages}
+            onNavigate={onNavigate}
+          />
 
-            {/* Typing indicator */}
-            {isTyping && (
-              <div style={{ display: "flex", gap: 4, alignItems: "center", padding: "4px 0" }}>
-                {[0, 0.15, 0.3].map((delay) => (
-                  <div
-                    key={delay}
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      background: "#bbb",
-                      animation: `bounce 1s ease-in-out ${delay}s infinite`,
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Input row */}
-          <div style={styles.inputRow}>
+          <div style={styles.pageInputRow}>
             <textarea
               ref={textareaRef}
               value={input}
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
               disabled={isDisabled}
-              placeholder="Ask how to do something…"
+              placeholder="Ask Gompei anything about iBank..."
               rows={1}
-              style={{
-                flex: 1,
-                resize: "none",
-                border: "0.5px solid rgba(0,0,0,0.15)",
-                borderRadius: 8,
-                padding: "8px 11px",
-                fontSize: 13.5,
-                fontFamily: "inherit",
-                background: "#fff",
-                color: "#111",
-                lineHeight: 1.5,
-                minHeight: 36,
-                maxHeight: 100,
-                outline: "none",
-                opacity: isDisabled ? 0.4 : 1,
-              }}
+              style={{ ...styles.pageTextarea, opacity: isDisabled ? 0.45 : 1 }}
             />
             <button
               type="button"
-              onClick={sendMessage}
+              onClick={() => void sendMessage()}
               disabled={isDisabled}
-              style={{ ...styles.sendBtn, opacity: isDisabled ? 0.35 : 1 }}
+              style={{ ...styles.sendButton, opacity: isDisabled ? 0.35 : 1 }}
+              aria-label="Send message"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="white">
-                <title>Assistant avatar</title>
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-              </svg>
+              <Send size={16} aria-hidden="true" />
             </button>
           </div>
-        </div>
-      )}
-
-      {/* FAB toggle */}
-      <button
-        type="button"
-        style={styles.fab}
-        onClick={() => setOpen((o) => !o)}
-        title="Toggle AI assistant"
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-          <title>{open ? "Close assistant" : "Open assistant"}</title>
-          {open ? (
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-          ) : (
-            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
-          )}
-        </svg>
-      </button>
+        </main>
+      </div>
 
       <style>{`
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.42} }
         @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
       `}</style>
-    </div>
+    </section>
   );
 }

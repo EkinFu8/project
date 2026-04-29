@@ -23,7 +23,7 @@ export const CONTENT_LIST_GRID =
 export function ContentListHeader() {
   return (
     <div
-      className={`${CONTENT_LIST_GRID} border-b border-border px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground`}
+      className={`${CONTENT_LIST_GRID} sticky top-0 z-10 border-b border-border/80 bg-muted/40 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/90 backdrop-blur-sm`}
     >
       <span aria-hidden="true" />
       <span>Document</span>

@@ -20,6 +20,22 @@ const STATUSES: SeedTemplate["document_status"][] = [
   "Archived",
 ];
 
+function assertSafeSeedTarget() {
+  const databaseUrl = process.env.DATABASE_URL ?? "";
+  const isLocalDatabase =
+    databaseUrl.includes("localhost") ||
+    databaseUrl.includes("127.0.0.1") ||
+    databaseUrl.includes("host.docker.internal");
+
+  if (isLocalDatabase || process.env.ALLOW_DESTRUCTIVE_SEED === "1") {
+    return;
+  }
+
+  throw new Error(
+    "Refusing to run destructive demo seed against a non-local DATABASE_URL. Set ALLOW_DESTRUCTIVE_SEED=1 to override intentionally.",
+  );
+}
+
 function addDays(base: string, days: number) {
   const date = new Date(base);
   date.setDate(date.getDate() + days);
@@ -79,6 +95,7 @@ async function main() {
 
   await ensureDemoAuthAndProfiles(prisma);
 
+  assertSafeSeedTarget();
   await prisma.contentManagement.deleteMany();
 
   const userRow = await prisma.userProfile.findFirst({

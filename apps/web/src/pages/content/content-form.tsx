@@ -2,7 +2,22 @@ import DocViewer, { DocViewerRenderers } from "@iamjariwala/react-doc-viewer";
 import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
 import "@iamjariwala/react-doc-viewer/dist/index.css";
-import { AlertTriangle, ArrowLeft, Loader2, Lock, Pencil, Unlock, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  FileText,
+  Hash,
+  Link2,
+  Loader2,
+  Lock,
+  Pencil,
+  Sparkles,
+  Tag as TagIcon,
+  Unlock,
+  User,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useSession } from "@/auth/session-context";
@@ -58,6 +73,7 @@ type ContentFormFieldsProps = {
   setDocumentStatus: (v: string) => void;
   selectedTags: TagShape[];
   setSelectedTags: (tags: TagShape[]) => void;
+  canCreateTags: boolean;
   employees: RouterOutputs["employee"]["list"] | undefined;
   upload: (file: File) => void;
   isUploading: boolean;
@@ -112,26 +128,81 @@ function HighlightedExcerpt({ text, query }: { text: string; query: string }) {
   const excerpt = (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
 
   // Split excerpt on all occurrences of the query word (case-insensitive) for highlighting.
-  const parts = excerpt.split(new RegExp(`(${queryLower})`, "gi"));
+  const escapedQuery = queryLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts: Array<{ key: string; text: string; isMatch: boolean }> = [];
+  let lastIndex = 0;
+  for (const match of excerpt.matchAll(new RegExp(escapedQuery, "gi"))) {
+    const matchIndex = match.index;
+    if (matchIndex > lastIndex) {
+      parts.push({
+        key: `text-${lastIndex}`,
+        text: excerpt.slice(lastIndex, matchIndex),
+        isMatch: false,
+      });
+    }
+    parts.push({
+      key: `match-${matchIndex}`,
+      text: match[0],
+      isMatch: true,
+    });
+    lastIndex = matchIndex + match[0].length;
+  }
+  if (lastIndex < excerpt.length) {
+    parts.push({
+      key: `text-${lastIndex}`,
+      text: excerpt.slice(lastIndex),
+      isMatch: false,
+    });
+  }
 
   return (
-    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
-      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-blue-600">
-        Matched in document content
-      </p>
-      <p className="leading-relaxed text-foreground">
-        {parts.map((part, i) =>
-          part.toLowerCase() === queryLower ? (
-            // biome-ignore lint/suspicious/noArrayIndexKey: split-on-regex parts have no stable identity
-            <mark key={i} className="rounded bg-yellow-200 px-0.5 text-foreground">
-              {part}
+    <div className="mb-6 overflow-hidden rounded-xl border border-blue-200/70 bg-gradient-to-br from-blue-50/80 to-blue-50/30 px-5 py-4 text-sm shadow-sm shadow-blue-100/30 dark:border-blue-900/40 dark:from-blue-950/40 dark:to-blue-950/10">
+      <div className="mb-2 flex items-center gap-1.5">
+        <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-blue-700 dark:text-blue-300">
+          Matched in document content
+        </p>
+      </div>
+      <p className="leading-relaxed text-foreground/90">
+        {parts.map((part) =>
+          part.isMatch ? (
+            <mark
+              key={part.key}
+              className="rounded bg-yellow-200/80 px-0.5 text-foreground dark:bg-yellow-500/30"
+            >
+              {part.text}
             </mark>
           ) : (
-            part
+            part.text
           ),
         )}
       </p>
     </div>
+  );
+}
+
+function MetadataRow({
+  icon,
+  label,
+  children,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <tr className="group/row border-b border-border/70 transition-colors last:border-b-0 hover:bg-muted/20">
+      <th
+        scope="row"
+        className="w-[38%] bg-muted/30 px-4 py-3 text-left align-top text-[12.5px] font-medium text-muted-foreground"
+      >
+        <span className="inline-flex items-center gap-2">
+          <span className="text-muted-foreground/70">{icon}</span>
+          {label}
+        </span>
+      </th>
+      <td className="px-4 py-3 align-top text-sm text-foreground">{children}</td>
+    </tr>
   );
 }
 
@@ -161,140 +232,90 @@ function ContentMetadataReadonlyTable({
   selectedTags: TagShape[];
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-hidden rounded-xl border border-border shadow-sm shadow-black/[0.02]">
       <table className="w-full text-sm">
         <tbody>
-          <tr className="border-b border-border last:border-b-0">
-            <th
-              scope="row"
-              className="w-[38%] bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
+          <MetadataRow icon={<Hash className="h-3.5 w-3.5" aria-hidden />} label="File ID">
+            <span className="font-mono text-xs text-foreground/90">{fileID}</span>
+          </MetadataRow>
+          <MetadataRow icon={<FileText className="h-3.5 w-3.5" aria-hidden />} label="Filename">
+            {filename || <span className="text-muted-foreground/70">—</span>}
+          </MetadataRow>
+          <MetadataRow icon={<Link2 className="h-3.5 w-3.5" aria-hidden />} label="URL">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="break-all font-medium text-hanover-green underline-offset-4 transition-colors hover:text-hanover-green/80 hover:underline"
             >
-              File ID
-            </th>
-            <td className="px-4 py-3 font-mono text-xs text-foreground">{fileID}</td>
-          </tr>
-          <tr className="border-b border-border last:border-b-0">
-            <th
-              scope="row"
-              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
-            >
-              Filename
-            </th>
-            <td className="px-4 py-3 text-foreground">{filename || "—"}</td>
-          </tr>
-          <tr className="border-b border-border last:border-b-0">
-            <th
-              scope="row"
-              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
-            >
-              URL
-            </th>
-            <td className="max-w-0 px-4 py-3">
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="break-all text-hanover-green underline hover:text-hanover-green/90"
-              >
-                {url}
-              </a>
-            </td>
-          </tr>
-          <tr className="border-b border-border last:border-b-0">
-            <th
-              scope="row"
-              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
-            >
-              Content owner
-            </th>
-            <td className="px-4 py-3 text-foreground">{ownerDisplayName}</td>
-          </tr>
-          <tr className="border-b border-border last:border-b-0">
-            <th
-              scope="row"
-              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
-            >
-              Job position
-            </th>
-            <td className="px-4 py-3 text-foreground">{jobPosition || "—"}</td>
-          </tr>
-          <tr className="border-b border-border last:border-b-0">
-            <th
-              scope="row"
-              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
-            >
-              Last modified
-            </th>
-            <td className="px-4 py-3 text-foreground">{displayDateLabel(lastModified)}</td>
-          </tr>
-          <tr className="border-b border-border last:border-b-0">
-            <th
-              scope="row"
-              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
-            >
-              Expiration
-            </th>
-            <td className="px-4 py-3 text-foreground">{displayDateLabel(expirationDate)}</td>
-          </tr>
-          <tr className="border-b border-border last:border-b-0">
-            <th
-              scope="row"
-              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
-            >
-              Next Review Date
-            </th>
-            <td className="px-4 py-3 text-foreground">{displayDateLabel(nextReviewDate)}</td>
-          </tr>
-          <tr className="border-b border-border last:border-b-0">
-            <th
-              scope="row"
-              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
-            >
-              Content type
-            </th>
-            <td className="px-4 py-3 text-foreground">{contentType || "—"}</td>
-          </tr>
-          <tr className="border-b border-border last:border-b-0">
-            <th
-              scope="row"
-              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
-            >
-              Status
-            </th>
-            <td className="px-4 py-3 text-foreground">{documentStatus || "—"}</td>
-          </tr>
-          <tr className="border-b border-border last:border-b-0">
-            <th
-              scope="row"
-              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
-            >
-              Tags
-            </th>
-            <td className="px-4 py-3">
-              {selectedTags.length === 0 ? (
-                <span className="text-muted-foreground">—</span>
-              ) : (
-                <div className="flex flex-wrap gap-x-1 gap-y-1.5">
-                  {selectedTags.map((tag) => {
-                    const styles = renderTag(tag);
+              {url}
+            </a>
+          </MetadataRow>
+          <MetadataRow icon={<User className="h-3.5 w-3.5" aria-hidden />} label="Content owner">
+            {ownerDisplayName}
+          </MetadataRow>
+          <MetadataRow icon={<User className="h-3.5 w-3.5" aria-hidden />} label="Job position">
+            {jobPosition || <span className="text-muted-foreground/70">—</span>}
+          </MetadataRow>
+          <MetadataRow
+            icon={<Calendar className="h-3.5 w-3.5" aria-hidden />}
+            label="Last modified"
+          >
+            {displayDateLabel(lastModified)}
+          </MetadataRow>
+          <MetadataRow icon={<Calendar className="h-3.5 w-3.5" aria-hidden />} label="Expiration">
+            {displayDateLabel(expirationDate)}
+          </MetadataRow>
+          <MetadataRow
+            icon={<Calendar className="h-3.5 w-3.5" aria-hidden />}
+            label="Next review date"
+          >
+            {displayDateLabel(nextReviewDate)}
+          </MetadataRow>
+          <MetadataRow icon={<FileText className="h-3.5 w-3.5" aria-hidden />} label="Content type">
+            {contentType ? (
+              <span className="inline-flex items-center rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                {contentType}
+              </span>
+            ) : (
+              <span className="text-muted-foreground/70">—</span>
+            )}
+          </MetadataRow>
+          <MetadataRow
+            icon={
+              <span
+                className="inline-block h-2 w-2 rounded-full bg-current opacity-60"
+                aria-hidden
+              />
+            }
+            label="Status"
+          >
+            {documentStatus || <span className="text-muted-foreground/70">—</span>}
+          </MetadataRow>
+          <MetadataRow icon={<TagIcon className="h-3.5 w-3.5" aria-hidden />} label="Tags">
+            {selectedTags.length === 0 ? (
+              <span className="text-muted-foreground/70">—</span>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedTags.map((tag) => {
+                  const styles = renderTag(tag);
 
-                    return (
-                      <span
-                        key={tag.id}
-                        style={{
-                          backgroundColor: styles.bg,
-                          color: styles.text,
-                        }}
-                        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors hover:opacity-80"
-                      >
-                        {tag.name}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-            </td>
-          </tr>
+                  return (
+                    <span
+                      key={tag.id}
+                      style={{
+                        backgroundColor: styles.bg,
+                        color: styles.text,
+                      }}
+                      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11.5px] font-medium ring-1 ring-inset ring-black/[0.04] transition-all hover:opacity-90"
+                    >
+                      {tag.name}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </MetadataRow>
         </tbody>
       </table>
     </div>
@@ -472,6 +493,7 @@ function ContentFormMetadataSection({
   setDocumentStatus,
   selectedTags,
   setSelectedTags,
+  canCreateTags,
   employees,
   metadataEditMode,
   setMetadataEditMode,
@@ -505,6 +527,7 @@ function ContentFormMetadataSection({
   setDocumentStatus: (v: string) => void;
   selectedTags: TagShape[];
   setSelectedTags: (tags: TagShape[]) => void;
+  canCreateTags: boolean;
   employees: ContentFormFieldsProps["employees"];
   metadataEditMode: boolean;
   setMetadataEditMode: (v: boolean) => void;
@@ -617,7 +640,11 @@ function ContentFormMetadataSection({
         </select>
       </div>
 
-      <TagInput selectedTags={selectedTags} onChange={setSelectedTags} />
+      <TagInput
+        selectedTags={selectedTags}
+        onChange={setSelectedTags}
+        canCreateTags={canCreateTags}
+      />
 
       {(createError || updateError) && (
         <div className="rounded border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -703,6 +730,7 @@ function ContentFormFields({
   setDocumentStatus,
   selectedTags,
   setSelectedTags,
+  canCreateTags,
   employees,
   upload,
   isUploading,
@@ -966,6 +994,7 @@ function ContentFormFields({
                 setDocumentStatus={setDocumentStatus}
                 selectedTags={selectedTags}
                 setSelectedTags={setSelectedTags}
+                canCreateTags={canCreateTags}
                 employees={employees}
                 metadataEditMode={metadataEditMode}
                 setMetadataEditMode={setMetadataEditMode}
@@ -1261,7 +1290,7 @@ function ContentFormPage() {
                   : " another user"}
                 . Editing is disabled.
               </div>
-              {session?.user?.user_metadata?.role === "admin" && (
+              {userRole === "admin" && (
                 <button
                   type="button"
                   onClick={() => forceUnlock.mutate({ fileID: id! })}
@@ -1358,6 +1387,7 @@ function ContentFormPage() {
         setDocumentStatus={setDocumentStatus}
         selectedTags={selectedTags}
         setSelectedTags={setSelectedTags}
+        canCreateTags={userRole === "admin"}
         employees={employees.data}
         upload={upload}
         isUploading={isUploading}

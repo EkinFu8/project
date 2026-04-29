@@ -1,10 +1,11 @@
 import { Loader2, Mail, Search, Users } from "lucide-react";
-import { useState } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/lib/trpc.ts";
+import { useAppPreferences } from "@/store/app-preferences";
 
 function EmployeesPage() {
-  const [search, setSearch] = useState("");
+  const search = useAppPreferences((state) => state.coworkerSearch);
+  const setSearch = useAppPreferences((state) => state.setCoworkerSearch);
 
   const coworkers = trpc.employee.list.useQuery({ search, coworkersOnly: true });
 

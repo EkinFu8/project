@@ -2,6 +2,7 @@ import { Check, Command, Pencil, Search, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { ColorPicker } from "@/pages/tags/components/ColorPicker.tsx";
+import { useAppPreferences } from "@/store/app-preferences";
 import { normalizeTag, renderTag } from "@/utils/tag";
 
 type EditState = {
@@ -28,7 +29,8 @@ export default function TagsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [errorMap, setErrorMap] = useState<Record<number, string>>({});
   const [edit, setEdit] = useState<EditState>(null);
-  const [search, setSearch] = useState("");
+  const search = useAppPreferences((state) => state.tagsSearch);
+  const setSearch = useAppPreferences((state) => state.setTagsSearch);
 
   const focusSearchInput = useCallback(() => {
     window.requestAnimationFrame(() => {

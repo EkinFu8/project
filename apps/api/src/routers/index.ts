@@ -1,5 +1,6 @@
 import { router } from "../lib/trpc";
 import { auditRouter } from "./audit";
+import { chatRouter } from "./chat";
 import { contentRouter } from "./content";
 import { employeeRouter } from "./employee";
 import { loginRouter } from "./login";
@@ -16,6 +17,7 @@ export const appRouter = router({
   metrics: metricsRouter,
   notifications: notificationsRouter,
   audit: auditRouter,
+  chat: chatRouter,
   tag: tagRouter,
 });
 

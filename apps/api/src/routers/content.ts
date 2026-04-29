@@ -7,7 +7,8 @@ import {
   updateContentSchema,
 } from "@myapp/types/schemas";
 import type { Prisma } from "@prisma/client";
-import { publicProcedure, router } from "../lib/trpc";
+import { TRPCError } from "@trpc/server";
+import { protectedProcedure, router } from "../lib/trpc";
 import { enqueueOcr } from "../services/ocr-queue";
 
 const ownerSelect = {
@@ -63,10 +64,38 @@ function canEditForRole(
   return normalizeRole(userRole) === normalizeRole(jobPosition);
 }
 
+function isAdminRole(userRole: string | null | undefined): boolean {
+  return normalizeRole(userRole) === "admin";
+}
+
+function roleVariants(role: string) {
+  const normalized = normalizeRole(role);
+  const spaced = normalized.replace(/-/g, " ");
+  return [
+    normalized,
+    spaced,
+    normalized.charAt(0).toUpperCase() + normalized.slice(1).replace(/-/g, " "),
+  ];
+}
+
+function assertCanViewRole(userRole: string | null | undefined, jobPosition: string | null) {
+  if (isAdminRole(userRole)) return;
+  if (!canEditForRole(userRole, jobPosition)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this content" });
+  }
+}
+
 export const contentRouter = router({
-  toggleFavorite: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
-    const userId = ctx.user?.id;
-    if (!userId) throw new Error("Not authenticated");
+  toggleFavorite: protectedProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user.id;
+    const userRole = ctx.profile?.role;
+
+    const file = await ctx.prisma.contentManagement.findUnique({
+      where: { fileID: input.fileID },
+      select: { job_position: true },
+    });
+    if (!file) throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
+    assertCanViewRole(userRole, file.job_position);
 
     const existing = await ctx.prisma.favorite.findUnique({
       where: {
@@ -94,18 +123,19 @@ export const contentRouter = router({
         fileID: input.fileID,
       },
     });
-    console.log("FAVORITE TOGGLE:", ctx.user?.id, input.fileID);
     return { favorited: true };
   }),
 
-  trackDownload: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
-    const userId = ctx.user?.id;
-    if (!userId) throw new Error("Not authenticated");
+  trackDownload: protectedProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user.id;
+    const userRole = ctx.profile?.role;
 
     const file = await ctx.prisma.contentManagement.findUnique({
       where: { fileID: input.fileID },
-      select: { filename: true },
+      select: { filename: true, job_position: true },
     });
+    if (!file) throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
+    assertCanViewRole(userRole, file.job_position);
 
     await ctx.prisma.auditEvent.create({
       data: {
@@ -119,9 +149,15 @@ export const contentRouter = router({
     return { success: true };
   }),
 
-  trackView: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
-    const userId = ctx.user?.id;
-    if (!userId) throw new Error("Not authenticated");
+  trackView: protectedProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user.id;
+    const userRole = ctx.profile?.role;
+    const currentFile = await ctx.prisma.contentManagement.findUnique({
+      where: { fileID: input.fileID },
+      select: { job_position: true },
+    });
+    if (!currentFile) throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
+    assertCanViewRole(userRole, currentFile.job_position);
 
     const viewedAt = new Date();
     const file = await ctx.prisma.contentManagement.update({
@@ -153,12 +189,9 @@ export const contentRouter = router({
     return { success: true, viewCount: file.view_count };
   }),
 
-  checkout: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
-    const userId = ctx.user?.id;
-    if (!userId) throw new Error("Not authenticated");
-
-    const profile = ctx.profile as { role: string | null } | null;
-    const userRole = profile?.role;
+  checkout: protectedProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user.id;
+    const userRole = ctx.profile?.role;
 
     const file = await ctx.prisma.contentManagement.findUnique({
       where: { fileID: input.fileID },
@@ -189,13 +222,94 @@ export const contentRouter = router({
     return { success: true };
   }),
 
-  forceUnlock: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
-    const userId = ctx.user?.id;
-    if (!userId) throw new Error("Not authenticated");
+  checkoutOverdue: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.user.id;
+    const userRole = ctx.profile?.role;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const userRole = ctx.user?.role;
-    if (userRole !== "admin") {
-      throw new Error("Only admins can force unlock files");
+    const roleWhere = isAdminRole(userRole)
+      ? {}
+      : {
+          job_position: {
+            in: roleVariants(userRole ?? ""),
+          },
+        };
+
+    const overdueFiles = await ctx.prisma.contentManagement.findMany({
+      where: {
+        ...roleWhere,
+        OR: [{ expiration_date: { lt: today } }, { next_review_date: { lt: today } }],
+      },
+      select: {
+        fileID: true,
+        filename: true,
+        job_position: true,
+        is_checked_out: true,
+        checked_out_by: true,
+        checked_out_by_user: { select: checkedOutByUserSelect },
+      },
+      orderBy: [{ next_review_date: "asc" }, { expiration_date: "asc" }],
+    });
+
+    const checkedOut: { fileID: string; filename: string | null }[] = [];
+    const skipped: { fileID: string; filename: string | null; reason: string }[] = [];
+
+    for (const file of overdueFiles) {
+      if (!canEditForRole(userRole, file.job_position)) {
+        skipped.push({
+          fileID: file.fileID,
+          filename: file.filename,
+          reason: "You do not have permission to edit this file.",
+        });
+        continue;
+      }
+
+      if (file.is_checked_out && file.checked_out_by && file.checked_out_by !== userId) {
+        skipped.push({
+          fileID: file.fileID,
+          filename: file.filename,
+          reason: `Already checked out by ${file.checked_out_by_user?.name ?? "another user"}.`,
+        });
+        continue;
+      }
+
+      const result = await ctx.prisma.contentManagement.updateMany({
+        where: {
+          fileID: file.fileID,
+          OR: [{ is_checked_out: false }, { checked_out_by: userId }],
+        },
+        data: {
+          is_checked_out: true,
+          checked_out_by: userId,
+          checked_out_at: new Date(),
+        },
+      });
+
+      if (result.count === 0) {
+        skipped.push({
+          fileID: file.fileID,
+          filename: file.filename,
+          reason: "Could not check out this file.",
+        });
+        continue;
+      }
+
+      checkedOut.push({ fileID: file.fileID, filename: file.filename });
+    }
+
+    return {
+      success: true,
+      checkedOut,
+      skipped,
+      totalOverdue: overdueFiles.length,
+    };
+  }),
+
+  forceUnlock: protectedProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
+    const userRole = ctx.profile?.role;
+    if (!isAdminRole(userRole)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can force unlock files" });
     }
 
     const file = await ctx.prisma.contentManagement.findUnique({
@@ -214,9 +328,8 @@ export const contentRouter = router({
     });
   }),
 
-  checkin: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
-    const userId = ctx.user?.id;
-    if (!userId) throw new Error("Not authenticated");
+  checkin: protectedProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user.id;
 
     const result = await ctx.prisma.contentManagement.updateMany({
       where: {
@@ -237,9 +350,10 @@ export const contentRouter = router({
     return { success: true };
   }),
 
-  list: publicProcedure.input(contentListQuerySchema).query(async ({ ctx, input }) => {
+  list: protectedProcedure.input(contentListQuerySchema).query(async ({ ctx, input }) => {
     const where: Record<string, unknown> = {};
-    const userId = ctx.user?.id;
+    const userId = ctx.user.id;
+    const userRole = ctx.profile?.role;
 
     if (input.document_status) {
       where.document_status = input.document_status;
@@ -253,16 +367,24 @@ export const contentRouter = router({
       where.owner_id = input.owner_id;
     }
 
-    if (input.role && input.role !== "all") {
-      const role = input.role.toLowerCase();
+    const requestedRole = input.role && input.role !== "all" ? input.role : undefined;
+    if (
+      !isAdminRole(userRole) &&
+      requestedRole &&
+      normalizeRole(requestedRole) !== normalizeRole(userRole)
+    ) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You cannot view content for another role",
+      });
+    }
+
+    const effectiveRole = isAdminRole(userRole) ? requestedRole : userRole;
+    if (effectiveRole) {
+      const role = effectiveRole.toLowerCase();
 
       where.job_position = {
-        in: [
-          role,
-          role.toLowerCase(),
-          role.replace(/-/g, " "),
-          role.charAt(0).toUpperCase() + role.slice(1).replace(/-/g, " "),
-        ],
+        in: roleVariants(role),
       };
     }
 
@@ -388,8 +510,8 @@ export const contentRouter = router({
       });
   }),
 
-  getById: publicProcedure.input(contentIdSchema).query(async ({ ctx, input }) => {
-    return ctx.prisma.contentManagement.findUniqueOrThrow({
+  getById: protectedProcedure.input(contentIdSchema).query(async ({ ctx, input }) => {
+    const row = await ctx.prisma.contentManagement.findUniqueOrThrow({
       where: { fileID: input.fileID },
       include: {
         owner: {
@@ -405,11 +527,19 @@ export const contentRouter = router({
       },
       // extracted_text and ocr_status are plain scalar fields — included by default.
     });
+    assertCanViewRole(ctx.profile?.role, row.job_position);
+    return row;
   }),
 
-  create: publicProcedure.input(createContentSchema).mutation(async ({ ctx, input }) => {
-    const userId = ctx.user?.id;
-    if (!userId) throw new Error("Unauthorized");
+  create: protectedProcedure.input(createContentSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user.id;
+    const userRole = ctx.profile?.role;
+    if (!canEditForRole(userRole, input.job_position)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You cannot create content for this role",
+      });
+    }
 
     const { tagIds, owner_id, ...rest } = input;
 
@@ -457,20 +587,18 @@ export const contentRouter = router({
     return result;
   }),
 
-  update: publicProcedure
+  update: protectedProcedure
     .input(contentIdSchema.merge(updateContentSchema))
     .mutation(async ({ ctx, input }) => {
       const { fileID, tagIds, owner_id, ...data } = input;
 
-      const userId = ctx.user?.id;
-      if (!userId) throw new Error("Not authenticated");
+      const userId = ctx.user.id;
 
       if (data.filename !== undefined) {
         (data as typeof data & { format?: string | null }).format = extractFormat(data.filename);
       }
 
-      const profile = ctx.profile as { role: string | null } | null;
-      const userRole = profile?.role;
+      const userRole = ctx.profile?.role;
 
       const file = await ctx.prisma.contentManagement.findUnique({
         where: { fileID },
@@ -571,12 +699,9 @@ export const contentRouter = router({
       return result;
     }),
 
-  delete: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
-    const userId = ctx.user?.id;
-    if (!userId) throw new Error("Not authenticated");
-
-    const profile = ctx.profile as { role: string | null } | null;
-    const userRole = profile?.role;
+  delete: protectedProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user.id;
+    const userRole = ctx.profile?.role;
 
     const file = await ctx.prisma.contentManagement.findUnique({
       where: { fileID: input.fileID },

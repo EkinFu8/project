@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { useContentFilterStore } from "@/store/content-filters";
 import type { ContentItem } from "@/types/content";
-import { usePersistedState } from "../hooks/usePersistedState";
 import { ContentCard } from "./ContentCard";
 import { ContentListHeader } from "./ContentListHeader";
 import { ContentListRow } from "./ContentListRow";
@@ -115,11 +115,8 @@ export function ContentGroupedView({
   checkin,
   getStatusBadge,
 }: Props) {
-  // Persisted across navigation so closing a section doesn't reset every time.
-  const [collapsed, setCollapsed] = usePersistedState<Record<string, boolean>>(
-    "content.groups.collapsed",
-    {},
-  );
+  const collapsedGroups = useContentFilterStore((state) => state.collapsedGroups);
+  const setGroupCollapsed = useContentFilterStore((state) => state.setGroupCollapsed);
 
   // Bucket while preserving the upstream sort order within each group.
   const buckets = new Map<RoleKey, ContentItem[]>();
@@ -138,9 +135,29 @@ export function ContentGroupedView({
 
   if (visibleGroups.length === 0) {
     return (
-      <p className="rounded border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
-        No content matches the current filters.
-      </p>
+      <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card p-12 text-center">
+        <div className="rounded-full bg-muted/70 p-3">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5 text-muted-foreground"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <title>No content</title>
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </div>
+        <p className="text-sm font-semibold text-foreground">No content matches</p>
+        <p className="max-w-xs text-xs text-muted-foreground">
+          Try adjusting or clearing the active filters in the sidebar.
+        </p>
+      </div>
     );
   }
 
@@ -148,7 +165,7 @@ export function ContentGroupedView({
     <div className="flex flex-col gap-4">
       {visibleGroups.map((key) => {
         const groupItems = buckets.get(key) ?? [];
-        const isCollapsed = !!collapsed[key];
+        const isCollapsed = !!collapsedGroups[key];
         const overdueCount = groupItems.filter(isOverdue).length;
 
         return (
@@ -159,7 +176,7 @@ export function ContentGroupedView({
               overdueCount={overdueCount}
               accent={ROLE_ACCENT[key]}
               expanded={!isCollapsed}
-              onToggle={() => setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }))}
+              onToggle={() => setGroupCollapsed(key, !isCollapsed)}
             />
 
             <AnimatePresence initial={false}>
@@ -196,9 +213,9 @@ export function ContentGroupedView({
                         ))}
                       </div>
                     ) : (
-                      <div className="rounded border border-border bg-card">
+                      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm shadow-black/[0.02]">
                         <ContentListHeader />
-                        <div className="flex flex-col divide-y divide-border">
+                        <div className="flex flex-col divide-y divide-border/70">
                           {groupItems.map((item) => (
                             <ContentListRow
                               key={item.fileID}

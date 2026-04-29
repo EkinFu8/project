@@ -1,7 +1,13 @@
 import "../load-env-pre.js";
-import { prisma } from "../src/lib/prisma";
+import type { PrismaClient } from "@prisma/client";
+import { ensureDemoAuthAndProfiles } from "./ensure-demo-users";
 
 const PASSWORD = "HanoverTest123!";
+const LOCAL_SUPABASE_DATABASE_URL = "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+
+process.env.DATABASE_URL ??= LOCAL_SUPABASE_DATABASE_URL;
+
+let prisma: PrismaClient;
 
 const demoUsers = [
   {
@@ -372,6 +378,46 @@ const content = [
   ],
 ] as const;
 
+async function assertLocalSchemaReady() {
+  const requiredContentColumns = [
+    "fileid",
+    "owner_id",
+    "view_count",
+    "last_viewed_at",
+    "is_checked_out",
+    "checked_out_by",
+    "ocr_status",
+  ];
+  const tableRows = await prisma.$queryRaw<{ exists: boolean }[]>`
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'content_management'
+    ) AS exists
+  `;
+
+  if (!tableRows[0]?.exists) {
+    throw new Error(
+      "Missing table public.content_management. Start/reset local Supabase first: pnpm db:start && pnpm db:reset",
+    );
+  }
+
+  const columnRows = await prisma.$queryRaw<{ column_name: string }[]>`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'content_management'
+  `;
+  const presentColumns = new Set(columnRows.map((row) => row.column_name));
+  const missingColumns = requiredContentColumns.filter((column) => !presentColumns.has(column));
+
+  if (missingColumns.length > 0) {
+    throw new Error(
+      `Local schema is behind Prisma. Missing content_management columns: ${missingColumns.join(
+        ", ",
+      )}. For a clean local demo DB, run: pnpm db:demo:reset`,
+    );
+  }
+}
+
 function dateDaysFromNow(days: number) {
   const d = new Date();
   d.setDate(d.getDate() + days);
@@ -447,12 +493,27 @@ ON CONFLICT (provider_id, provider) DO UPDATE SET
   }
 }
 
+async function resetDemoRows() {
+  await prisma.metricsEvent.deleteMany();
+  await prisma.auditEvent.deleteMany();
+  await prisma.favorite.deleteMany();
+  await prisma.contentTag.deleteMany();
+  await prisma.contentManagement.deleteMany();
+  await prisma.userSession.deleteMany();
+  await prisma.tag.deleteMany();
+}
+
 async function main() {
+  ({ prisma } = await import("../src/lib/prisma"));
+
   console.log(
     "[rich-demo] Adding users, content, tags, favorites, sessions, audit, and metrics...",
   );
 
+  await assertLocalSchemaReady();
+  await ensureDemoAuthAndProfiles(prisma);
   await ensureAuthUsers();
+  await resetDemoRows();
 
   const allUsers = await prisma.userProfile.findMany({
     where: {
@@ -633,6 +694,8 @@ async function main() {
 
   console.log("[rich-demo] Done:", counts);
   console.log(`[rich-demo] Added login users use password: ${PASSWORD}`);
+  console.log("[rich-demo] Admin logins: admin@hanover.test, nina.williams@hanover.test");
+  console.log("[rich-demo] Employee logins: user@hanover.test plus demo employee emails");
 }
 
 main()
@@ -641,5 +704,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await prisma?.$disconnect();
   });

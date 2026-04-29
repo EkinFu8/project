@@ -1,13 +1,14 @@
-import { FileText, Minus, Shield, Users } from "lucide-react";
-import { useState } from "react";
+import { FileText, Minus, Plus, Shield, Users } from "lucide-react";
 import { Link } from "react-router";
 import heroCampus from "@/assets/hero-campus.png";
 import { trpc } from "@/lib/trpc";
+import { useAppPreferences } from "@/store/app-preferences";
 
 const HERO_CONTENT_PATH = "/hero#content-library";
 
 function HeroBanner() {
-  const [heroExpanded, setHeroExpanded] = useState(true);
+  const heroExpanded = useAppPreferences((state) => state.heroExpanded);
+  const setHeroExpanded = useAppPreferences((state) => state.setHeroExpanded);
   const { data: access } = trpc.user.myAccess.useQuery();
   const isAdmin = access?.role === "admin";
 
@@ -31,7 +32,7 @@ function HeroBanner() {
       className={`relative isolate w-full transition-[min-height,max-height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
         heroExpanded
           ? "min-h-[min(22rem,calc(100dvh-4.75rem))] max-h-none overflow-hidden lg:min-h-[min(30rem,calc(100dvh-5.75rem))]"
-          : "h-0 max-h-0 min-h-0 overflow-hidden"
+          : "min-h-10 max-h-10 overflow-hidden border-b border-border bg-card"
       }`}
     >
       <img
@@ -65,7 +66,19 @@ function HeroBanner() {
             aria-hidden
           />
         </button>
-      ) : null}
+      ) : (
+        <button
+          type="button"
+          aria-expanded={false}
+          aria-controls="hero-panel"
+          aria-label="Show hero section"
+          onClick={() => setHeroExpanded(true)}
+          className="absolute right-3 top-1 z-20 flex h-8 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hanover-green/40"
+        >
+          <Plus className="size-3.5" aria-hidden />
+          Show hero
+        </button>
+      )}
 
       {heroExpanded ? (
         <div

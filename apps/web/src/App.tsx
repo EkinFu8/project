@@ -1,7 +1,8 @@
 import CMSChatbot from "@myapp/ui/components/chatbot";
 import { TopNav } from "@myapp/ui/components/top-nav";
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect } from "react";
+import type { ComponentProps } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -10,7 +11,9 @@ import {
   Routes,
   useLocation,
   useNavigate,
+  useOutletContext,
   useParams,
+  useSearchParams,
 } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { useNotificationReadState } from "@/hooks/use-notification-read-state";
@@ -43,6 +46,303 @@ const SIGNED_OUT_NOTICE = "You were signed out. Please sign in again.";
 const CONTENT_SEARCH_FOCUS_EVENT = "content-search:focus";
 const USERS_SEARCH_FOCUS_EVENT = "users-search:focus";
 const TAGS_SEARCH_FOCUS_EVENT = "tags-search:focus";
+
+function describePage(pathname: string) {
+  if (pathname === "/hero" || pathname === "/hero/content") {
+    return {
+      path: pathname,
+      title: "Content library",
+      description: "Browsing searchable documents, filters, favorites, tags, owners, and status.",
+    };
+  }
+  if (pathname === "/hero/content/new") {
+    return {
+      path: pathname,
+      title: "New content",
+      description: "Creating a content record with upload or URL, metadata, owner, role, and tags.",
+    };
+  }
+  if (pathname.startsWith("/hero/content/")) {
+    return {
+      path: pathname,
+      title: "Content detail",
+      description:
+        "Viewing or editing one document with checkout, download, upload, and metadata controls.",
+    };
+  }
+  if (pathname === "/notifications") {
+    return {
+      path: pathname,
+      title: "Notifications",
+      description:
+        "Reviewing document changes, ownership changes, review reminders, and expiration reminders.",
+    };
+  }
+  if (pathname === "/users" || pathname.startsWith("/users/")) {
+    return {
+      path: pathname,
+      title: "User management",
+      description: "Admin user account and role management.",
+    };
+  }
+  if (pathname === "/tags") {
+    return {
+      path: pathname,
+      title: "Meta tags",
+      description: "Admin global tag management.",
+    };
+  }
+  if (pathname === "/dashboard") {
+    return {
+      path: pathname,
+      title: "Dashboard",
+      description: "Admin metrics, audit activity, content currency, and review health.",
+    };
+  }
+  if (pathname === "/employees" || pathname.startsWith("/employees/")) {
+    return {
+      path: pathname,
+      title: "Coworker directory",
+      description: "Employee profiles and associated content.",
+    };
+  }
+  if (pathname === "/account") {
+    return {
+      path: pathname,
+      title: "Account settings",
+      description: "Current user profile settings.",
+    };
+  }
+  if (pathname === "/help") {
+    return {
+      path: pathname,
+      title: "Help",
+      description: "Workflow guidance and product reference.",
+    };
+  }
+  if (pathname === "/gompei") {
+    return {
+      path: pathname,
+      title: "Gompei chat",
+      description: "Full-screen assistant conversation with current app context.",
+    };
+  }
+  return {
+    path: pathname,
+    title: "iBank",
+    description: "General app workspace.",
+  };
+}
+
+type ProtectedOutletContext = {
+  assistantContext: ComponentProps<typeof CMSChatbot>["context"];
+};
+
+function GompeiPage() {
+  const { assistantContext } = useOutletContext<ProtectedOutletContext>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const utils = trpc.useUtils();
+  const activeConversationId = searchParams.get("chat");
+  const initialPrompt = searchParams.get("q") ?? undefined;
+  const conversations = trpc.chat.list.useQuery();
+  const activeConversation = trpc.chat.get.useQuery(
+    { conversationId: activeConversationId ?? "" },
+    { enabled: Boolean(activeConversationId) },
+  );
+  const createConversation = trpc.chat.create.useMutation();
+  const addMessage = trpc.chat.addMessage.useMutation();
+  const markRead = trpc.chat.markRead.useMutation();
+  const deleteConversation = trpc.chat.delete.useMutation();
+  const checkoutOverdue = trpc.content.checkoutOverdue.useMutation();
+  const promptCreateKeyRef = useRef<string | null>(null);
+  const emptyCreateRequestedRef = useRef(false);
+
+  useEffect(() => {
+    if (activeConversationId || !initialPrompt) {
+      promptCreateKeyRef.current = null;
+      return;
+    }
+    if (promptCreateKeyRef.current === initialPrompt) return;
+
+    promptCreateKeyRef.current = initialPrompt;
+    createConversation.mutate(
+      { title: initialPrompt },
+      {
+        onSuccess: (conversation) => {
+          navigate(`/gompei?chat=${conversation.id}&q=${encodeURIComponent(initialPrompt)}`, {
+            replace: true,
+          });
+        },
+        onError: () => {
+          promptCreateKeyRef.current = null;
+        },
+      },
+    );
+  }, [activeConversationId, createConversation, initialPrompt, navigate]);
+
+  useEffect(() => {
+    if (activeConversationId || initialPrompt) {
+      emptyCreateRequestedRef.current = false;
+    }
+
+    if (
+      activeConversationId ||
+      initialPrompt ||
+      !conversations.isSuccess ||
+      emptyCreateRequestedRef.current
+    ) {
+      return;
+    }
+
+    const firstConversation = conversations.data[0];
+    if (firstConversation) {
+      navigate(`/gompei?chat=${firstConversation.id}`, { replace: true });
+      return;
+    }
+
+    emptyCreateRequestedRef.current = true;
+    createConversation.mutate(undefined, {
+      onSuccess: (conversation) => navigate(`/gompei?chat=${conversation.id}`, { replace: true }),
+      onError: () => {
+        emptyCreateRequestedRef.current = false;
+      },
+    });
+  }, [
+    activeConversationId,
+    conversations.data,
+    conversations.isSuccess,
+    createConversation,
+    initialPrompt,
+    navigate,
+  ]);
+
+  useEffect(() => {
+    if (!activeConversationId) return;
+    markRead.mutate({ conversationId: activeConversationId });
+  }, [activeConversationId, markRead]);
+
+  const history =
+    conversations.data?.map((conversation) => {
+      const last = conversation.messages[0];
+      return {
+        id: conversation.id,
+        title: conversation.title,
+        preview: last?.content,
+        updatedAt: conversation.updatedAt,
+        unread:
+          last?.role === "assistant" &&
+          (!conversation.readAt ||
+            new Date(conversation.updatedAt) > new Date(conversation.readAt)),
+      };
+    }) ?? [];
+
+  const initialMessages = useMemo(
+    () =>
+      activeConversation.data?.messages.map((message) => ({
+        id: message.id,
+        role: message.role as "user" | "assistant",
+        content: message.content,
+      })),
+    [activeConversation.data?.messages],
+  );
+
+  return (
+    <CMSChatbot
+      activeConversationId={activeConversationId}
+      context={assistantContext}
+      history={history}
+      initialMessages={initialMessages}
+      initialPrompt={activeConversationId ? initialPrompt : undefined}
+      mode="page"
+      onDeleteConversation={(conversationId) => {
+        deleteConversation.mutate(
+          { conversationId },
+          {
+            onSuccess: async () => {
+              await utils.chat.list.invalidate();
+              if (conversationId === activeConversationId) navigate("/gompei", { replace: true });
+            },
+          },
+        );
+      }}
+      onNavigate={(to) => navigate(to)}
+      onNewConversation={() => {
+        createConversation.mutate(undefined, {
+          onSuccess: async (conversation) => {
+            await utils.chat.list.invalidate();
+            navigate(`/gompei?chat=${conversation.id}`);
+          },
+        });
+      }}
+      onPersistMessage={async (message) => {
+        if (!activeConversationId) return;
+        const persistedMessage = await addMessage.mutateAsync({
+          conversationId: activeConversationId,
+          ...message,
+        });
+        await utils.chat.list.invalidate();
+        if (message.role === "assistant") {
+          await utils.chat.get.invalidate({ conversationId: activeConversationId });
+        }
+        await utils.chat.unreadCount.invalidate();
+        return {
+          id: persistedMessage.id,
+          role: persistedMessage.role as "user" | "assistant",
+          content: persistedMessage.content,
+        };
+      }}
+      onRunSiteAction={async ({ prompt }) => {
+        const normalizedPrompt = prompt.toLowerCase();
+        const wantsCheckout =
+          /\bcheck\s*out\b/.test(normalizedPrompt) || /\bcheckout\b/.test(normalizedPrompt);
+        const wantsOverdue =
+          normalizedPrompt.includes("overdue") || normalizedPrompt.includes("expired");
+        const wantsBatch =
+          normalizedPrompt.includes("all") ||
+          normalizedPrompt.includes("files") ||
+          normalizedPrompt.includes("documents") ||
+          normalizedPrompt.includes("items");
+
+        if (!(wantsCheckout && wantsOverdue && wantsBatch)) return null;
+
+        const result = await checkoutOverdue.mutateAsync();
+        await utils.content.list.invalidate();
+        await utils.notifications.myList.invalidate();
+
+        if (result.checkedOut.length === 0) {
+          const skipped = result.skipped.slice(0, 3);
+          const details =
+            skipped.length > 0
+              ? ` ${skipped.map((item) => `${item.filename ?? item.fileID}: ${item.reason}`).join(" ")}`
+              : "";
+
+          return `I could not check out any overdue files.${details}\nACTION: /hero/content | Open content`;
+        }
+
+        const fileLines = result.checkedOut
+          .slice(0, 5)
+          .map(
+            (item) => `ACTION: /hero/content/${item.fileID}/edit | Open ${item.filename ?? "file"}`,
+          )
+          .join("\n");
+        const skippedText =
+          result.skipped.length > 0
+            ? ` ${result.skipped.length} overdue file${result.skipped.length === 1 ? " was" : "s were"} already checked out or unavailable.`
+            : "";
+
+        return `Done. I checked out ${result.checkedOut.length} overdue file${result.checkedOut.length === 1 ? "" : "s"} to you.${skippedText}\n${fileLines}`;
+      }}
+      onSelectConversation={(conversationId) => navigate(`/gompei?chat=${conversationId}`)}
+    />
+  );
+}
+
+function toTime(value: unknown) {
+  if (!value) return null;
+  const time = value instanceof Date ? value.getTime() : new Date(String(value)).getTime();
+  return Number.isNaN(time) ? null : time;
+}
 
 function AuthSplash() {
   return (
@@ -109,7 +409,19 @@ function ProtectedLayout() {
   const notificationsQuery = trpc.notifications.myList.useQuery(undefined, {
     enabled: Boolean(session) && Boolean(accessQuery.data),
   });
-  const { unreadCount } = useNotificationReadState(notificationsQuery.data, session?.user.id);
+  const gompeiUnreadQuery = trpc.chat.unreadCount.useQuery(undefined, {
+    enabled: Boolean(session) && Boolean(accessQuery.data),
+  });
+  const submittedContentQuery = trpc.content.list.useQuery(
+    { owner_id: session?.user.id ?? "" },
+    {
+      enabled: Boolean(session?.user.id) && Boolean(accessQuery.data),
+    },
+  );
+  const { unreadCount, unreadRows } = useNotificationReadState(
+    notificationsQuery.data,
+    session?.user.id,
+  );
   const isContentPage = location.pathname === "/hero" || location.pathname === "/hero/content";
   const isUsersPage = location.pathname === "/users";
   const isUsersRoute = location.pathname.startsWith("/users/");
@@ -165,6 +477,128 @@ function ProtectedLayout() {
   const isAdmin = role === "admin";
   const navItems = isAdmin ? adminNavItems() : employeeNavItems();
   const username = me?.name;
+  const submittedDocuments = submittedContentQuery.data ?? [];
+  const now = Date.now();
+  const dueSoon = (notificationsQuery.data ?? []).filter((row) => {
+    const message = row.message.toLowerCase();
+    return message.includes("due") || message.includes("expires");
+  }).length;
+  const overdue = (notificationsQuery.data ?? []).filter((row) => {
+    const message = row.message.toLowerCase();
+    return message.includes("passed") || message.includes("expired");
+  }).length;
+  const checkedOutByUser = submittedDocuments.filter(
+    (document) => document.checked_out_by === session.user.id,
+  ).length;
+  const assistantContext = {
+    user: {
+      name: username ? username : "User",
+      email: me?.email ?? session.user.email ?? undefined,
+      role: role ? role : "Unknown",
+      portal: accessQuery.data?.portal ?? undefined,
+    },
+    page: describePage(location.pathname),
+    permissions: {
+      isAdmin,
+      canCreateContent: true,
+      canManageUsers: isAdmin,
+      canManageTags: isAdmin,
+      canViewDashboard: isAdmin,
+      canViewCoworkers: !isAdmin,
+    },
+    workload: {
+      unreadNotifications: unreadCount,
+      submittedDocuments: submittedDocuments.length,
+      dueSoon,
+      overdue,
+      checkedOutByUser,
+    },
+    highlights: [
+      ...unreadRows.slice(0, 3).map((row) => ({
+        id: row.id,
+        label: row.fileName,
+        detail: row.message,
+        to: row.fileID ? `/hero/content/${row.fileID}/edit` : "/notifications",
+        tone: "attention" as const,
+      })),
+      ...submittedDocuments.slice(0, 3).map((document) => {
+        const reviewTime = toTime(document.next_review_date);
+        const expirationTime = toTime(document.expiration_date);
+        const needsReview = reviewTime !== null && reviewTime <= now + 30 * 24 * 60 * 60 * 1000;
+        const expired = expirationTime !== null && expirationTime < now;
+
+        return {
+          id: document.fileID,
+          label: document.filename ?? document.fileID,
+          detail: expired
+            ? "Expired"
+            : needsReview
+              ? "Review due soon"
+              : (document.document_status ?? "Submitted document"),
+          to: `/hero/content/${document.fileID}/edit`,
+          tone: expired || needsReview ? ("attention" as const) : ("muted" as const),
+        };
+      }),
+    ],
+    actions: [
+      {
+        label: unreadCount > 0 ? `Open notifications (${unreadCount})` : "Open notifications",
+        to: "/notifications",
+        description: "Review document changes and due-date reminders.",
+        tone: unreadCount > 0 ? ("primary" as const) : ("neutral" as const),
+      },
+      {
+        label: "Open content",
+        to: "/hero/content",
+        description: "Search and filter documents available to your role.",
+        tone: "neutral" as const,
+      },
+      {
+        label: "New content",
+        to: "/hero/content/new",
+        description: "Create a document record for your allowed role.",
+        tone: "neutral" as const,
+      },
+      ...(isAdmin
+        ? [
+            {
+              label: "Open dashboard",
+              to: "/dashboard",
+              description: "Review metrics, audits, and content health.",
+              adminOnly: true,
+              tone: "neutral" as const,
+            },
+            {
+              label: "Open users",
+              to: "/users",
+              description: "Manage accounts, roles, and portal access.",
+              adminOnly: true,
+              tone: "neutral" as const,
+            },
+            {
+              label: "Open tags",
+              to: "/tags",
+              description: "Manage global meta tags.",
+              adminOnly: true,
+              tone: "neutral" as const,
+            },
+          ]
+        : [
+            {
+              label: "Open coworkers",
+              to: "/employees",
+              description: "Find coworkers and profile context.",
+              tone: "neutral" as const,
+            },
+          ]),
+      {
+        label: "Open help",
+        to: "/help",
+        description: "View workflow help.",
+        tone: "neutral" as const,
+      },
+    ],
+  };
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -179,8 +613,10 @@ function ProtectedLayout() {
         accountMenu={{
           notificationsTo: "/notifications",
           unreadNotificationCount: unreadCount,
+          gompeiUnreadCount: gompeiUnreadQuery.data ?? 0,
           settingsTo: "/account",
           links: [
+            { label: "Gompei", to: "/gompei" },
             { label: "About", to: "/about" },
             { label: "Credits", to: "/credits" },
           ],
@@ -188,15 +624,14 @@ function ProtectedLayout() {
           photoUrl: accessQuery.data?.photo_url,
         }}
       />
-      <CMSChatbot
-        context={{
-          user: {
-            name: username ? username : "User",
-            role: role ? role : "Unknown",
-          },
-        }}
-      />
-      <Outlet />
+      {location.pathname !== "/gompei" ? (
+        <CMSChatbot
+          context={assistantContext}
+          mode="launcher"
+          onSubmitQuestion={(question) => navigate(`/gompei?q=${encodeURIComponent(question)}`)}
+        />
+      ) : null}
+      <Outlet context={{ assistantContext } satisfies ProtectedOutletContext} />
     </div>
   );
 }
@@ -241,10 +676,11 @@ function App() {
             <Route path="/users/new" element={<UserFormPage />} />
             <Route path="/users/:id" element={<UserFormPage />} />
             <Route path="/tags" element={<TagsPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
           </Route>
 
           {/* Shared */}
-          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/gompei" element={<GompeiPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/help" element={<HelpPage />} />

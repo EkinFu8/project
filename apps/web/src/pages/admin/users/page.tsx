@@ -3,6 +3,7 @@ import { Command, Loader2, Pencil, Plus, Search, Trash2, User, Users } from "luc
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { trpc } from "@/lib/trpc";
+import { useAppPreferences } from "@/store/app-preferences";
 
 type UserRole = "admin" | "underwriter" | "business-analyst";
 
@@ -16,7 +17,8 @@ const USERS_SEARCH_FOCUS_EVENT = "users-search:focus";
 function UsersPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
+  const search = useAppPreferences((state) => state.usersSearch);
+  const setSearch = useAppPreferences((state) => state.setUsersSearch);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();

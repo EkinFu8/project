@@ -9,9 +9,10 @@ type TagShape = { id: number; name: string; color?: string };
 type TagInputProps = {
   selectedTags: TagShape[];
   onChange: (tags: TagShape[]) => void;
+  canCreateTags?: boolean;
 };
 
-export function TagInput({ selectedTags, onChange }: TagInputProps) {
+export function TagInput({ selectedTags, onChange, canCreateTags = false }: TagInputProps) {
   const [newTagName, setNewTagName] = useState("");
 
   const [showDropdown, setShowDropdown] = useState(false);
@@ -58,7 +59,7 @@ export function TagInput({ selectedTags, onChange }: TagInputProps) {
       if (!selectedIds.has(existing.id)) {
         onChange([...selectedTags, existing]);
       }
-    } else {
+    } else if (canCreateTags) {
       const created = await createTag.mutateAsync({
         name: trimmed,
         color: selectedColor,
@@ -67,13 +68,15 @@ export function TagInput({ selectedTags, onChange }: TagInputProps) {
       const normalizedCreated = normalizeTag(created);
 
       onChange([...selectedTags, normalizedCreated]);
+    } else {
+      return;
     }
 
     setNewTagName("");
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && canCreateTags) {
       e.preventDefault();
       handleAddNewTag();
     }
@@ -151,26 +154,31 @@ export function TagInput({ selectedTags, onChange }: TagInputProps) {
           )}
         </div>
 
-        {/* New tag input */}
-        <input
-          value={newTagName}
-          onChange={(e) => setNewTagName(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="New tag..."
-          className="flex-1 rounded border px-3 py-2 text-sm"
-        />
+        {canCreateTags ? (
+          <>
+            {/* New tag input */}
+            <input
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="New tag..."
+              className="flex-1 rounded border px-3 py-2 text-sm"
+            />
 
-        {/* Color popover */}
-        <ColorPicker value={selectedColor} onChange={setSelectedColor} />
+            {/* Color popover */}
+            <ColorPicker value={selectedColor} onChange={setSelectedColor} />
 
-        <button
-          type="button"
-          onClick={handleAddNewTag}
-          disabled={!newTagName.trim() || createTag.isPending}
-          className="rounded bg-hanover-green px-3 py-2 text-sm text-white"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
+            <button
+              type="button"
+              onClick={handleAddNewTag}
+              disabled={!newTagName.trim() || createTag.isPending}
+              className="rounded bg-hanover-green px-3 py-2 text-sm text-white"
+              aria-label="Create tag"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </>
+        ) : null}
       </div>
     </div>
   );

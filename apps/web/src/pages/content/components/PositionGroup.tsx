@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronRight, Lock, Unlock } from "lucide-react";
-import { useState } from "react";
 import { Link } from "react-router";
+import { useContentFilterStore } from "@/store/content-filters";
 import { useFavorites } from "@/store/favorites";
 import type { ContentItem } from "@/types/content";
 import { renderTag } from "@/utils/tag";
@@ -185,13 +185,16 @@ export function PositionGroup({
   checkin,
   getStatusBadge,
 }: Props) {
-  const [open, setOpen] = useState(true);
+  const groupKey = `position:${label}`;
+  const isCollapsed = useContentFilterStore((state) => !!state.collapsedGroups[groupKey]);
+  const setGroupCollapsed = useContentFilterStore((state) => state.setGroupCollapsed);
+  const open = !isCollapsed;
 
   return (
     <section className="pb-1">
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => setGroupCollapsed(groupKey, open)}
         className="mb-3 flex w-full items-center justify-between rounded-lg border border-border bg-card px-3.5 py-2.5 text-left shadow-sm transition-colors hover:bg-muted/40"
         aria-expanded={open}
       >
