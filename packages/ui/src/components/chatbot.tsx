@@ -463,7 +463,7 @@ Common Tasks
             {/* Typing indicator */}
             {isTyping && (
               <div style={{ display: "flex", gap: 4, alignItems: "center", padding: "4px 0" }}>
-                {[0, 0.15, 0.3].map((delay, i) => (
+                {[0, 0.15, 0.3].map((delay) => (
                   <div
                     key={delay}
                     style={{
