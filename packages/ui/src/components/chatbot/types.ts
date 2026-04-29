@@ -75,7 +75,10 @@ export interface CMSChatbotProps {
   onNewConversation?: () => void;
   onSelectConversation?: (id: string) => void;
   onDeleteConversation?: (id: string) => void;
-  onPersistMessage?: (message: { role: ChatRole; content: string }) => void | Promise<void>;
+  onPersistMessage?: (message: {
+    role: ChatRole;
+    content: string;
+  }) => ChatMessage | undefined | Promise<ChatMessage | undefined>;
   mode?: "launcher" | "page";
   onSubmitQuestion?: (question: string) => void;
 }

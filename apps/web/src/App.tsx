@@ -2,7 +2,7 @@ import CMSChatbot from "@myapp/ui/components/chatbot";
 import { TopNav } from "@myapp/ui/components/top-nav";
 import { Loader2 } from "lucide-react";
 import type { ComponentProps } from "react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -155,9 +155,17 @@ function GompeiPage() {
   const markRead = trpc.chat.markRead.useMutation();
   const deleteConversation = trpc.chat.delete.useMutation();
   const checkoutOverdue = trpc.content.checkoutOverdue.useMutation();
+  const promptCreateKeyRef = useRef<string | null>(null);
+  const emptyCreateRequestedRef = useRef(false);
 
   useEffect(() => {
-    if (activeConversationId || !initialPrompt || createConversation.isPending) return;
+    if (activeConversationId || !initialPrompt) {
+      promptCreateKeyRef.current = null;
+      return;
+    }
+    if (promptCreateKeyRef.current === initialPrompt) return;
+
+    promptCreateKeyRef.current = initialPrompt;
     createConversation.mutate(
       { title: initialPrompt },
       {
@@ -166,16 +174,23 @@ function GompeiPage() {
             replace: true,
           });
         },
+        onError: () => {
+          promptCreateKeyRef.current = null;
+        },
       },
     );
   }, [activeConversationId, createConversation, initialPrompt, navigate]);
 
   useEffect(() => {
+    if (activeConversationId || initialPrompt) {
+      emptyCreateRequestedRef.current = false;
+    }
+
     if (
       activeConversationId ||
       initialPrompt ||
       !conversations.isSuccess ||
-      createConversation.isPending
+      emptyCreateRequestedRef.current
     ) {
       return;
     }
@@ -186,8 +201,12 @@ function GompeiPage() {
       return;
     }
 
+    emptyCreateRequestedRef.current = true;
     createConversation.mutate(undefined, {
       onSuccess: (conversation) => navigate(`/gompei?chat=${conversation.id}`, { replace: true }),
+      onError: () => {
+        emptyCreateRequestedRef.current = false;
+      },
     });
   }, [
     activeConversationId,
@@ -218,16 +237,22 @@ function GompeiPage() {
       };
     }) ?? [];
 
+  const initialMessages = useMemo(
+    () =>
+      activeConversation.data?.messages.map((message) => ({
+        id: message.id,
+        role: message.role as "user" | "assistant",
+        content: message.content,
+      })),
+    [activeConversation.data?.messages],
+  );
+
   return (
     <CMSChatbot
       activeConversationId={activeConversationId}
       context={assistantContext}
       history={history}
-      initialMessages={activeConversation.data?.messages.map((message) => ({
-        id: message.id,
-        role: message.role as "user" | "assistant",
-        content: message.content,
-      }))}
+      initialMessages={initialMessages}
       initialPrompt={activeConversationId ? initialPrompt : undefined}
       mode="page"
       onDeleteConversation={(conversationId) => {
@@ -252,12 +277,20 @@ function GompeiPage() {
       }}
       onPersistMessage={async (message) => {
         if (!activeConversationId) return;
-        await addMessage.mutateAsync({ conversationId: activeConversationId, ...message });
+        const persistedMessage = await addMessage.mutateAsync({
+          conversationId: activeConversationId,
+          ...message,
+        });
         await utils.chat.list.invalidate();
         if (message.role === "assistant") {
           await utils.chat.get.invalidate({ conversationId: activeConversationId });
         }
         await utils.chat.unreadCount.invalidate();
+        return {
+          id: persistedMessage.id,
+          role: persistedMessage.role as "user" | "assistant",
+          content: persistedMessage.content,
+        };
       }}
       onRunSiteAction={async ({ prompt }) => {
         const normalizedPrompt = prompt.toLowerCase();

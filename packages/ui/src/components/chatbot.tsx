@@ -96,6 +96,20 @@ export default function CMSChatbot({
     );
   }, []);
 
+  const replaceMessage = useCallback((id: string | number, persistedMessage?: ChatMessage) => {
+    if (!persistedMessage) return;
+    setMessages((current) =>
+      current.map((message) => (message.id === id ? persistedMessage : message)),
+    );
+  }, []);
+
+  const persistMessage = useCallback(
+    async (message: { role: ChatRole; content: string }) => {
+      return onPersistMessage?.(message);
+    },
+    [onPersistMessage],
+  );
+
   const handleReady = useCallback(() => {
     setMessages((current) => {
       if (current.length > 0 || initialPrompt?.trim()) {
@@ -119,14 +133,19 @@ export default function CMSChatbot({
   });
 
   useEffect(() => {
-    setMessages(initialMessages ?? []);
-  }, [initialMessages]);
-
-  useEffect(() => {
     if (lastConversationIdRef.current === activeConversationId) return;
     lastConversationIdRef.current = activeConversationId;
     initialPromptSentRef.current = false;
-  });
+    setMessages(initialMessages ?? []);
+  }, [activeConversationId, initialMessages]);
+
+  useEffect(() => {
+    if (!initialMessages) return;
+    setMessages((current) => {
+      if (current.length > initialMessages.length) return current;
+      return initialMessages;
+    });
+  }, [initialMessages]);
 
   const sendMessage = useCallback(
     async (overrideText?: string) => {
@@ -139,13 +158,24 @@ export default function CMSChatbot({
       const userMessage = appendMessage("user", text);
       const assistantMessage = appendMessage("assistant", "");
       setIsTyping(true);
-      await onPersistMessage?.({ role: "user", content: userMessage.content });
+
+      const persistUserMessage = persistMessage({ role: "user", content: userMessage.content })
+        .then((persistedMessage) => {
+          replaceMessage(userMessage.id, persistedMessage);
+          return persistedMessage;
+        })
+        .catch((error) => console.error("Gompei user message persist error:", error));
 
       const siteActionResult = await onRunSiteAction?.({ prompt: text });
       if (siteActionResult) {
         setIsTyping(false);
         updateMessage(assistantMessage.id, siteActionResult);
-        await onPersistMessage?.({ role: "assistant", content: siteActionResult });
+        await persistUserMessage;
+        const persistedMessage = await persistMessage({
+          role: "assistant",
+          content: siteActionResult,
+        });
+        replaceMessage(assistantMessage.id, persistedMessage);
         return;
       }
 
@@ -166,7 +196,12 @@ export default function CMSChatbot({
           },
         });
         if (finalContent.trim()) {
-          await onPersistMessage?.({ role: "assistant", content: finalContent });
+          await persistUserMessage;
+          const persistedMessage = await persistMessage({
+            role: "assistant",
+            content: finalContent,
+          });
+          replaceMessage(assistantMessage.id, persistedMessage);
         }
       } catch (error) {
         console.error("Gompei chat error:", error);
@@ -183,8 +218,9 @@ export default function CMSChatbot({
       complete,
       input,
       messages,
-      onPersistMessage,
       onRunSiteAction,
+      persistMessage,
+      replaceMessage,
       status,
       systemPrompt,
       updateMessage,
