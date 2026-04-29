@@ -1,6 +1,6 @@
 import * as webllm from "@mlc-ai/web-llm";
 import { useCallback, useEffect, useRef, useState } from "react";
-import appGuide from "../assets/chatbotContext.txt?raw";
+import appGuide from "../assets/context.txt";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
