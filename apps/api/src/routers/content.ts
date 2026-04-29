@@ -316,6 +316,9 @@ export const contentRouter = router({
       where,
       orderBy: [
         {
+          job_position: { sort: "asc", nulls: "last" },
+        },
+        {
           favoritedBy: {
             _count: "desc",
           },
@@ -365,6 +368,10 @@ export const contentRouter = router({
         const favDiff = Number(b.is_favorited) - Number(a.is_favorited);
         if (favDiff !== 0) return favDiff;
 
+        const aPos = a.job_position ?? "\uffff"; // nulls go to the end
+        const bPos = b.job_position ?? "\uffff";
+        if (aPos !== bPos) return aPos.localeCompare(bPos);
+
         // 2. pinned tags (optional enhancement)
         const pinnedId = input.pinnedTagId;
 
@@ -376,7 +383,7 @@ export const contentRouter = router({
           if (pinnedDiff !== 0) return pinnedDiff;
         }
 
-        // 3. fallback: last modified
+        // 4. fallback: last modified
         return new Date(b.last_modified ?? 0).getTime() - new Date(a.last_modified ?? 0).getTime();
       });
   }),

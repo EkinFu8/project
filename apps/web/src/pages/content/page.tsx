@@ -176,6 +176,9 @@ export default function ContentPage() {
     const aFav = isFavorited(a.fileID) ? 1 : 0;
     const bFav = isFavorited(b.fileID) ? 1 : 0;
     if (bFav !== aFav) return bFav - aFav;
+    const aPos = a.job_position ?? "\uffff";
+    const bPos = b.job_position ?? "\uffff";
+    if (aPos !== bPos) return aPos.localeCompare(bPos);
 
     const dir = filters.sortDir === "asc" ? 1 : -1;
 
