@@ -26,6 +26,12 @@ function displayDateLabel(value: string): string {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString();
 }
 
+function todayDateInputValue(): string {
+  const today = new Date();
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+  return today.toISOString().split("T")[0];
+}
+
 type TagShape = { id: number; name: string; color?: string };
 
 type ContentFormFieldsProps = {
@@ -44,6 +50,8 @@ type ContentFormFieldsProps = {
   setLastModified: (v: string) => void;
   expirationDate: string;
   setExpirationDate: (v: string) => void;
+  nextReviewDate: string;
+  setNextReviewDate: (v: string) => void;
   contentType: string;
   setContentType: (v: string) => void;
   documentStatus: string;
@@ -135,6 +143,7 @@ function ContentMetadataReadonlyTable({
   jobPosition,
   lastModified,
   expirationDate,
+  nextReviewDate,
   contentType,
   documentStatus,
   selectedTags,
@@ -146,6 +155,7 @@ function ContentMetadataReadonlyTable({
   jobPosition: string;
   lastModified: string;
   expirationDate: string;
+  nextReviewDate: string;
   contentType: string;
   documentStatus: string;
   selectedTags: TagShape[];
@@ -231,6 +241,15 @@ function ContentMetadataReadonlyTable({
               scope="row"
               className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
             >
+              Next Review Date
+            </th>
+            <td className="px-4 py-3 text-foreground">{displayDateLabel(nextReviewDate)}</td>
+          </tr>
+          <tr className="border-b border-border last:border-b-0">
+            <th
+              scope="row"
+              className="bg-muted/40 px-4 py-3 text-left align-top font-medium text-muted-foreground"
+            >
               Content type
             </th>
             <td className="px-4 py-3 text-foreground">{contentType || "—"}</td>
@@ -290,6 +309,7 @@ function ContentFormSummarySection({
   jobPosition,
   lastModified,
   expirationDate,
+  nextReviewDate,
   contentType,
   documentStatus,
   selectedTags,
@@ -309,6 +329,7 @@ function ContentFormSummarySection({
   jobPosition: string;
   lastModified: string;
   expirationDate: string;
+  nextReviewDate: string;
   contentType: string;
   documentStatus: string;
   selectedTags: TagShape[];
@@ -350,6 +371,7 @@ function ContentFormSummarySection({
         jobPosition={jobPosition}
         lastModified={lastModified}
         expirationDate={expirationDate}
+        nextReviewDate={nextReviewDate}
         contentType={contentType}
         documentStatus={documentStatus}
         selectedTags={selectedTags}
@@ -442,6 +464,8 @@ function ContentFormMetadataSection({
   setLastModified,
   expirationDate,
   setExpirationDate,
+  nextReviewDate,
+  setNextReviewDate,
   contentType,
   setContentType,
   documentStatus,
@@ -473,6 +497,8 @@ function ContentFormMetadataSection({
   setLastModified: (v: string) => void;
   expirationDate: string;
   setExpirationDate: (v: string) => void;
+  nextReviewDate: string;
+  setNextReviewDate: (v: string) => void;
   contentType: string;
   setContentType: (v: string) => void;
   documentStatus: string;
@@ -550,7 +576,13 @@ function ContentFormMetadataSection({
         value={expirationDate}
         onChange={(e) => setExpirationDate(e.target.value)}
       />
-
+      <TextInput
+        label="Next Review Date"
+        type="date"
+        value={nextReviewDate}
+        onChange={(e) => setNextReviewDate(e.target.value)}
+        min={todayDateInputValue()}
+      />
       <div>
         <label htmlFor="content-type" className="mb-2 block text-sm font-semibold text-foreground">
           Content Type
@@ -663,6 +695,8 @@ function ContentFormFields({
   setLastModified,
   expirationDate,
   setExpirationDate,
+  nextReviewDate,
+  setNextReviewDate,
   contentType,
   setContentType,
   documentStatus,
@@ -810,16 +844,56 @@ function ContentFormFields({
             <HighlightedExcerpt text={extractedText} query={searchQuery} />
           )}
           {url && canDisplayDocument(url) ? (
-            <div className="mb-6 text-black overflow-hidden rounded-lg border border-border bg-muted">
-              <style>{`.rdv-txt-container { white-space: pre; font-family: monospace; }`}</style>
+            <div className="mb-6 overflow-hidden rounded-lg border border-gray-300 bg-muted text-black max-w-4xl mx-auto shadow-lg">
+              <style>{`.rdv-txt-container { white-space: pre; font-family: monospace; }
+    button.rdv-toolbar-btn[title='Download'],
+    button.rdv-toolbar-btn[title='Print'],
+    #pdf-download,
+    #pdf-print { display: none !important; }`}</style>
+
               <DocViewer
                 documents={docs}
                 pluginRenderers={DocViewerRenderers}
                 config={{
                   header: { disableHeader: true, disableFileName: true },
                 }}
-                style={{ height: "70vh", minHeight: 800, width: "100%" }}
+                style={{ height: "80vh", minHeight: 500, width: "100%" }}
               />
+
+              <div className="flex justify-end border-t border-border bg-background px-4 py-2.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    trackDownload.mutate({ fileID });
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = blobUrl;
+                    a.download = filename || "download";
+                    a.click();
+                    URL.revokeObjectURL(blobUrl);
+                  }}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-hanover-green px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-hanover-green/90 active:scale-95"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Download
+                </button>
+              </div>
             </div>
           ) : null}
           <form className="space-y-6" onSubmit={onSubmit}>
@@ -832,6 +906,7 @@ function ContentFormFields({
                 jobPosition={jobPosition}
                 lastModified={lastModified}
                 expirationDate={expirationDate}
+                nextReviewDate={nextReviewDate}
                 contentType={contentType}
                 documentStatus={documentStatus}
                 selectedTags={selectedTags}
@@ -883,6 +958,8 @@ function ContentFormFields({
                 setLastModified={setLastModified}
                 expirationDate={expirationDate}
                 setExpirationDate={setExpirationDate}
+                nextReviewDate={nextReviewDate}
+                setNextReviewDate={setNextReviewDate}
                 contentType={contentType}
                 setContentType={setContentType}
                 documentStatus={documentStatus}
@@ -922,6 +999,7 @@ function ContentFormPage() {
   const [jobPosition, setJobPosition] = useState("");
   const [lastModified, setLastModified] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
+  const [nextReviewDate, setNextReviewDate] = useState("");
   const [contentType, setContentType] = useState("");
   const [documentStatus, setDocumentStatus] = useState("");
   const [selectedTags, setSelectedTags] = useState<{ id: number; name: string }[]>([]);
@@ -969,6 +1047,7 @@ function ContentFormPage() {
     setJobPosition(d.job_position ?? "");
     setLastModified(formatDateField(d.last_modified));
     setExpirationDate(formatDateField(d.expiration_date));
+    setNextReviewDate(formatDateField(d.next_review_date));
     setContentType(d.content_type ?? "");
     setDocumentStatus(d.document_status ?? "");
     setSelectedTags(d.content_tags?.map((ct) => ct.tag) ?? []);
@@ -1058,6 +1137,11 @@ function ContentFormPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    if (nextReviewDate && nextReviewDate < todayDateInputValue()) {
+      alert("Next review date cannot be in the past");
+      return;
+    }
+
     let finalID = fileID;
     if (!fileID) {
       finalID = url.slice(-64);
@@ -1072,6 +1156,7 @@ function ContentFormPage() {
       job_position: toNullable(jobPosition),
       last_modified: lastModified ? new Date(lastModified) : null,
       expiration_date: expirationDate ? new Date(expirationDate) : null,
+      next_review_date: nextReviewDate ? new Date(nextReviewDate) : null,
       content_type: toNullable<"Reference" | "Workflow">(contentType as "Reference" | "Workflow"),
       document_status: toNullable<"Created" | "in-progress" | "Finalized" | "Archived">(
         documentStatus as "Created" | "in-progress" | "Finalized" | "Archived",
@@ -1229,6 +1314,8 @@ function ContentFormPage() {
         setLastModified={setLastModified}
         expirationDate={expirationDate}
         setExpirationDate={setExpirationDate}
+        nextReviewDate={nextReviewDate}
+        setNextReviewDate={setNextReviewDate}
         contentType={contentType}
         setContentType={setContentType}
         documentStatus={documentStatus}
