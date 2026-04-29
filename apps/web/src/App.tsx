@@ -128,12 +128,12 @@ function ProtectedLayout() {
         }}
       />
       <CMSChatbot
-          context={{
-            user: {
-              name: username ? username : "User",
-              role: role ? role : "Unknown",
-            },
-          }}
+        context={{
+          user: {
+            name: username ? username : "User",
+            role: role ? role : "Unknown",
+          },
+        }}
       />
       <Outlet />
     </div>
