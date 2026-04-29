@@ -1,56 +1,160 @@
 import type * as webllm from "@mlc-ai/web-llm";
+import { Bot, ExternalLink, Send, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ASSISTANT_TOOLS, CLASS_PROJECT_DISCLOSURE, DEFAULT_MODEL } from "./chatbot/knowledge";
+import { ASSISTANT_TOOLS, DEFAULT_MODEL } from "./chatbot/knowledge";
 import { buildGreeting, buildSystemPrompt } from "./chatbot/prompt";
 import { statusColor, statusLabel } from "./chatbot/status";
 import { styles } from "./chatbot/styles";
-import type { ChatMessage, ChatRole, CMSChatbotProps } from "./chatbot/types";
+import type { AssistantAction, ChatMessage, ChatRole, CMSChatbotProps } from "./chatbot/types";
 import { useWebLlmAssistant } from "./chatbot/use-web-llm-assistant";
 
-function AssistantIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="white" aria-hidden="true">
-      <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
-    </svg>
-  );
-}
+type ParsedMessage = {
+  text: string;
+  actions: AssistantAction[];
+};
 
-function SendIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="white" aria-hidden="true">
-      <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z" />
-    </svg>
-  );
-}
-
-function ToggleIcon({ open }: { open: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="white" aria-hidden="true">
-      {open ? (
-        <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-      ) : (
-        <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
-      )}
-    </svg>
-  );
-}
+const ACTION_PATTERN = /^ACTION:\s*(\/[^\s|]*)\s*\|\s*(.+)$/i;
 
 function resizeTextarea(textarea: HTMLTextAreaElement) {
   textarea.style.height = "auto";
-  textarea.style.height = `${Math.min(textarea.scrollHeight, 100)}px`;
+  textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
 }
 
-export default function CMSChatbot({ context, modelId = DEFAULT_MODEL }: CMSChatbotProps) {
-  const [open, setOpen] = useState(false);
-  const [hasOpened, setHasOpened] = useState(false);
+function parseAssistantMessage(content: string): ParsedMessage {
+  const actions: AssistantAction[] = [];
+  const lines = content.split("\n");
+  const textLines: string[] = [];
+
+  for (const line of lines) {
+    const match = line.trim().match(ACTION_PATTERN);
+    const to = match?.[1];
+    const label = match?.[2];
+    if (to && label) {
+      actions.push({ to, label: label.trim(), tone: "primary" });
+      continue;
+    }
+    textLines.push(line);
+  }
+
+  return { text: textLines.join("\n").trim(), actions };
+}
+
+function actionAllowed(action: AssistantAction, allActions: AssistantAction[]) {
+  return allActions.some((candidate) => candidate.to === action.to);
+}
+
+function actionKey(action: AssistantAction) {
+  return `${action.to}:${action.label}`;
+}
+
+function inferActionsFromText(text: string, availableActions: AssistantAction[]) {
+  const lower = text.toLowerCase();
+  const keywordByRoute: Record<string, string[]> = {
+    "/dashboard": ["dashboard", "metrics", "audit"],
+    "/notifications": ["notifications", "notification", "reminders"],
+    "/hero/content": ["content library", "content", "documents", "search"],
+    "/hero/content/new": ["new content", "create content", "upload"],
+    "/users": ["users", "user management", "accounts"],
+    "/tags": ["tags", "meta tags"],
+    "/employees": ["coworkers", "employees", "directory"],
+    "/help": ["help"],
+  };
+
+  return availableActions.filter((action) => {
+    const keywords = keywordByRoute[action.to] ?? [];
+    return keywords.some((keyword) => lower.includes(keyword));
+  });
+}
+
+function mergeActions(actions: AssistantAction[], inferred: AssistantAction[]) {
+  const seen = new Set(actions.map((action) => action.to));
+  return [
+    ...actions,
+    ...inferred.filter((action) => {
+      if (seen.has(action.to)) return false;
+      seen.add(action.to);
+      return true;
+    }),
+  ];
+}
+
+function SuggestedActionButton({
+  action,
+  onNavigate,
+}: {
+  action: AssistantAction;
+  onNavigate?: (to: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate?.(action.to)}
+      style={{
+        ...styles.actionButton,
+        ...(action.tone === "primary" ? styles.primaryActionButton : null),
+      }}
+    >
+      <span>{action.label}</span>
+      <ExternalLink size={13} aria-hidden="true" />
+    </button>
+  );
+}
+
+function Launcher({ onSubmitQuestion }: { onSubmitQuestion?: (question: string) => void }) {
+  const [value, setValue] = useState("");
+
+  function submit() {
+    const question = value.trim();
+    if (!question) return;
+    setValue("");
+    onSubmitQuestion?.(question);
+  }
+
+  return (
+    <div style={styles.launcherRoot}>
+      <div style={styles.launcher}>
+        <div style={styles.launcherIcon}>
+          <Bot size={17} aria-hidden="true" />
+        </div>
+        <input
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              submit();
+            }
+          }}
+          placeholder="Ask Gompei..."
+          style={styles.launcherInput}
+          aria-label="Ask Gompei"
+        />
+        <button type="button" onClick={submit} style={styles.launcherButton} aria-label="Ask">
+          <Send size={15} aria-hidden="true" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function CMSChatbot({
+  context,
+  initialPrompt,
+  mode = "launcher",
+  modelId = DEFAULT_MODEL,
+  onNavigate,
+  onSubmitQuestion,
+}: CMSChatbotProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
   const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const initialPromptSentRef = useRef(false);
   const nextId = useRef(0);
 
+  const availableActions = useMemo(() => context.actions ?? [], [context.actions]);
   const systemPrompt = useMemo(
     () => buildSystemPrompt({ context, tools: ASSISTANT_TOOLS }),
     [context],
@@ -71,22 +175,22 @@ export default function CMSChatbot({ context, modelId = DEFAULT_MODEL }: CMSChat
 
   const handleReady = useCallback(() => {
     setMessages((current) => {
-      if (current.length > 0) {
+      if (current.length > 0 || initialPrompt?.trim()) {
         return current;
       }
 
       const greeting: ChatMessage = {
         id: nextId.current,
         role: "assistant",
-        content: `${buildGreeting(context)} ${CLASS_PROJECT_DISCLOSURE}`,
+        content: buildGreeting(context),
       };
       nextId.current += 1;
       return [greeting];
     });
-  }, [context]);
+  }, [context, initialPrompt]);
 
   const { complete, hasGpu, progress, status } = useWebLlmAssistant({
-    enabled: hasOpened,
+    enabled: mode === "page",
     modelId,
     onReady: handleReady,
   });
@@ -97,45 +201,58 @@ export default function CMSChatbot({ context, modelId = DEFAULT_MODEL }: CMSChat
     }
   });
 
-  const sendMessage = useCallback(async () => {
-    const text = input.trim();
-    if (!text || status !== "ready") {
+  const sendMessage = useCallback(
+    async (overrideText?: string) => {
+      const text = (overrideText ?? input).trim();
+      if (!text || status !== "ready") {
+        return;
+      }
+
+      setInput("");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
+
+      const userMessage = appendMessage("user", text);
+      const assistantMessage = appendMessage("assistant", "");
+      setIsTyping(true);
+
+      const chatMessages: webllm.ChatCompletionMessageParam[] = [
+        { role: "system", content: systemPrompt },
+        ...messages.map((message) => ({ role: message.role, content: message.content })),
+        { role: "user", content: userMessage.content },
+      ];
+
+      try {
+        await complete({
+          messages: chatMessages,
+          onToken: (content) => {
+            setIsTyping(false);
+            updateMessage(assistantMessage.id, content);
+          },
+        });
+      } catch (error) {
+        console.error("Gompei chat error:", error);
+        updateMessage(
+          assistantMessage.id,
+          "I could not finish that response. Give me a moment, then try again.",
+        );
+      } finally {
+        setIsTyping(false);
+      }
+    },
+    [appendMessage, complete, input, messages, status, systemPrompt, updateMessage],
+  );
+
+  useEffect(() => {
+    const question = initialPrompt?.trim();
+    if (!question || status !== "ready" || initialPromptSentRef.current) {
       return;
     }
 
-    setInput("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
-
-    const userMessage = appendMessage("user", text);
-    const assistantMessage = appendMessage("assistant", "");
-    setIsTyping(true);
-
-    const chatMessages: webllm.ChatCompletionMessageParam[] = [
-      { role: "system", content: systemPrompt },
-      ...messages.map((message) => ({ role: message.role, content: message.content })),
-      { role: "user", content: userMessage.content },
-    ];
-
-    try {
-      await complete({
-        messages: chatMessages,
-        onToken: (content) => {
-          setIsTyping(false);
-          updateMessage(assistantMessage.id, content);
-        },
-      });
-    } catch (error) {
-      console.error("Chat error:", error);
-      updateMessage(
-        assistantMessage.id,
-        "I could not complete that response. Try again after the local model is ready.",
-      );
-    } finally {
-      setIsTyping(false);
-    }
-  }, [appendMessage, complete, input, messages, status, systemPrompt, updateMessage]);
+    initialPromptSentRef.current = true;
+    void sendMessage(question);
+  }, [initialPrompt, sendMessage, status]);
 
   function handleTextareaChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
     setInput(event.target.value);
@@ -145,165 +262,160 @@ export default function CMSChatbot({ context, modelId = DEFAULT_MODEL }: CMSChat
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      sendMessage();
+      void sendMessage();
     }
   }
 
-  function handleToggle() {
-    setHasOpened(true);
-    setOpen((current) => !current);
+  if (mode === "launcher") {
+    return <Launcher onSubmitQuestion={onSubmitQuestion} />;
   }
 
   const isDisabled = status !== "ready";
 
   return (
-    <div style={styles.root}>
-      {open && (
-        <div style={styles.panel}>
-          <div style={styles.header}>
-            <div style={styles.avatar}>
-              <AssistantIcon />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>iBank Assistant</div>
-              <div style={{ fontSize: 12, color: "#888", marginTop: 1 }}>
-                {statusLabel(status, progress)}
-              </div>
-            </div>
-            <div
-              aria-label={statusLabel(status, progress)}
-              role="status"
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                background: statusColor(status),
-                flexShrink: 0,
-                animation:
-                  status === "loading" || status === "generating"
-                    ? "pulse 1s ease-in-out infinite"
-                    : "none",
-              }}
-            />
+    <section style={styles.pageRoot}>
+      <div style={styles.pageShell}>
+        <header style={styles.pageHeader}>
+          <div style={styles.pageAvatar}>
+            <Bot size={22} aria-hidden="true" />
           </div>
+          <div>
+            <h1 style={styles.pageTitle}>Gompei</h1>
+            <p style={styles.pageSubtitle}>
+              Ask about this workspace, documents, notifications, and what to do next.
+            </p>
+          </div>
+          <div
+            aria-label={statusLabel(status, progress)}
+            role="status"
+            style={{
+              ...styles.statusDot,
+              background: statusColor(status),
+              animation:
+                status === "loading" || status === "generating"
+                  ? "pulse 1s ease-in-out infinite"
+                  : "none",
+            }}
+          />
+        </header>
 
-          {!hasGpu && (
-            <div style={styles.gpuWarning}>
-              The local assistant needs WebGPU. Use Chrome 113+ or Edge 113+ to run it in this
-              browser.
+        {!hasGpu ? (
+          <div style={styles.gpuWarning}>
+            Gompei needs WebGPU locally. Use Chrome 113+ or Edge 113+ for chat.
+          </div>
+        ) : null}
+
+        {status === "loading" ? (
+          <div style={styles.loadPane}>
+            <div style={styles.loadHeader}>
+              <Sparkles size={15} aria-hidden="true" />
+              <span>Preparing Gompei</span>
             </div>
-          )}
-
-          {status === "loading" && (
-            <div style={styles.loadPane}>
-              <p style={{ fontSize: 13, color: "#666", margin: 0, lineHeight: 1.5 }}>
-                Preparing the local model. You can keep using the app while it loads.
-              </p>
-              <div style={styles.progressTrack}>
-                <div
-                  style={{
-                    height: "100%",
-                    width: `${progress}%`,
-                    background: "#111",
-                    borderRadius: 2,
-                    transition: "width 0.3s",
-                  }}
-                />
-              </div>
-              <div style={{ fontSize: 12, color: "#888", textAlign: "right" }}>{progress}%</div>
+            <div style={styles.progressTrack}>
+              <div
+                style={{
+                  height: "100%",
+                  width: `${progress}%`,
+                  background: "#164734",
+                  borderRadius: 999,
+                  transition: "width 0.3s",
+                }}
+              />
             </div>
-          )}
+            <div style={styles.progressLabel}>{progress}%</div>
+          </div>
+        ) : null}
 
-          <div ref={messagesRef} style={styles.messages}>
-            {messages.map((message) => (
+        <div ref={messagesRef} style={styles.pageMessages}>
+          {messages.map((message) => {
+            const parsed =
+              message.role === "assistant"
+                ? parseAssistantMessage(message.content)
+                : { text: message.content, actions: [] };
+            const actions = mergeActions(
+              parsed.actions.filter((action) => actionAllowed(action, availableActions)),
+              message.role === "assistant"
+                ? inferActionsFromText(parsed.text, availableActions)
+                : [],
+            );
+
+            return (
               <div
                 key={message.id}
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  maxWidth: "86%",
+                  ...styles.messageGroup,
                   alignSelf: message.role === "user" ? "flex-end" : "flex-start",
                   alignItems: message.role === "user" ? "flex-end" : "flex-start",
                 }}
               >
-                <div style={{ fontSize: 11, color: "#999", marginBottom: 4, padding: "0 2px" }}>
-                  {message.role === "user" ? context.user.name : "iBank Assistant"}
+                <div style={styles.messageAuthor}>
+                  {message.role === "user" ? context.user.name : "Gompei"}
                 </div>
                 <div
                   style={{
-                    padding: "9px 13px",
-                    borderRadius: 14,
-                    borderBottomRightRadius: message.role === "user" ? 4 : 14,
-                    borderBottomLeftRadius: message.role === "assistant" ? 4 : 14,
-                    fontSize: 13.5,
-                    lineHeight: 1.55,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    background: message.role === "user" ? "#111" : "#f4f4f2",
-                    color: message.role === "user" ? "#fff" : "#111",
+                    ...styles.messageBubble,
+                    ...(message.role === "user" ? styles.userBubble : styles.assistantBubble),
                   }}
                 >
-                  {message.content}
+                  {parsed.text || (message.role === "assistant" && isTyping ? "Thinking" : "")}
                 </div>
+                {actions.length > 0 ? (
+                  <div style={styles.messageActions}>
+                    {actions.map((action) => (
+                      <SuggestedActionButton
+                        key={actionKey(action)}
+                        action={action}
+                        onNavigate={onNavigate}
+                      />
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            ))}
+            );
+          })}
 
-            {isTyping && (
-              <div style={{ display: "flex", gap: 4, alignItems: "center", padding: "4px 0" }}>
-                {[0, 0.15, 0.3].map((delay) => (
-                  <div
-                    key={delay}
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      background: "#bbb",
-                      animation: `bounce 1s ease-in-out ${delay}s infinite`,
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={styles.inputRow}>
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={handleTextareaChange}
-              onKeyDown={handleKeyDown}
-              disabled={isDisabled}
-              placeholder="Ask about workflows or permissions..."
-              rows={1}
-              style={{ ...styles.textarea, opacity: isDisabled ? 0.4 : 1 }}
-            />
-            <button
-              type="button"
-              onClick={sendMessage}
-              disabled={isDisabled}
-              style={{ ...styles.sendButton, opacity: isDisabled ? 0.35 : 1 }}
-              aria-label="Send message"
-            >
-              <SendIcon />
-            </button>
-          </div>
+          {isTyping ? (
+            <div style={styles.typingRow}>
+              {[0, 0.15, 0.3].map((delay) => (
+                <div
+                  key={delay}
+                  style={{
+                    ...styles.typingDot,
+                    animation: `bounce 1s ease-in-out ${delay}s infinite`,
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
-      )}
 
-      <button
-        type="button"
-        style={styles.fab}
-        onClick={handleToggle}
-        title={open ? "Close assistant" : "Open assistant"}
-        aria-label={open ? "Close assistant" : "Open assistant"}
-      >
-        <ToggleIcon open={open} />
-      </button>
+        <div style={styles.pageInputRow}>
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={handleTextareaChange}
+            onKeyDown={handleKeyDown}
+            disabled={isDisabled}
+            placeholder="Ask Gompei anything about iBank..."
+            rows={1}
+            style={{ ...styles.pageTextarea, opacity: isDisabled ? 0.45 : 1 }}
+          />
+          <button
+            type="button"
+            onClick={() => void sendMessage()}
+            disabled={isDisabled}
+            style={{ ...styles.sendButton, opacity: isDisabled ? 0.35 : 1 }}
+            aria-label="Send message"
+          >
+            <Send size={16} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
 
       <style>{`
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.42} }
         @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
       `}</style>
-    </div>
+    </section>
   );
 }

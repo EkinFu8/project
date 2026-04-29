@@ -2,26 +2,35 @@ import type { AssistantToolManifest } from "./types";
 
 export const DEFAULT_MODEL = "Phi-3.5-mini-instruct-q4f16_1-MLC";
 
-export const CLASS_PROJECT_DISCLOSURE =
-  "This website is a WPI CS 3733 Software Engineering class project and is not used by Hanover Insurance.";
-
 export const ASSISTANT_TOOLS: AssistantToolManifest[] = [
+  {
+    name: "page_state",
+    description:
+      "Available context snapshot with the signed-in user, current page, role permissions, notifications, todos, and submitted-document counts.",
+    availability: "available",
+  },
+  {
+    name: "navigate_action",
+    description:
+      "Available UI action. Recommend navigation by emitting ACTION: /route | Label so the chat renders a clickable button.",
+    availability: "available",
+  },
   {
     name: "content_search",
     description:
-      "Future retrieval hook for searching indexed content, document metadata, and help articles.",
+      "Planned retrieval hook for searching indexed document bodies, metadata, and help articles with server-side permission checks.",
     availability: "planned",
   },
   {
     name: "permission_check",
     description:
-      "Future policy hook for checking whether a user can perform an action before recommending it.",
+      "Planned server-side policy hook for checking a specific action before recommending it.",
     availability: "planned",
   },
   {
     name: "admin_action_router",
     description:
-      "Future controlled action hook for creating users, editing tags, and other admin-only workflows.",
+      "Planned controlled action hook for creating users, editing tags, and other admin-only workflows.",
     availability: "planned",
     requiresAdmin: true,
   },
@@ -30,7 +39,7 @@ export const ASSISTANT_TOOLS: AssistantToolManifest[] = [
 export const APP_GUIDE = `
 Product
 - iBank is a content management app for employee-facing insurance documents.
-- The assistant is advisory only. It cannot perform writes, read private records, bypass permissions, or verify server state.
+- The assistant is a native product guide. It can use the provided signed-in snapshot and render navigation buttons, but it cannot perform writes, bypass permissions, or invent live database results.
 
 Roles and permissions
 - admin: can manage users, content, tags, dashboard metrics, and audit views.
@@ -49,7 +58,9 @@ Primary pages
 - /tags: admin-only global meta tag management.
 - /dashboard: admin-only metrics and audit views.
 - /employees: coworker directory.
+- /notifications: document changes, review reminders, and expiration reminders visible to the user.
 - /account: current user's profile settings.
+- /help: workflow reference and troubleshooting.
 
 Common workflows
 - Create content: open Content, choose New Content, upload a file or add a URL, complete metadata, choose role/tags, then save.
@@ -57,9 +68,12 @@ Common workflows
 - Add a user: admins open User Management, choose New User, enter account details, assign portal/role, then save.
 - Manage meta tags: admins open Tags, search or create a tag, choose a color, then save. Do not tell non-admins they can create global meta tags.
 - Review operations: admins use Dashboard for usage metrics, audit activity, content currency, and expiration review.
+- Check notifications: open Notifications. The snapshot may include unread counts and recent items.
+- Check todos: use notification and due-review/expired counts in the snapshot. Do not pretend to have more todo data than the snapshot provides.
+- Check submitted documents: use the submitted-document count and highlights in the snapshot, then offer Content if they need the list.
 
 Response boundaries
-- If the answer depends on live database state, tell the user where to check instead of inventing a result.
+- If the answer depends on live database state not present in the snapshot, say what you can see and offer a button to the right page.
 - If a request asks for restricted action, explain the permission requirement and the appropriate next step.
 - If a route or workflow is not listed here, say you do not know from the local guide.
 `.trim();

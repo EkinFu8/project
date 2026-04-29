@@ -1,5 +1,6 @@
 import {
   Bell,
+  Bot,
   Boxes,
   CircleHelp,
   FileText,
@@ -227,6 +228,8 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
                         <NavLink to={item.to} className={cn(menuItemClass, "gap-2 no-underline")}>
                           {item.label === "Credits" ? (
                             <Boxes className="size-4" aria-hidden strokeWidth={2} />
+                          ) : item.label === "Gompei" ? (
+                            <Bot className="size-4" aria-hidden strokeWidth={2} />
                           ) : (
                             <CircleHelp className="size-4" aria-hidden strokeWidth={2} />
                           )}
