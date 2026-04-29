@@ -10,8 +10,37 @@ type SeedTemplate = {
   last_modified: Date;
 };
 
+type Persona = "underwriter" | "business-analyst" | "actuarial-analyst" | "exl-operations";
+
+const STATUSES: SeedTemplate["document_status"][] = [
+  "Finalized",
+  "Created",
+  "in-progress",
+  "Finalized",
+  "Archived",
+];
+
+function addDays(base: string, days: number) {
+  const date = new Date(base);
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+function buildTemplates(persona: Persona, names: string[]): SeedTemplate[] {
+  return names.map((filename, index) => ({
+    filename,
+    url: `https://example.com/${persona}/${filename
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")}`,
+    content_type: index % 3 === 0 ? "Workflow" : "Reference",
+    document_status: STATUSES[index % STATUSES.length],
+    last_modified: addDays("2026-04-01", index),
+  }));
+}
+
 function buildPersonaContent(
-  persona: "actuarial-analyst" | "exl-operations",
+  persona: Persona,
   templates: SeedTemplate[],
   ownerIds: [string, string],
 ) {
@@ -23,6 +52,8 @@ function buildPersonaContent(
       ),
     owner_id: ownerIds[index % ownerIds.length],
     job_position: persona,
+    expiration_date: addDays("2026-05-15", index * 4),
+    next_review_date: addDays("2026-04-20", index * 3),
     ...template,
   }));
 }
@@ -279,6 +310,36 @@ async function main() {
     },
   ];
 
+  const underwriterTemplates = buildTemplates("underwriter", [
+    "Underwriting Authority Matrix",
+    "Risk Review Checklist",
+    "Submission Intake Playbook",
+    "Broker Communication Guide",
+    "Policy Endorsement Workflow",
+    "Renewal Review Standards",
+    "Loss Run Analysis Notes",
+    "Coverage Exception Reference",
+    "Premium Change Approval Flow",
+    "Underwriter Quality Audit Guide",
+    "Binding Approval Checklist",
+    "Referral Escalation Matrix",
+  ]);
+
+  const businessAnalystTemplates = buildTemplates("business-analyst", [
+    "Requirements Intake Template",
+    "Stakeholder Interview Guide",
+    "Process Mapping Standards",
+    "Release Readiness Checklist",
+    "User Acceptance Test Plan",
+    "Dashboard Metrics Dictionary",
+    "Data Quality Review Notes",
+    "Change Request Workflow",
+    "Persona Research Summary",
+    "Backlog Grooming Playbook",
+    "Business Rules Catalog",
+    "Feature Traceability Matrix",
+  ]);
+
   const legacyContent = [
     {
       fileID: "FILE-TS-GUIDE-001",
@@ -333,6 +394,8 @@ async function main() {
   ];
 
   const personaContent = [
+    ...buildPersonaContent("underwriter", underwriterTemplates, [userRow.id, adminRow.id]),
+    ...buildPersonaContent("business-analyst", businessAnalystTemplates, [adminRow.id, userRow.id]),
     ...buildPersonaContent("actuarial-analyst", actuarialTemplates, [adminRow.id, userRow.id]),
     ...buildPersonaContent("exl-operations", exlTemplates, [userRow.id, adminRow.id]),
   ];
@@ -342,7 +405,7 @@ async function main() {
   });
 
   console.log(
-    `Seeded ${legacyContent.length + personaContent.length} content items including 15 for actuarial-analyst and 15 for exl-operations.`,
+    `Seeded ${legacyContent.length + personaContent.length} content items with at least 10 documents for each Iteration 4 persona.`,
   );
 }
 

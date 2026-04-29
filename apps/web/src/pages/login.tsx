@@ -33,9 +33,9 @@ function LoginFormPage({ bannerText }: { bannerText?: string }) {
 
   return (
     <LoginLayout title="Sign in" subtitle="Sign in with your Hanover account.">
-      <div className="rounded-2xl border border-white/25 bg-card/95 p-8 text-card-foreground shadow-2xl shadow-black/20 backdrop-blur-md dark:border-white/10 dark:shadow-black/35">
+      <div className="rounded-2xl border border-white/25 bg-card/95 p-8 text-card-foreground shadow-2xl shadow-black/20 backdrop-blur-md transition-shadow duration-300 hover:shadow-black/30 dark:border-white/10 dark:shadow-black/35">
         {bannerText ? (
-          <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div className="mb-6 animate-fade-in-down rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {bannerText}
           </div>
         ) : null}
@@ -58,7 +58,7 @@ function LoginFormPage({ bannerText }: { bannerText?: string }) {
           />
 
           {login.isError && (
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <div className="animate-fade-in-down rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {login.error?.message ?? "Sign in failed."}
             </div>
           )}
@@ -66,7 +66,7 @@ function LoginFormPage({ bannerText }: { bannerText?: string }) {
           <button
             type="submit"
             disabled={login.isPending}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-hanover-green py-3 font-semibold text-white shadow-md shadow-hanover-green/25 transition-colors hover:bg-hanover-green/90 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-hanover-green py-3 font-semibold text-white shadow-md shadow-hanover-green/25 transition-all duration-200 hover:bg-hanover-green/90 hover:shadow-lg hover:shadow-hanover-green/30 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-hanover-deepblue"
           >
             {login.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             Sign in

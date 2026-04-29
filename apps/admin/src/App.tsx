@@ -20,7 +20,7 @@ import UserFormPage from "@/pages/users/user-form";
 
 const navItems = [
   { label: "Content", to: "/content" },
-  { label: "User Management", to: "/users" },
+  { label: "Users", to: "/users" },
 ];
 
 const ADMIN_APP_NOTICE = "You were signed out. Please sign in again.";

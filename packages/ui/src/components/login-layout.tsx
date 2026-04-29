@@ -40,14 +40,14 @@ function LoginLayout({ title, subtitle, children, className }: LoginLayoutProps)
       />
 
       <div className="relative flex min-h-screen flex-col items-center justify-center px-4 py-10 sm:py-14">
-        <header className="mb-8 flex w-full max-w-md flex-col items-center gap-5 sm:mb-10">
+        <header className="mb-8 flex w-full max-w-md flex-col items-center gap-5 animate-fade-in-down sm:mb-10">
           <img
             src={hanoverLogo}
             alt="The Hanover Insurance Group"
             height={40}
             className="h-9 w-auto max-w-[min(100%,13rem)] object-contain object-center brightness-0 invert sm:h-10"
           />
-          <div className="h-1 w-14 rounded-full bg-hanover-green shadow-[0_0_20px_rgba(73,119,40,0.45)]" />
+          <div className="h-1 w-14 rounded-full bg-hanover-green shadow-[0_0_20px_rgba(73,119,40,0.45)] transition-all duration-500" />
           <div className="text-center">
             <h1 className="text-balance text-2xl font-semibold tracking-tight text-white sm:text-[1.65rem]">
               {title}
@@ -58,7 +58,7 @@ function LoginLayout({ title, subtitle, children, className }: LoginLayoutProps)
           </div>
         </header>
 
-        <div className="w-full max-w-md">{children}</div>
+        <div className="w-full max-w-md animate-fade-in-up">{children}</div>
       </div>
     </div>
   );

@@ -119,6 +119,40 @@ export const contentRouter = router({
     return { success: true };
   }),
 
+  trackView: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user?.id;
+    if (!userId) throw new Error("Not authenticated");
+
+    const viewedAt = new Date();
+    const file = await ctx.prisma.contentManagement.update({
+      where: { fileID: input.fileID },
+      data: {
+        view_count: { increment: 1 },
+        last_viewed_at: viewedAt,
+      },
+      select: {
+        filename: true,
+        view_count: true,
+        last_viewed_at: true,
+      },
+    });
+
+    await ctx.prisma.auditEvent.create({
+      data: {
+        userId,
+        action: "view",
+        documentId: input.fileID,
+        fileName: file.filename,
+        metadata: {
+          viewCount: file.view_count,
+          viewedAt: (file.last_viewed_at ?? viewedAt).toISOString(),
+        },
+      },
+    });
+
+    return { success: true, viewCount: file.view_count };
+  }),
+
   checkout: publicProcedure.input(contentIdSchema).mutation(async ({ ctx, input }) => {
     const userId = ctx.user?.id;
     if (!userId) throw new Error("Not authenticated");

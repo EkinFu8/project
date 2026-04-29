@@ -3,7 +3,7 @@ import { FileUpload } from "@myapp/ui/components/file-upload";
 import { TextInput } from "@myapp/ui/components/text-input";
 import "@iamjariwala/react-doc-viewer/dist/index.css";
 import { AlertTriangle, ArrowLeft, Loader2, Lock, Pencil, Unlock, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useSession } from "@/auth/session-context";
 import { useFileUpload } from "@/hooks/use-file-upload";
@@ -844,7 +844,7 @@ function ContentFormFields({
             <HighlightedExcerpt text={extractedText} query={searchQuery} />
           )}
           {url && canDisplayDocument(url) ? (
-            <div className="mb-6 overflow-hidden rounded-lg border border-gray-300 bg-muted text-black max-w-4xl mx-auto shadow-lg">
+            <div className="mx-auto mb-6 max-w-4xl overflow-hidden rounded-lg border border-gray-300 bg-muted text-black shadow-lg">
               <style>{`.rdv-txt-container { white-space: pre; font-family: monospace; }
     button.rdv-toolbar-btn[title='Download'],
     button.rdv-toolbar-btn[title='Print'],
@@ -988,6 +988,7 @@ function ContentFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditing = Boolean(id) && id !== "new";
+  const trackedViewIdRef = useRef<string | null>(null);
 
   const existing = trpc.content.getById.useQuery({ fileID: id! }, { enabled: isEditing });
   const employees = trpc.employee.list.useQuery({ employeePortalOnly: true });
@@ -1007,6 +1008,7 @@ function ContentFormPage() {
   const [pendingData, setPendingData] = useState<Parameters<typeof update.mutate>[0] | null>(null);
   const [operation, setOperation] = useState("");
   const [showReminder, setShowReminder] = useState(false);
+  const [reminderText, setReminderText] = useState("");
 
   const handleUploadSuccess = useCallback(
     (result: { publicUrl: string; storagePath: string; fileName: string }) => {
@@ -1029,13 +1031,32 @@ function ContentFormPage() {
     onSuccess: handleUploadSuccess,
   });
 
-  function handleExpirationReminder(expiration_date: string | null): void {
-    if (expiration_date) {
-      const expiration = new Date(expiration_date);
+  const handleReviewReminder = useCallback(
+    (next_review_date: string | Date | null, expiration_date: string | Date | null): void => {
       const today = new Date();
-      if (expiration <= today) setShowReminder(true);
-    }
-  }
+      today.setHours(0, 0, 0, 0);
+
+      if (next_review_date) {
+        const review = new Date(next_review_date);
+        review.setHours(0, 0, 0, 0);
+        if (review <= today) {
+          setReminderText("Review date passed. Review needed.");
+          setShowReminder(true);
+          return;
+        }
+      }
+
+      if (expiration_date) {
+        const expiration = new Date(expiration_date);
+        expiration.setHours(0, 0, 0, 0);
+        if (expiration <= today) {
+          setReminderText("Expired content. Review needed.");
+          setShowReminder(true);
+        }
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const d = existing.data;
@@ -1051,10 +1072,25 @@ function ContentFormPage() {
     setContentType(d.content_type ?? "");
     setDocumentStatus(d.document_status ?? "");
     setSelectedTags(d.content_tags?.map((ct) => ct.tag) ?? []);
-    handleExpirationReminder(d.expiration_date);
-  }, [existing.data]);
+    handleReviewReminder(d.next_review_date, d.expiration_date);
+  }, [existing.data, handleReviewReminder]);
 
   const utils = trpc.useUtils();
+  const trackView = trpc.content.trackView.useMutation({
+    onSuccess: () => {
+      if (!id) return;
+      utils.content.getById.invalidate({ fileID: id });
+      utils.content.list.invalidate();
+    },
+  });
+
+  useEffect(() => {
+    if (!isEditing || !existing.data?.fileID) return;
+    if (trackedViewIdRef.current === existing.data.fileID) return;
+
+    trackedViewIdRef.current = existing.data.fileID;
+    trackView.mutate({ fileID: existing.data.fileID });
+  }, [existing.data?.fileID, isEditing, trackView]);
 
   const create = trpc.content.create.useMutation({
     onSuccess: () => {
@@ -1186,7 +1222,7 @@ function ContentFormPage() {
   return (
     <>
       {showReminder && (
-        <div className="fixed bottom-2 right-2 gap-2 rounded-lg border border-destructive/40 bg-destructive/10 pl-10 pr-8 py-5 text-sm font-medium text-destructive">
+        <div className="fixed bottom-2 right-2 gap-2 rounded-lg border border-destructive/40 bg-destructive/10 py-5 pl-10 pr-8 text-sm font-medium text-destructive">
           <div className="absolute right-1 top-1">
             <button
               type="button"
@@ -1201,7 +1237,7 @@ function ContentFormPage() {
               <AlertTriangle />
             </div>
             <div>
-              <p className="text-lg">Expired content. Review needed.</p>
+              <p className="text-lg">{reminderText}</p>
             </div>
           </div>
         </div>
@@ -1336,8 +1372,8 @@ function ContentFormPage() {
         extractedText={existing.data?.extracted_text}
       />
       {askConfirmation && (
-        <div className="bg-black/50 fixed inset-0 flex items-center justify-center">
-          <div className="bg-white dark:bg-zinc-800 px-10 py-5 rounded-xl">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50">
+          <div className="rounded-xl bg-white px-10 py-5 dark:bg-zinc-800">
             <p>Are you sure you want to {operation} this content?</p>
             <br />
             <div className="flex w-full justify-between">
@@ -1354,7 +1390,7 @@ function ContentFormPage() {
                 onClick={() => {
                   setAskConfirmation(false);
                   const data = existing.data;
-                  if (data) handleExpirationReminder(data.expiration_date);
+                  if (data) handleReviewReminder(data.next_review_date, data.expiration_date);
                   if (pendingData && operation === "update") update.mutate(pendingData);
                   if ((!isCheckedOut || isCheckedOutByMe) && operation === "delete")
                     remove.mutate({ fileID: id! });
