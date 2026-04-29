@@ -93,7 +93,9 @@ export default function ContentPage() {
     const bFav = isFavorited(b.fileID) ? 1 : 0;
 
     if (bFav !== aFav) return bFav - aFav;
-
+    const aPos = a.job_position ?? "\uffff";
+    const bPos = b.job_position ?? "\uffff";
+    if (aPos !== bPos) return aPos.localeCompare(bPos);
     return new Date(b.last_modified ?? 0).getTime() - new Date(a.last_modified ?? 0).getTime();
   });
 

@@ -1,3 +1,4 @@
+import { cn } from "@myapp/ui/lib/utils";
 import { Lock, Unlock } from "lucide-react";
 import { Link } from "react-router";
 import { useFavorites } from "@/store/favorites";
@@ -40,6 +41,12 @@ export function ContentCard({
   const { isFavorited } = useFavorites();
   const isCheckedOutByMe = !!(item.is_checked_out && item.checked_out_by === currentUserId);
   const checkedOutByName = item.checked_out_by_user?.name;
+  const roleBG: Record<string, string> = {
+    underwriter: "bg-blue-50 dark:bg-blue-950/40",
+    "business-analyst": "bg-amber-50 dark:bg-amber-950/40",
+    "actuarial-analyst": "bg-emerald-50 dark:bg-emerald-950/40",
+    "exl-operations": "bg-violet-50 dark:bg-violet-950/40",
+  };
 
   const detailHref = searchQuery
     ? `/hero/content/${item.fileID}/edit?q=${encodeURIComponent(searchQuery)}`
@@ -48,7 +55,7 @@ export function ContentCard({
   return (
     <Link
       to={detailHref}
-      className="group rounded border border-border bg-card shadow-sm transition-all hover:border-hanover-green hover:shadow-md p-5"
+      className={`group rounded border border-border ${cn(roleBG[item.job_position ?? ""] ?? "bg-card")} shadow-sm transition-all hover:border-hanover-green hover:shadow-md p-5`}
     >
       {/* HEADER */}
       <div className="mb-3 flex items-start justify-between gap-2">
