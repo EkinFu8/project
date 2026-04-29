@@ -20,8 +20,10 @@
     "db:migration:new": "supabase migration new",
     "db:migration:up": "supabase migration up",
     "db:remote:push": "supabase db push",
+    "db:demo:reset": "pnpm --filter @myapp/api db:push:demo && pnpm --filter @myapp/api db:seed:demo",
     "db:prisma:push:remote": "pnpm --filter @myapp/api db:push:remote",
     "db:prisma:push:remote:debug": "pnpm --filter @myapp/api db:push:remote:debug",
+    "db:seed:demo": "pnpm --filter @myapp/api db:seed:demo",
     "db:prisma:seed:remote": "pnpm --filter @myapp/api db:seed:remote",
     "db:gen-types": "supabase gen types typescript --local > packages/types/src/database.ts"
   },

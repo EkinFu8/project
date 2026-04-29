@@ -1,6 +1,6 @@
 import { createTagSchema, tagIdSchema } from "@myapp/types/schemas";
 import { z } from "zod";
-import { publicProcedure, router } from "../lib/trpc";
+import { adminPortalProcedure, publicProcedure, router } from "../lib/trpc";
 
 export const tagRouter = router({
   // List all tags in the global pool
@@ -11,7 +11,7 @@ export const tagRouter = router({
   }),
 
   // Create a new tag — returns existing tag if name already exists
-  create: publicProcedure.input(createTagSchema).mutation(async ({ ctx, input }) => {
+  create: adminPortalProcedure.input(createTagSchema).mutation(async ({ ctx, input }) => {
     return ctx.prisma.tag.upsert({
       where: { name: input.name },
       update: {},
@@ -22,7 +22,7 @@ export const tagRouter = router({
     });
   }),
 
-  delete: publicProcedure.input(tagIdSchema).mutation(async ({ ctx, input }) => {
+  delete: adminPortalProcedure.input(tagIdSchema).mutation(async ({ ctx, input }) => {
     const usageCount = await ctx.prisma.contentTag.count({
       where: { tagId: input.id },
     });
@@ -36,7 +36,7 @@ export const tagRouter = router({
     });
   }),
 
-  update: publicProcedure
+  update: adminPortalProcedure
     .input(
       z.object({
         id: z.number(),

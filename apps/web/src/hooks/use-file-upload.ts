@@ -18,6 +18,17 @@ export function useFileUpload({ bucket, onSuccess }: UseFileUploadOptions) {
       setUploadProgress(0);
 
       try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session) {
+          setUploadError("You must be signed in to upload files.");
+          setIsUploading(false);
+          setUploadProgress(0);
+          return;
+        }
+
         const timestamp = Date.now();
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const storagePath = `${timestamp}-${safeName}`;
@@ -27,26 +38,18 @@ export function useFileUpload({ bucket, onSuccess }: UseFileUploadOptions) {
           setUploadProgress((prev) => Math.min(prev + 10, 90));
         }, 200);
 
-        let { error } = await supabase.storage
+        const { error } = await supabase.storage
           .from(bucket)
           .upload(storagePath, file, { upsert: false });
 
-        // Stale session tokens (e.g. after `supabase stop` / switching projects) can break the
-        // Authorization header while the anon key in env is fine. Retry once unauthenticated.
-        if (error?.message.includes("Invalid Compact JWS")) {
-          await supabase.auth.signOut();
-          ({ error } = await supabase.storage
-            .from(bucket)
-            .upload(storagePath, file, { upsert: false }));
-        }
+        const uploadErrorMessage = error?.message.includes("Invalid Compact JWS")
+          ? "Your upload session is stale. Sign out, clear site data for this origin, then sign in again."
+          : error?.message;
 
         clearInterval(progressInterval);
 
-        if (error) {
-          const message = error.message.includes("Invalid Compact JWS")
-            ? `${error.message}. Confirm VITE_SUPABASE_ANON_KEY matches this Supabase project (repo-root .env). If you reset local Supabase or changed projects, clear site data for this origin.`
-            : error.message;
-          setUploadError(message);
+        if (uploadErrorMessage) {
+          setUploadError(uploadErrorMessage);
           setIsUploading(false);
           setUploadProgress(0);
           return;

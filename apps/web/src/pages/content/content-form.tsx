@@ -58,6 +58,7 @@ type ContentFormFieldsProps = {
   setDocumentStatus: (v: string) => void;
   selectedTags: TagShape[];
   setSelectedTags: (tags: TagShape[]) => void;
+  canCreateTags: boolean;
   employees: RouterOutputs["employee"]["list"] | undefined;
   upload: (file: File) => void;
   isUploading: boolean;
@@ -472,6 +473,7 @@ function ContentFormMetadataSection({
   setDocumentStatus,
   selectedTags,
   setSelectedTags,
+  canCreateTags,
   employees,
   metadataEditMode,
   setMetadataEditMode,
@@ -505,6 +507,7 @@ function ContentFormMetadataSection({
   setDocumentStatus: (v: string) => void;
   selectedTags: TagShape[];
   setSelectedTags: (tags: TagShape[]) => void;
+  canCreateTags: boolean;
   employees: ContentFormFieldsProps["employees"];
   metadataEditMode: boolean;
   setMetadataEditMode: (v: boolean) => void;
@@ -617,7 +620,11 @@ function ContentFormMetadataSection({
         </select>
       </div>
 
-      <TagInput selectedTags={selectedTags} onChange={setSelectedTags} />
+      <TagInput
+        selectedTags={selectedTags}
+        onChange={setSelectedTags}
+        canCreateTags={canCreateTags}
+      />
 
       {(createError || updateError) && (
         <div className="rounded border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -703,6 +710,7 @@ function ContentFormFields({
   setDocumentStatus,
   selectedTags,
   setSelectedTags,
+  canCreateTags,
   employees,
   upload,
   isUploading,
@@ -966,6 +974,7 @@ function ContentFormFields({
                 setDocumentStatus={setDocumentStatus}
                 selectedTags={selectedTags}
                 setSelectedTags={setSelectedTags}
+                canCreateTags={canCreateTags}
                 employees={employees}
                 metadataEditMode={metadataEditMode}
                 setMetadataEditMode={setMetadataEditMode}
@@ -1261,7 +1270,7 @@ function ContentFormPage() {
                   : " another user"}
                 . Editing is disabled.
               </div>
-              {session?.user?.user_metadata?.role === "admin" && (
+              {userRole === "admin" && (
                 <button
                   type="button"
                   onClick={() => forceUnlock.mutate({ fileID: id! })}
@@ -1358,6 +1367,7 @@ function ContentFormPage() {
         setDocumentStatus={setDocumentStatus}
         selectedTags={selectedTags}
         setSelectedTags={setSelectedTags}
+        canCreateTags={userRole === "admin"}
         employees={employees.data}
         upload={upload}
         isUploading={isUploading}

@@ -241,10 +241,10 @@ function App() {
             <Route path="/users/new" element={<UserFormPage />} />
             <Route path="/users/:id" element={<UserFormPage />} />
             <Route path="/tags" element={<TagsPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
           </Route>
 
           {/* Shared */}
-          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/help" element={<HelpPage />} />

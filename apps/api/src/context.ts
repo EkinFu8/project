@@ -3,6 +3,13 @@ import { createAudit } from "./lib/audit";
 import { prisma } from "./lib/prisma";
 import { createSupabaseClient } from "./lib/supabase";
 
+type AuthProfile = {
+  id: string;
+  email: string;
+  role: string;
+  portal: string;
+};
+
 /**
  * Inner context builder — adapter-agnostic. Takes an auth token directly.
  */
@@ -11,7 +18,7 @@ async function createContextInner(authToken: string | null) {
   const audit = createAudit(prisma);
 
   let user = null;
-  let profile: unknown = null;
+  let profile: AuthProfile | null = null;
 
   if (authToken) {
     try {

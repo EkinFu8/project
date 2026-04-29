@@ -37,16 +37,20 @@ const authMiddleware = t.middleware(({ ctx, next }) => {
  */
 export const protectedProcedure = baseProcedure.use(authMiddleware);
 
+function isAdminProfile(profile: { portal?: string | null; role?: string | null } | null) {
+  return profile?.portal === "admin" && profile.role === "admin";
+}
+
 /**
- * ADMIN = metrics + auth + role check
+ * ADMIN = metrics + auth + admin portal + admin role check
  */
 export const adminPortalProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const profile = await ctx.prisma.userProfile.findUnique({
     where: { id: ctx.user.id },
-    select: { id: true, portal: true },
+    select: { id: true, portal: true, role: true },
   });
 
-  if (!profile || !["admin", "employee"].includes(profile.portal)) {
+  if (!isAdminProfile(profile)) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
 

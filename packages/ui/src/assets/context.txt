@@ -2,7 +2,7 @@ App Guide
 
 Roles
 - admin: can add, remove, and modify content, users, and tags
-- Underwriter, Actuarial analyst, Business analyst: can view and download any content, but can only check out and modify content assigned to their role. can create content assigned to any role
+- Underwriter, Actuarial analyst, Business analyst: can view and download permitted content, but can only create, check out, and modify content assigned to their role
 
 ## Pages
 - `/hero` — the starting home page
@@ -34,4 +34,3 @@ Common Tasks
 5. edit the content outside the app
 6. upload the edited content
 7. press the save content button
-
