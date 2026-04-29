@@ -17,4 +17,5 @@ export type ContentItem = {
   url?: string;
   ocr_status?: OcrStatus;
   matched_in_content?: boolean;
+  next_review_date?: string | null;
 };
