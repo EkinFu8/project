@@ -1,3 +1,4 @@
+import { cn } from "@myapp/ui/lib/utils";
 import { Lock, Unlock } from "lucide-react";
 import { Link } from "react-router";
 import { useFavorites } from "@/store/favorites";
@@ -11,11 +12,19 @@ type CheckinMutation = {
 type Props = {
   item: ContentItem;
   currentUserId?: string;
+  searchQuery?: string;
   toggleFavorite: {
     mutate: (args: { fileID: string }) => void;
   };
   checkin: CheckinMutation;
   getStatusBadge: (status?: string) => string;
+};
+
+const roleBG: Record<string, string> = {
+  underwriter: "bg-blue-50 dark:bg-blue-950/40",
+  "business-analyst": "bg-amber-50 dark:bg-amber-950/40",
+  "actuarial-analyst": "bg-emerald-50 dark:bg-emerald-950/40",
+  "exl-operations": "bg-violet-50 dark:bg-violet-950/40",
 };
 
 function checkedOutLabel(isCheckedOutByMe: boolean, name: string | undefined): string {
@@ -27,6 +36,7 @@ function checkedOutLabel(isCheckedOutByMe: boolean, name: string | undefined): s
 export function ContentListItem({
   item,
   currentUserId,
+  searchQuery,
   toggleFavorite,
   checkin,
   getStatusBadge,
@@ -39,10 +49,14 @@ export function ContentListItem({
   const isCheckedOutByMe = !!(item.is_checked_out && item.checked_out_by === currentUserId);
   const checkedOutByName = item.checked_out_by_user?.name;
 
+  const detailHref = searchQuery
+    ? `/hero/content/${item.fileID}/edit?q=${encodeURIComponent(searchQuery)}`
+    : `/hero/content/${item.fileID}/edit`;
+
   return (
     <Link
-      to={`/hero/content/${item.fileID}/edit`}
-      className="group flex items-center justify-between rounded border border-border bg-card p-3 shadow-sm transition-all hover:border-hanover-green hover:shadow-md"
+      to={detailHref}
+      className={`group flex items-center justify-between rounded border border-border ${cn(roleBG[item.job_position ?? ""] ?? "bg-card")} p-3 shadow-sm transition-all hover:border-hanover-green hover:shadow-md`}
     >
       {/* LEFT SIDE */}
       <div className="flex flex-col gap-1 overflow-hidden">
@@ -72,6 +86,25 @@ export function ContentListItem({
           <span>
             {item.last_modified ? new Date(item.last_modified).toLocaleDateString() : "—"}
           </span>
+        </div>
+
+        {/* OCR BADGES */}
+        <div className="flex flex-wrap gap-1">
+          {item.matched_in_content && (
+            <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+              matched in content
+            </span>
+          )}
+          {(item.ocr_status === "pending" || item.ocr_status === "processing") && (
+            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+              indexing…
+            </span>
+          )}
+          {item.ocr_status === "failed" && (
+            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">
+              OCR failed
+            </span>
+          )}
         </div>
       </div>
 
