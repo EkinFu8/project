@@ -98,6 +98,9 @@ export default function ContentPage() {
     const aFav = isFavorited(a.fileID) ? 1 : 0;
     const bFav = isFavorited(b.fileID) ? 1 : 0;
     if (bFav !== aFav) return bFav - aFav;
+    const aPos = a.job_position ?? "\uffff";
+    const bPos = b.job_position ?? "\uffff";
+    if (aPos !== bPos) return aPos.localeCompare(bPos);
 
     const dir = filters.sortDir === "asc" ? 1 : -1;
 
@@ -113,6 +116,7 @@ export default function ContentPage() {
     const bDate = b.next_review_date ? new Date(b.next_review_date).getTime() : Infinity;
     return dir * (aDate - bDate);
   });
+  //we might need the following on this line: return new Date(b.last_modified ?? 0).getTime() - new Date(a.last_modified ?? 0).getTime();
 
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);

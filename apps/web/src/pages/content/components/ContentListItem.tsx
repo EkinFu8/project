@@ -1,3 +1,4 @@
+import { cn } from "@myapp/ui/lib/utils";
 import { Lock, Unlock } from "lucide-react";
 import { Link } from "react-router";
 import { useFavorites } from "@/store/favorites";
@@ -17,6 +18,13 @@ type Props = {
   };
   checkin: CheckinMutation;
   getStatusBadge: (status?: string) => string;
+};
+
+const roleBG: Record<string, string> = {
+  underwriter: "bg-blue-50 dark:bg-blue-950/40",
+  "business-analyst": "bg-amber-50 dark:bg-amber-950/40",
+  "actuarial-analyst": "bg-emerald-50 dark:bg-emerald-950/40",
+  "exl-operations": "bg-violet-50 dark:bg-violet-950/40",
 };
 
 function checkedOutLabel(isCheckedOutByMe: boolean, name: string | undefined): string {
@@ -48,7 +56,7 @@ export function ContentListItem({
   return (
     <Link
       to={detailHref}
-      className="group flex items-center justify-between rounded border border-border bg-card p-3 shadow-sm transition-all hover:border-hanover-green hover:shadow-md"
+      className={`group flex items-center justify-between rounded border border-border ${cn(roleBG[item.job_position ?? ""] ?? "bg-card")} p-3 shadow-sm transition-all hover:border-hanover-green hover:shadow-md`}
     >
       {/* LEFT SIDE */}
       <div className="flex flex-col gap-1 overflow-hidden">

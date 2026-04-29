@@ -1,3 +1,4 @@
+import { cn } from "@myapp/ui/lib/utils";
 import { Lock, Unlock } from "lucide-react";
 import { Link } from "react-router";
 import { useFavorites } from "@/store/favorites";
@@ -40,6 +41,12 @@ export function ContentCard({
   const { isFavorited } = useFavorites();
   const isCheckedOutByMe = !!(item.is_checked_out && item.checked_out_by === currentUserId);
   const checkedOutByName = item.checked_out_by_user?.name;
+  const roleBG: Record<string, string> = {
+    underwriter: "bg-blue-50 dark:bg-blue-950/40",
+    "business-analyst": "bg-amber-50 dark:bg-amber-950/40",
+    "actuarial-analyst": "bg-emerald-50 dark:bg-emerald-950/40",
+    "exl-operations": "bg-violet-50 dark:bg-violet-950/40",
+  };
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const isOverdue =
@@ -57,7 +64,7 @@ export function ContentCard({
   return (
     <Link
       to={detailHref}
-      className={`group flex flex-col rounded border bg-card shadow-sm transition-all p-5 ${
+      className={`group flex flex-col rounded border ${cn(roleBG[item.job_position ?? ""] ?? "bg-card")} shadow-sm transition-all p-5 ${
         isOverdue
           ? "border-red-800 bg-red-50 hover:border-red-900"
           : "hover:border-hanover-green hover:shadow-md"
