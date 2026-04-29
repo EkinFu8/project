@@ -11,7 +11,7 @@
   "scripts": {
     "postinstall": "node -e \"if (process.env.CI) process.exit(0); require('child_process').execSync('PRISMA_ALLOW_PLACEHOLDER_DATABASE_URL=1 prisma generate', { stdio: 'inherit' })\"",
     "dev": "tsx watch src/server.ts",
-    "build": "PRISMA_ALLOW_PLACEHOLDER_DATABASE_URL=1 prisma generate && node build.mjs",
+    "build": "cross-env PRISMA_ALLOW_PLACEHOLDER_DATABASE_URL=1 prisma generate && node build.mjs",
     "start": "node dist/server.mjs",
     "typecheck": "PRISMA_ALLOW_PLACEHOLDER_DATABASE_URL=1 prisma generate && tsc --noEmit",
     "test": "vitest run",
