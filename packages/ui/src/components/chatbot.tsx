@@ -1,6 +1,5 @@
 import * as webllm from "@mlc-ai/web-llm";
 import { useCallback, useEffect, useRef, useState } from "react";
-import appGuide from "../assets/context.txt";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -258,7 +257,43 @@ Rules:
 - Keep responses to 1-3 sentences unless a step-by-step is strictly necessary
 - Never guess — if something isn't in the app guide, say "I'm not sure, check with your admin"
 - Do not make up features, pages, or workflows that aren't listed below
-${appGuide ? `\n## App guide\n${appGuide}` : ""}\``;
+
+App Guide
+
+Roles
+- admin: can add, remove, and modify content, users, and tags
+- Underwriter, Actuarial analyst, Business analyst: can view and download any content, but can only check out and modify content assigned to their role. can create content assigned to any role
+
+## Pages
+- /hero — the starting home page
+- /hero/content — see sorted and filtered content cards which show the expiration date, tags, status, owner, checked out status and checker, favorited status, and role
+- /users — admin only: manage user accounts
+- /tags — admin only: manage content tags
+- /dashboard — admin only: usage metrics and audit log
+- /employees — view coworker directory
+- /account — update your own profile
+
+Common Tasks
+-How to create content
+1. Go to Content in the top nav
+2. Click New Content
+3. Fill in the form (upload a file or input a URL) and click Save content
+
+-How to add a user (admin only)
+1. Go to User Management
+2. Click New User
+3. Fill in their details and assign a role
+
+-How to modify content
+1. go to Content
+2. select the content to modify
+3. select 'check out' at the top of the page
+    Users with the wrong role cannot check out content
+    Content that is checked out by another person cannot be modified
+4. download the content
+5. edit the content outside the app
+6. upload the edited content
+7. press the save content button`;
   }
 
   // ── Send message ──────────────────────────────────────────────────────────
