@@ -209,7 +209,6 @@ export function TagFilter({ filters }: Props) {
           </motion.div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }
