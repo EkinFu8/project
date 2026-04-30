@@ -390,9 +390,13 @@ export const contentRouter = router({
       where.fileID = { in: [...matchedInContentMap.keys()] };
     }
 
-    if (input.format && input.format in FORMAT_GROUPS) {
-      const exts = FORMAT_GROUPS[input.format as keyof typeof FORMAT_GROUPS];
-      where.format = { in: [...exts] };
+    if (input.formats && input.formats.length > 0) {
+      const exts = input.formats.flatMap((f) =>
+        f in FORMAT_GROUPS ? [...FORMAT_GROUPS[f as keyof typeof FORMAT_GROUPS]] : [],
+      );
+      if (exts.length > 0) {
+        where.format = { in: exts };
+      }
     }
 
     if (input.tagIds && input.tagIds.length > 0) {

@@ -64,7 +64,7 @@ export const contentListQuerySchema = z.object({
   tagIds: z.array(z.number().int()).optional(),
   tagMatchMode: z.enum(["any", "all"]).optional(),
   pinnedTagId: z.number().int().optional(),
-  format: z.string().optional(),
+  formats: z.array(z.string()).optional(),
 });
 
 export const tagIdSchema = z.object({
