@@ -14,7 +14,7 @@ type ContentFilterState = {
   view: ContentView;
   status: string;
   type: string;
-  format: string;
+  formats: string[];
   role: string;
   tagIds: number[];
   tagMode: TagMode;
@@ -39,7 +39,7 @@ type ContentFilterActions = {
   setView: (value: ContentView) => void;
   setStatus: (value: string) => void;
   setType: (value: string) => void;
-  setFormat: (value: string) => void;
+  setFormats: (value: string[]) => void;
   setRole: (value: string) => void;
   setTagIds: (ids: number[]) => void;
   setTagMode: (mode: TagMode) => void;
@@ -61,7 +61,7 @@ const DEFAULT_FILTERS: ContentFilterState = {
   view: "grid",
   status: "",
   type: "",
-  format: "",
+  formats: [],
   role: "all",
   tagIds: [],
   tagMode: "any",
@@ -89,7 +89,7 @@ const FILTER_PARAM_KEYS = [
   "group",
   "status",
   "type",
-  "format",
+  "formats",
   "role",
   "tagIds",
   "tagMode",
@@ -120,6 +120,14 @@ function parseTagIds(value: string | null) {
     .filter((id) => Number.isInteger(id));
 }
 
+function parseFormats(value: string | null) {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 function parsePinnedTagId(value: string | null) {
   if (!value) return null;
   const id = Number(value);
@@ -137,7 +145,7 @@ function readFiltersFromParams(params: URLSearchParams): Partial<ContentFilterSt
     view: isContentView(view) ? view : DEFAULT_FILTERS.view,
     status: params.get("status") ?? DEFAULT_FILTERS.status,
     type: params.get("type") ?? DEFAULT_FILTERS.type,
-    format: params.get("format") ?? DEFAULT_FILTERS.format,
+    formats: parseFormats(params.get("formats")),
     role: params.get("role") || DEFAULT_FILTERS.role,
     tagIds: parseTagIds(params.get("tagIds")),
     tagMode: params.get("tagMode") === "all" ? "all" : DEFAULT_FILTERS.tagMode,
@@ -172,12 +180,15 @@ function writeFiltersToParams(filters: ContentFilterState, currentParams: URLSea
   writeIfNotDefault(next, "view", filters.view, DEFAULT_FILTERS.view);
   writeIfNotDefault(next, "status", filters.status, DEFAULT_FILTERS.status);
   writeIfNotDefault(next, "type", filters.type, DEFAULT_FILTERS.type);
-  writeIfNotDefault(next, "format", filters.format, DEFAULT_FILTERS.format);
   writeIfNotDefault(next, "role", filters.role, DEFAULT_FILTERS.role);
   writeIfNotDefault(next, "tagMode", filters.tagMode, DEFAULT_FILTERS.tagMode);
   writeIfNotDefault(next, "sort", filters.sort, DEFAULT_FILTERS.sort);
   writeIfNotDefault(next, "sortDir", filters.sortDir, DEFAULT_FILTERS.sortDir);
   writeIfNotDefault(next, "group", filters.group, DEFAULT_FILTERS.group);
+
+  if (filters.formats.length > 0) {
+    next.set("formats", filters.formats.join(","));
+  }
 
   if (filters.tagIds.length > 0) {
     next.set("tagIds", filters.tagIds.join(","));
@@ -202,7 +213,7 @@ export const useContentFilterStore = create<ContentFilters>()(
       setView: (view) => set({ view }),
       setStatus: (status) => set({ status }),
       setType: (type) => set({ type }),
-      setFormat: (format) => set({ format }),
+      setFormats: (formats) => set({ formats }),
       setRole: (role) => set({ role: role || DEFAULT_FILTERS.role }),
       setTagIds: (tagIds) => set({ tagIds }),
       setTagMode: (tagMode) => set({ tagMode }),
@@ -219,13 +230,12 @@ export const useContentFilterStore = create<ContentFilters>()(
       applyFilters: (filters) => set(filters),
     }),
     {
-      name: "content.filters.v2",
+      name: "content.filters.v4",
       partialize: ({
-        search,
         view,
         status,
         type,
-        format,
+        formats,
         role,
         tagIds,
         tagMode,
@@ -234,15 +244,12 @@ export const useContentFilterStore = create<ContentFilters>()(
         sortDir,
         group,
         collapsedGroups,
-        formatSearch,
-        tagSearch,
         sections,
       }) => ({
-        search,
         view,
         status,
         type,
-        format,
+        formats,
         role,
         tagIds,
         tagMode,
@@ -251,8 +258,6 @@ export const useContentFilterStore = create<ContentFilters>()(
         sortDir,
         group,
         collapsedGroups,
-        formatSearch,
-        tagSearch,
         sections,
       }),
     },

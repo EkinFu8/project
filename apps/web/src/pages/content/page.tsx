@@ -81,7 +81,7 @@ export default function ContentPage() {
     search: debouncedSearch,
     document_status: filters.status || undefined,
     content_type: (filters.type as "Reference" | "Workflow") || undefined,
-    format: filters.format || undefined,
+    formats: filters.formats.length > 0 ? filters.formats : undefined,
     role: filters.role === "all" ? undefined : filters.role,
     tagIds: filters.tagIds.length > 0 ? filters.tagIds : undefined,
     tagMatchMode: filters.tagIds.length > 0 ? filters.tagMode : undefined,
