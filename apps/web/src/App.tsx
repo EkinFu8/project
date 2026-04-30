@@ -34,8 +34,8 @@ import HelpPage from "@/pages/help/page.tsx";
 import HeroLayout from "@/pages/hero/layout.tsx";
 import LoginFormPage from "@/pages/login.tsx";
 import NotificationsPage from "@/pages/notifications/page.tsx";
-import TagsPage from "@/pages/tags/TagsPage";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
+import { useAppPreferences } from "@/store/app-preferences";
 
 function LegacyContentEditRedirect() {
   const { id } = useParams<{ id: string }>();
@@ -96,7 +96,8 @@ function describePage(pathname: string) {
     return {
       path: pathname,
       title: "Dashboard",
-      description: "Admin metrics, audit activity, content currency, and review health.",
+      description:
+        "Role-aware dashboard: admin metrics and content health for admins, personal content overview for everyone else.",
     };
   }
   if (pathname === "/employees" || pathname.startsWith("/employees/")) {
@@ -380,10 +381,22 @@ function adminNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
     { label: "Users", to: "/users" },
-    { label: "Tags", to: "/tags" },
     { label: "Dashboard", to: "/dashboard" },
     { label: "Help", to: "/help" },
   ];
+}
+
+/** Redirect that selects the Tags tab in the dashboard before navigating. */
+function TagsRedirect() {
+  useAppPreferences.getState().setDashboardTab("tags");
+  return <Navigate to="/dashboard" replace />;
+}
+
+/** Renders the admin dashboard for admins and the user dashboard for everyone else. */
+function DashboardRoute() {
+  const accessQuery = trpc.user.myAccess.useQuery();
+  if (accessQuery.isLoading) return <AuthSplash />;
+  return <DashboardPage />;
 }
 
 /** Nav items for employee roles. */
@@ -391,6 +404,7 @@ function employeeNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
     { label: "Coworkers", to: "/employees" },
+    { label: "Dashboard", to: "/dashboard" },
     { label: "Help", to: "/help" },
   ];
 }
@@ -422,10 +436,12 @@ function ProtectedLayout() {
     notificationsQuery.data,
     session?.user.id,
   );
+  const dashboardTab = useAppPreferences((state) => state.dashboardTab);
   const isContentPage = location.pathname === "/hero" || location.pathname === "/hero/content";
   const isUsersPage = location.pathname === "/users";
   const isUsersRoute = location.pathname.startsWith("/users/");
-  const isTagsPage = location.pathname === "/tags";
+  const isDashboardTagsTab =
+    location.pathname === "/dashboard" && dashboardTab === "tags";
 
   const focusCurrentSearch = useCallback(() => {
     if (isUsersPage) {
@@ -438,7 +454,7 @@ function ProtectedLayout() {
       return;
     }
 
-    if (isTagsPage) {
+    if (isDashboardTagsTab) {
       window.dispatchEvent(new Event(TAGS_SEARCH_FOCUS_EVENT));
       return;
     }
@@ -449,7 +465,7 @@ function ProtectedLayout() {
     }
 
     navigate("/hero/content", { state: { focusContentSearch: true } });
-  }, [isContentPage, isTagsPage, isUsersPage, isUsersRoute, navigate]);
+  }, [isContentPage, isDashboardTagsTab, isUsersPage, isUsersRoute, navigate]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -675,11 +691,11 @@ function App() {
             <Route path="/users" element={<UsersPage />} />
             <Route path="/users/new" element={<UserFormPage />} />
             <Route path="/users/:id" element={<UserFormPage />} />
-            <Route path="/tags" element={<TagsPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/tags" element={<TagsRedirect />} />
           </Route>
 
           {/* Shared */}
+          <Route path="/dashboard" element={<DashboardRoute />} />
           <Route path="/gompei" element={<GompeiPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/account" element={<AccountPage />} />

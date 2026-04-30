@@ -1,5 +1,5 @@
 import { InfoPopover } from "@myapp/ui/components/info-popover";
-import { Activity, LayoutGrid, Loader2 } from "lucide-react";
+import { Activity, LayoutGrid, Loader2, Tag as TagIcon } from "lucide-react";
 import { Link } from "react-router";
 import {
   Bar,
@@ -16,6 +16,7 @@ import {
 import type { RouterOutputs } from "@/lib/trpc.ts";
 import { trpc } from "@/lib/trpc.ts";
 import { DashboardReports, MetricsView } from "@/pages/admin/metrics/page.tsx";
+import TagsPage from "@/pages/tags/TagsPage";
 import { type DashboardTab, useAppPreferences } from "@/store/app-preferences";
 
 type EmployeeRow = RouterOutputs["employee"]["list"][number];
@@ -98,6 +99,7 @@ function DashboardLoaded({
     return review < today;
   });
 
+  const roleQuery = isAdmin ? "" : `&role=${encodeURIComponent(roleKey)}`;
   const stats = [
     {
       label: isAdmin ? "Total Employees" : "Role Coworkers",
@@ -105,6 +107,7 @@ function DashboardLoaded({
       info: isAdmin
         ? "Count of employee records currently available in the system."
         : "Employees assigned to the same role as your account.",
+      href: "/employees",
     },
     {
       label: isAdmin ? "Total Content" : "Role Content",
@@ -112,11 +115,13 @@ function DashboardLoaded({
       info: isAdmin
         ? "Count of content records included in the dashboard data set."
         : "Content records assigned to your role, plus unassigned shared content.",
+      href: isAdmin ? "/hero/content" : `/hero/content?${roleQuery.slice(1)}`,
     },
     {
       label: "Finalized",
       value: finalized.length,
       info: "Content records with a document status of Finalized.",
+      href: `/hero/content?status=Finalized${roleQuery}`,
     },
     {
       label: isAdmin ? "In Progress" : "Review Due",
@@ -124,6 +129,9 @@ function DashboardLoaded({
       info: isAdmin
         ? "Content records currently marked with the in-progress document status."
         : "Role content whose next review date has already passed.",
+      href: isAdmin
+        ? `/hero/content?status=in-progress${roleQuery}`
+        : `/hero/content?${roleQuery.slice(1)}`,
     },
   ];
 
@@ -174,21 +182,30 @@ function DashboardLoaded({
 
       <div className="mb-8 grid grid-cols-2 gap-4 stagger-children md:grid-cols-4">
         {stats.map((stat) => (
-          <div
+          <Link
             key={stat.label}
-            className="hover-lift rounded-lg border border-border border-t-4 border-t-hanover-green bg-card p-4 shadow-sm hover:shadow-md hover:border-t-hanover-green/90 sm:p-5"
+            to={stat.href}
+            className="group relative block rounded-lg border border-border border-t-4 border-t-hanover-green bg-card p-4 shadow-sm transition-shadow hover:shadow-md hover:border-t-hanover-green/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hanover-green/40 focus-visible:ring-offset-2 sm:p-5"
           >
             <div className="text-3xl font-bold tracking-tight text-foreground">{stat.value}</div>
-            <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground group-hover:text-hanover-green">
               <span>{stat.label}</span>
-              <InfoPopover title={stat.label}>{stat.info}</InfoPopover>
+              <span className="opacity-0 transition-opacity group-hover:opacity-100">→</span>
+              <span className="absolute right-3 top-3 z-10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }}
+              >
+                <InfoPopover title={stat.label}>{stat.info}</InfoPopover>
+              </span>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
       <div className="mb-6 grid gap-5 lg:grid-cols-2">
-        <div className="hover-lift rounded-lg border border-border bg-card p-6 shadow-sm hover:shadow-md">
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm hover:shadow-md">
           <div className="mb-4 flex items-center gap-2">
             <h2 className="text-lg font-semibold text-foreground">Content By Status</h2>
             <InfoPopover title="Content By Status">
@@ -230,7 +247,7 @@ function DashboardLoaded({
           </div>
         </div>
 
-        <div className="hover-lift rounded-lg border border-border bg-card p-6 shadow-sm hover:shadow-md">
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm hover:shadow-md">
           <div className="mb-4 flex items-center gap-2">
             <h2 className="text-lg font-semibold text-foreground">Top Roles By Content</h2>
             <InfoPopover title="Top Roles By Content">
@@ -265,7 +282,7 @@ function DashboardLoaded({
       <DashboardReports content={dashboardContent} auditEvents={auditEvents} />
 
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="hover-lift overflow-x-auto rounded-lg border border-border bg-card p-6 shadow-sm hover:shadow-md">
+        <div className="overflow-x-auto rounded-lg border border-border bg-card p-6 shadow-sm hover:shadow-md">
           <h2 className="mb-4 text-lg font-semibold text-foreground">Employees</h2>
           {employees.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No employees yet.</p>
@@ -309,7 +326,7 @@ function DashboardLoaded({
           )}
         </div>
 
-        <div className="hover-lift overflow-x-auto rounded-lg border border-border bg-card p-6 shadow-sm hover:shadow-md">
+        <div className="overflow-x-auto rounded-lg border border-border bg-card p-6 shadow-sm hover:shadow-md">
           <h2 className="mb-4 text-lg font-semibold text-foreground">Recent Content</h2>
           {dashboardContent.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No content yet.</p>
@@ -388,7 +405,8 @@ function DashboardPage() {
 
   const access = trpc.user.myAccess.useQuery();
   const isAdmin = access.data?.role === "admin";
-  const activeTab: DashboardTab = tab === "metrics" && !isAdmin ? "overview" : tab;
+  const activeTab: DashboardTab =
+    (tab === "metrics" || tab === "tags") && !isAdmin ? "overview" : tab;
 
   const employees = trpc.employee.list.useQuery({}, { enabled: activeTab === "overview" });
   const allContent = trpc.content.list.useQuery({}, { enabled: activeTab === "overview" });
@@ -403,7 +421,12 @@ function DashboardPage() {
 
   const tabs: { key: DashboardTab; label: string; icon: typeof LayoutGrid }[] = [
     { key: "overview", label: "Overview", icon: LayoutGrid },
-    ...(isAdmin ? [{ key: "metrics" as const, label: "Metrics", icon: Activity }] : []),
+    ...(isAdmin
+      ? [
+          { key: "metrics" as const, label: "Metrics", icon: Activity },
+          { key: "tags" as const, label: "Tags", icon: TagIcon },
+        ]
+      : []),
   ];
 
   return (
@@ -420,7 +443,9 @@ function DashboardPage() {
             <p className="mt-1 text-muted-foreground">
               {activeTab === "metrics"
                 ? "System and document activity metrics"
-                : "Overview of employees, content, and activity trends"}
+                : activeTab === "tags"
+                  ? "Manage global meta tags used across content."
+                  : "Overview of employees, content, and activity trends"}
             </p>
           </div>
 
@@ -452,6 +477,10 @@ function DashboardPage() {
             <div className="animate-fade-in">
               <MetricsView />
             </div>
+          ) : activeTab === "tags" ? (
+            <div className="animate-fade-in">
+              <TagsPage />
+            </div>
           ) : isLoading ? (
             <div className="flex animate-fade-in items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
@@ -460,7 +489,7 @@ function DashboardPage() {
           ) : loadError ? (
             <div className="mx-auto max-w-lg animate-fade-in-up py-16 text-center">
               <p className="font-medium text-red-600">Could not load dashboard data.</p>
-              <p className="mt-2 break-words text-sm text-muted-foreground">
+              <p className="mt-2 wrap-break-word text-sm text-muted-foreground">
                 {loadError instanceof Error ? loadError.message : String(loadError)}
               </p>
             </div>
