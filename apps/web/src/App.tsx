@@ -16,7 +16,7 @@ import {
   useSearchParams,
 } from "react-router";
 import { useSession } from "@/auth/session-context";
-import { useNotificationReadState } from "@/hooks/use-notification-read-state";
+// useNotificationReadState removed — read state is now server-side
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
 import AboutPage from "@/pages/about/page.tsx";
@@ -418,10 +418,8 @@ function ProtectedLayout() {
       enabled: Boolean(session?.user.id) && Boolean(accessQuery.data),
     },
   );
-  const { unreadCount, unreadRows } = useNotificationReadState(
-    notificationsQuery.data,
-    session?.user.id,
-  );
+  const unreadCount = notificationsQuery.data?.unreadCount ?? 0;
+  const unreadRows = notificationsQuery.data?.items.filter((r) => !r.isRead) ?? [];
   const isContentPage = location.pathname === "/hero" || location.pathname === "/hero/content";
   const isUsersPage = location.pathname === "/users";
   const isUsersRoute = location.pathname.startsWith("/users/");
@@ -479,11 +477,12 @@ function ProtectedLayout() {
   const username = me?.name;
   const submittedDocuments = submittedContentQuery.data ?? [];
   const now = Date.now();
-  const dueSoon = (notificationsQuery.data ?? []).filter((row) => {
+  const notificationItems = notificationsQuery.data?.items ?? [];
+  const dueSoon = notificationItems.filter((row) => {
     const message = row.message.toLowerCase();
     return message.includes("due") || message.includes("expires");
   }).length;
-  const overdue = (notificationsQuery.data ?? []).filter((row) => {
+  const overdue = notificationItems.filter((row) => {
     const message = row.message.toLowerCase();
     return message.includes("passed") || message.includes("expired");
   }).length;
