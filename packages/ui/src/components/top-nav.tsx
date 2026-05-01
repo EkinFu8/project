@@ -85,7 +85,7 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
       src={hanoverLogo}
       alt="The Hanover Insurance Group"
       height={24}
-      className="h-6 max-h-6 w-auto max-w-[min(100%,8rem)] shrink-0 object-contain object-left brightness-0 invert"
+      className="h-9 max-h-9 w-auto max-w-[min(100%,9rem)] shrink-0 object-contain object-left brightness-0 invert"
     />
   );
 
