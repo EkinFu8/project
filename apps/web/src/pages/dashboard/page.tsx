@@ -2,15 +2,17 @@ import { InfoPopover } from "@myapp/ui/components/info-popover";
 import {
   Activity,
   AlertTriangle,
-  Bell,
   Briefcase,
   CalendarClock,
+  CalendarDays,
   CheckCircle2,
   FilePlus2,
   HelpCircle,
+  Inbox,
   LayoutGrid,
   Loader2,
   type LucideIcon,
+  Megaphone,
   ShieldCheck,
   Tag as TagIcon,
   UserCircle2,
@@ -33,7 +35,7 @@ import type { RouterOutputs } from "@/lib/trpc.ts";
 import { trpc } from "@/lib/trpc.ts";
 import { DashboardReports, MetricsView } from "@/pages/admin/metrics/page.tsx";
 import { SwappableLayout } from "@/pages/dashboard/SwappableLayout";
-import { NotificationsView } from "@/pages/notifications/page.tsx";
+import { TodayStrip } from "@/pages/dashboard/components/TodayStrip";
 import TagsPage from "@/pages/tags/TagsPage";
 import { type DashboardTab, useAppPreferences } from "@/store/app-preferences";
 import { formatStatus } from "@/utils/status";
@@ -98,10 +100,22 @@ const COMMON_QUICK_LINKS: QuickLink[] = [
     description: "Start a new content record.",
   },
   {
-    label: "Notifications",
-    to: "/notifications",
-    icon: Bell,
-    description: "Recent updates for your role.",
+    label: "Calendar",
+    to: "/calendar",
+    icon: CalendarDays,
+    description: "Review dates and expirations.",
+  },
+  {
+    label: "Announcements",
+    to: "/announcements",
+    icon: Megaphone,
+    description: "Updates from administrators.",
+  },
+  {
+    label: "Activity",
+    to: "/activity",
+    icon: Inbox,
+    description: "Edits and ownership changes.",
   },
   {
     label: "My Account",
@@ -179,12 +193,16 @@ function DashboardLoaded({
   auditEvents,
   isAdmin,
   userRole,
+  userId,
+  unreadAnnouncements,
 }: {
   employees: EmployeeRow[];
   allContent: ContentRow[];
   auditEvents: AuditEventRow[];
   isAdmin: boolean;
   userRole?: string | null;
+  userId?: string;
+  unreadAnnouncements: number;
 }) {
   const roleKey = normalizeRole(userRole);
   const dashboardContent = isAdmin
@@ -271,8 +289,35 @@ function DashboardLoaded({
 
   const pieColors = ["#497728", "#1B2A4A", "#C9A84C", "#9CA3AF"];
 
+  // ---- Today strip counts (owned-by-me only) ----
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const ownedContent = userId ? allContent.filter((c) => c.owner_id === userId) : [];
+  const todayOverdueReviews = ownedContent.filter((c) => {
+    if (!c.next_review_date) return false;
+    return new Date(c.next_review_date).getTime() < todayStart.getTime();
+  }).length;
+  const todayExpiredDocs = ownedContent.filter((c) => {
+    if (!c.expiration_date) return false;
+    return new Date(c.expiration_date).getTime() < todayStart.getTime();
+  }).length;
+  const todayStaleCheckouts = userId
+    ? allContent.filter((c) => {
+        if (c.checked_out_by !== userId) return false;
+        if (!c.checked_out_at) return false;
+        return Date.now() - new Date(c.checked_out_at).getTime() > SEVEN_DAYS_MS;
+      }).length
+    : 0;
+
   return (
     <>
+      <TodayStrip
+        overdueReviews={todayOverdueReviews}
+        expiredDocs={todayExpiredDocs}
+        staleCheckouts={todayStaleCheckouts}
+        unreadAnnouncements={unreadAnnouncements}
+      />
       {!isAdmin ? (
         <div className="mb-6 animate-fade-in-down rounded-lg border-l-4 border-l-hanover-green border-y border-r border-border bg-card px-5 py-4 shadow-sm">
           <div className="flex items-center gap-2">
@@ -867,6 +912,7 @@ function DashboardWidgetGrid({
 }
 
 function DashboardPage() {
+  const { session } = useSession();
   const tab = useAppPreferences((state) => state.dashboardTab);
   const setTab = useAppPreferences((state) => state.setDashboardTab);
 
@@ -874,6 +920,10 @@ function DashboardPage() {
   const isAdmin = access.data?.role === "admin";
   const activeTab: DashboardTab =
     (tab === "metrics" || tab === "tags") && !isAdmin ? "overview" : tab;
+
+  const announcementsQuery = trpc.notifications.listAnnouncements.useQuery(undefined, {
+    enabled: activeTab === "overview" && Boolean(session),
+  });
 
   const employees = trpc.employee.list.useQuery({}, { enabled: activeTab === "overview" });
   const allContent = trpc.content.list.useQuery({}, { enabled: activeTab === "overview" });
@@ -894,7 +944,6 @@ function DashboardPage() {
           { key: "tags" as const, label: "Tags", icon: TagIcon },
         ]
       : []),
-    { key: "notifications" as const, label: "Notifications", icon: Bell },
   ];
 
   return (
@@ -913,9 +962,7 @@ function DashboardPage() {
                 ? "System and document activity metrics"
                 : activeTab === "tags"
                   ? "Manage global meta tags used across content."
-                  : activeTab === "notifications"
-                    ? "Edits, review dates, and owner changes for content that matches your role."
-                    : "Overview of employees, content, and activity trends"}
+                  : "Overview of employees, content, and activity trends"}
             </p>
           </div>
 
@@ -951,10 +998,6 @@ function DashboardPage() {
             <div className="animate-fade-in">
               <TagsPage />
             </div>
-          ) : activeTab === "notifications" ? (
-            <div className="animate-fade-in">
-              <NotificationsView />
-            </div>
           ) : isLoading ? (
             <div className="flex animate-fade-in items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-hanover-green" />
@@ -975,6 +1018,8 @@ function DashboardPage() {
                 auditEvents={auditRecent.data ?? []}
                 isAdmin={isAdmin}
                 userRole={access.data?.role}
+                userId={session?.user.id}
+                unreadAnnouncements={announcementsQuery.data?.unreadCount ?? 0}
               />
             </div>
           )}

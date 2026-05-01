@@ -34,7 +34,7 @@ export function ComposeAnnouncementDialog({ open, onClose }: ComposeAnnouncement
 
   const createMutation = trpc.notifications.createAnnouncement.useMutation({
     onSuccess: async () => {
-      await utils.notifications.myList.invalidate();
+      await utils.notifications.listAnnouncements.invalidate();
       await utils.notifications.adminListAnnouncements.invalidate();
       onClose();
       resetForm();

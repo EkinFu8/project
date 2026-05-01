@@ -1,29 +1,22 @@
 import { cn } from "@myapp/ui/lib/utils";
-import { Bell, Bookmark, FileText, Megaphone, TriangleAlert, UserRoundCog } from "lucide-react";
+import { Bell, Bookmark, FilePenLine, UserRoundCog } from "lucide-react";
 import type { FilterKey } from "../types";
 
 interface FilterRailProps {
   activeFilter: FilterKey;
   onFilter: (key: FilterKey) => void;
   counts: Record<FilterKey, number>;
-  isAdmin: boolean;
 }
 
 const FILTERS: { key: FilterKey; label: string; icon: React.ReactNode }[] = [
   { key: "all", label: "All", icon: <Bell className="h-4 w-4" /> },
   { key: "unread", label: "Unread", icon: <Bell className="h-4 w-4" /> },
   { key: "pinned", label: "Pinned", icon: <Bookmark className="h-4 w-4" /> },
-  { key: "announcements", label: "Announcements", icon: <Megaphone className="h-4 w-4" /> },
-  { key: "urgent", label: "Urgent", icon: <TriangleAlert className="h-4 w-4" /> },
-  { key: "documents", label: "Documents", icon: <FileText className="h-4 w-4" /> },
+  { key: "changes", label: "Changes", icon: <FilePenLine className="h-4 w-4" /> },
   { key: "ownership", label: "Ownership", icon: <UserRoundCog className="h-4 w-4" /> },
 ];
 
-export function FilterRail({ activeFilter, onFilter, counts, isAdmin }: FilterRailProps) {
-  const visibleFilters = isAdmin
-    ? FILTERS
-    : FILTERS.filter((f) => f.key !== "announcements" || counts.announcements > 0);
-
+export function FilterRail({ activeFilter, onFilter, counts }: FilterRailProps) {
   return (
     <aside className="flex w-full shrink-0 flex-col gap-1 border-b border-border bg-card pb-3 pt-3 lg:w-52 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:pb-6 lg:pt-6">
       <p className="mb-2 hidden px-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground lg:block">
@@ -32,7 +25,7 @@ export function FilterRail({ activeFilter, onFilter, counts, isAdmin }: FilterRa
 
       {/* Mobile: horizontal scroll */}
       <div className="flex gap-1 overflow-x-auto px-3 lg:flex-col lg:overflow-visible lg:px-2">
-        {visibleFilters.map((f) => {
+        {FILTERS.map((f) => {
           const count = counts[f.key];
           const isActive = activeFilter === f.key;
           return (

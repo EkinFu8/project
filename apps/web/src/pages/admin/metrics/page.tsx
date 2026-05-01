@@ -41,7 +41,6 @@ type ActivityReportRow = {
   edits: number;
   deletes: number;
   ownershipUpdates: number;
-  notificationViews: number;
   other: number;
   total: number;
   latestAt: Date | null;
@@ -59,7 +58,6 @@ function formatAction(action: string) {
     edit: "edited",
     delete: "deleted",
     "ownership-update": "updated ownership for",
-    "notification-view": "viewed notification for",
   };
 
   return map[action] ?? action;
@@ -259,7 +257,6 @@ function getOrCreateActivityGroup(
       edits: 0,
       deletes: 0,
       ownershipUpdates: 0,
-      notificationViews: 0,
       other: 0,
       total: 0,
       latestAt: null,
@@ -287,7 +284,6 @@ export function buildActivityReportRows(auditEvents: AuditEventRow[], content: C
     else if (event.action === "edit") row.edits += 1;
     else if (event.action === "delete") row.deletes += 1;
     else if (event.action === "ownership-update") row.ownershipUpdates += 1;
-    else if (event.action === "notification-view") row.notificationViews += 1;
     else row.other += 1;
 
     if (createdAt && (!row.latestAt || createdAt.getTime() > row.latestAt.getTime())) {
@@ -556,7 +552,6 @@ export function MetricsView() {
     { name: "Downloads", value: auditSummary.data?.downloads ?? 0 },
     { name: "Edits", value: auditSummary.data?.edits ?? 0 },
     { name: "Deletes", value: auditSummary.data?.deletes ?? 0 },
-    { name: "Notifications", value: auditSummary.data?.notificationViews ?? 0 },
   ];
 
   const activeUserCounts = new Map<string, number>();
@@ -613,7 +608,7 @@ export function MetricsView() {
           <h2 className="mb-3 flex items-center gap-2 text-xl font-semibold text-foreground">
             Document Activity
             <InfoPopover title="Document Activity">
-              Upload, view, download, edit, delete, and notification-view audit counts.
+              Upload, view, download, edit, and delete audit counts.
             </InfoPopover>
           </h2>
           <div className="h-72">

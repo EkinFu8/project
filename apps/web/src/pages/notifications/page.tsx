@@ -1,10 +1,9 @@
 import { cn } from "@myapp/ui/lib/utils";
-import { Bell, Loader2, Megaphone, RefreshCw, Search } from "lucide-react";
+import { Bell, Loader2, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/auth/session-context";
 import type { RouterOutputs } from "@/lib/trpc";
 import { trpc } from "@/lib/trpc";
-import { ComposeAnnouncementDialog } from "./components/compose-announcement-dialog";
 import { FilterRail } from "./components/filter-rail";
 import { NotificationRow } from "./components/notification-row";
 import { PreviewPane } from "./components/preview-pane";
@@ -24,12 +23,8 @@ function matchesFilter(item: NotificationItem, filter: FilterKey): boolean {
       return !item.isRead;
     case "pinned":
       return item.isPinned;
-    case "announcements":
-      return item.type === "announcement";
-    case "urgent":
-      return item.urgency === "critical" || item.urgency === "high" || item.urgency === "warning";
-    case "documents":
-      return item.type === "document-change" || item.type === "expiration";
+    case "changes":
+      return item.type === "document-change";
     case "ownership":
       return item.type === "ownership-update";
     default:
@@ -42,11 +37,7 @@ function buildCounts(items: NotificationItem[]): Record<FilterKey, number> {
     all: items.length,
     unread: items.filter((i) => !i.isRead).length,
     pinned: items.filter((i) => i.isPinned).length,
-    announcements: items.filter((i) => i.type === "announcement").length,
-    urgent: items.filter(
-      (i) => i.urgency === "critical" || i.urgency === "high" || i.urgency === "warning",
-    ).length,
-    documents: items.filter((i) => i.type === "document-change" || i.type === "expiration").length,
+    changes: items.filter((i) => i.type === "document-change").length,
     ownership: items.filter((i) => i.type === "ownership-update").length,
   };
 }
@@ -57,8 +48,6 @@ function buildCounts(items: NotificationItem[]): Record<FilterKey, number> {
 
 export function NotificationsView() {
   const { session } = useSession();
-  const accessQuery = trpc.user.myAccess.useQuery();
-  const isAdmin = accessQuery.data?.role === "admin";
   const utils = trpc.useUtils();
 
   const listQuery = trpc.notifications.myList.useQuery(undefined, {
@@ -134,12 +123,14 @@ export function NotificationsView() {
   // UI state
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeItem, setActiveItem] = useState<NotificationItem | null>(null);
-  const [showCompose, setShowCompose] = useState(false);
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [showPreviewMobile, setShowPreviewMobile] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const allItems = listQuery.data?.items ?? [];
+  const activeItem = activeItemId
+    ? (allItems.find((i) => i.id === activeItemId) ?? null)
+    : null;
 
   // Apply filter + search
   const filteredItems = useMemo(() => {
@@ -165,7 +156,7 @@ export function NotificationsView() {
   // disappear instantly; the server call completes in the background.
   const openPreview = useCallback(
     (item: NotificationItem) => {
-      setActiveItem(item);
+      setActiveItemId(item.id);
       setShowPreviewMobile(true);
       if (!item.isRead) {
         setReadMutation.mutate({ keys: [item.id], read: true });
@@ -184,7 +175,7 @@ export function NotificationsView() {
         searchRef.current?.focus();
       }
       if (e.key === "Escape") {
-        setActiveItem(null);
+        setActiveItemId(null);
         setShowPreviewMobile(false);
         clearAll();
       }
@@ -220,8 +211,8 @@ export function NotificationsView() {
   }
   function handleBulkDelete() {
     deleteMutation.mutate({ keys: selectedKeys });
-    if (activeItem && selectedKeys.includes(activeItem.id)) {
-      setActiveItem(null);
+    if (activeItemId && selectedKeys.includes(activeItemId)) {
+      setActiveItemId(null);
       setShowPreviewMobile(false);
     }
     clearAll();
@@ -231,8 +222,8 @@ export function NotificationsView() {
   }
   function handleDelete(item: NotificationItem) {
     deleteMutation.mutate({ keys: [item.id] });
-    if (activeItem?.id === item.id) {
-      setActiveItem(null);
+    if (activeItemId === item.id) {
+      setActiveItemId(null);
       setShowPreviewMobile(false);
     }
   }
@@ -274,7 +265,7 @@ export function NotificationsView() {
             </span>
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-bold tracking-tight text-foreground">
-                Notifications
+                Activity
                 {(listQuery.data?.unreadCount ?? 0) > 0 && (
                   <span className="ml-2 rounded-full bg-hanover-green px-2 py-0.5 text-xs font-semibold text-white">
                     {listQuery.data?.unreadCount}
@@ -282,7 +273,7 @@ export function NotificationsView() {
                 )}
               </h1>
               <p className="text-xs text-muted-foreground">
-                Document updates, expiry reminders, and announcements for your role.
+                Edits and ownership transfers on documents in your role.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -295,16 +286,6 @@ export function NotificationsView() {
               >
                 <RefreshCw className={cn("h-3.5 w-3.5", listQuery.isFetching && "animate-spin")} />
               </button>
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => setShowCompose(true)}
-                  className="flex items-center gap-1.5 rounded-md bg-hanover-green px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-hanover-green/90"
-                >
-                  <Megaphone className="h-3.5 w-3.5" />
-                  <span className="hidden sm:block">Announcement</span>
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -319,7 +300,6 @@ export function NotificationsView() {
               clearAll();
             }}
             counts={counts}
-            isAdmin={isAdmin}
           />
 
           {/* List + preview */}
@@ -384,7 +364,7 @@ export function NotificationsView() {
                     {filteredItems.length} notification{filteredItems.length !== 1 ? "s" : ""}
                     {searchQuery && ` matching "${searchQuery}"`}
                   </p>
-                  {counts.unread > 0 && activeFilter === "all" && (
+                  {counts.unread > 0 && (activeFilter === "all" || activeFilter === "unread") && (
                     <button
                       type="button"
                       onClick={() => {
@@ -451,7 +431,7 @@ export function NotificationsView() {
               <PreviewPane
                 item={activeItem}
                 onClose={() => {
-                  setActiveItem(null);
+                  setActiveItemId(null);
                   setShowPreviewMobile(false);
                 }}
                 onPin={handlePin}
@@ -461,9 +441,6 @@ export function NotificationsView() {
           </div>
         </div>
       </div>
-
-      {/* Compose dialog */}
-      <ComposeAnnouncementDialog open={showCompose} onClose={() => setShowCompose(false)} />
     </>
   );
 }

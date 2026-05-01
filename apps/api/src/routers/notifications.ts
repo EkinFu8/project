@@ -119,7 +119,9 @@ function coalesceChangeEvents(events: AuditChangeEventRow[]): AuditChangeEventRo
 
 export const notificationsRouter = router({
   // -------------------------------------------------------------------------
-  // myList — returns all notifications for the current user with state merged
+  // myList — returns the activity feed for the current user. Activity feed
+  // contains document change events and ownership transfers only.
+  // Expirations / review dates → calendarEvents. Announcements → listAnnouncements.
   // -------------------------------------------------------------------------
   myList: protectedProcedure.query(async ({ ctx }) => {
     const profile = await ctx.prisma.userProfile.findUnique({
@@ -134,19 +136,17 @@ export const notificationsRouter = router({
           OR: [{ job_position: null }, { job_position: { in: roleVariants(profile?.role) } }],
         };
 
-    // Fetch content, change events, announcements, and state in parallel
-    // Ownership events are fetched in a second step once we have content ids
-    const [content, rawChangeEvents, announcements, stateRows] = await Promise.all([
+    // Fetch content (for filename resolution), change events, and state in parallel.
+    // Ownership events are fetched in a second step once we have content ids.
+    const [content, rawChangeEvents, stateRows] = await Promise.all([
       ctx.prisma.contentManagement.findMany({
         where: contentWhere,
         select: {
           fileID: true,
           filename: true,
-          expiration_date: true,
-          next_review_date: true,
         },
         orderBy: { fileID: "asc" },
-      }) as Promise<ContentSummaryRow[]>,
+      }) as Promise<{ fileID: string; filename: string | null }[]>,
 
       ctx.prisma.auditEvent
         .findMany({
@@ -175,27 +175,6 @@ export const notificationsRouter = router({
           take: 200,
         })
         .then((rows) => rows as AuditChangeEventRow[]),
-
-      ctx.prisma.announcement
-        .findMany({
-          where: {
-            OR: [{ audience: "all" }, { audience: "roles" }],
-            AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }],
-          },
-          select: {
-            id: true,
-            title: true,
-            body: true,
-            urgency: true,
-            audience: true,
-            targetRoles: true,
-            publishedAt: true,
-            expiresAt: true,
-            author: { select: { name: true } },
-          },
-          orderBy: { publishedAt: "desc" },
-        })
-        .then((rows) => rows as (AnnouncementRow & { audience: string; targetRoles: string[] })[]),
 
       ctx.prisma.notificationState.findMany({
         where: { userId: ctx.user.id },
@@ -232,44 +211,12 @@ export const notificationsRouter = router({
     // State lookup map
     const stateMap = new Map(stateRows.map((s) => [s.notificationKey, s]));
 
-    const now = Date.now();
-    const lookaheadHorizon = now + LOOKAHEAD_MS; // 30 days → still show
-
     // Suppress self-authored change events, then coalesce
     const changeEvents = coalesceChangeEvents(
       rawChangeEvents.filter((e) => e.userId !== ctx.user.id),
     );
 
-    // Filter announcements for this user's role
-    const userRole = profile?.role ?? "";
-    const visibleAnnouncements = announcements.filter((a) => {
-      if (a.audience === "all") return true;
-      if (a.audience === "roles") {
-        return roleVariants(userRole).some((v) => a.targetRoles.includes(v));
-      }
-      return false;
-    });
-
     const rows = [
-      // Announcements
-      ...visibleAnnouncements.map((a) => {
-        const key = `announcement-${a.id}`;
-        const state = stateMap.get(key);
-        return {
-          id: key,
-          type: "announcement" as const,
-          urgency: toUrgency(a.urgency),
-          createdAt: a.publishedAt,
-          fileID: null as string | null,
-          fileName: a.title,
-          message: a.body,
-          actorName: a.author?.name ?? null,
-          isRead: state?.readAt != null,
-          isPinned: state?.pinnedAt != null,
-          isDeleted: state?.deletedAt != null,
-        };
-      }),
-
       // Document change events
       ...changeEvents.map((event) => {
         const docId = event.documentId ?? "";
@@ -290,74 +237,6 @@ export const notificationsRouter = router({
           isDeleted: state?.deletedAt != null,
         };
       }),
-
-      // Review date notifications
-      ...content
-        .filter((row) => {
-          if (!row.next_review_date) return false;
-          return row.next_review_date.getTime() <= lookaheadHorizon;
-        })
-        .map((row) => {
-          const reviewDate = row.next_review_date as Date;
-          const overdue = reviewDate.getTime() < now;
-          const urgency = timeBasedUrgency(reviewDate, now);
-          const daysLeft = Math.max(0, Math.round((reviewDate.getTime() - now) / 86_400_000));
-          const key = `review-${row.fileID}`;
-          const state = stateMap.get(key);
-          return {
-            id: key,
-            type: "expiration" as const,
-            urgency,
-            createdAt: reviewDate,
-            fileID: row.fileID,
-            fileName: row.filename ?? row.fileID,
-            message: overdue
-              ? "Review date passed — follow up."
-              : daysLeft <= 7
-                ? `Review due in ${daysLeft === 0 ? "less than a day" : `${daysLeft} day${daysLeft === 1 ? "" : "s"}`}.`
-                : daysLeft <= 15
-                  ? `Review due in ${daysLeft} days — coming up.`
-                  : `Review due in ${daysLeft} days.`,
-            actorName: null,
-            isRead: state?.readAt != null,
-            isPinned: state?.pinnedAt != null,
-            isDeleted: state?.deletedAt != null,
-          };
-        }),
-
-      // Expiration notifications
-      ...content
-        .filter((row) => {
-          if (!row.expiration_date) return false;
-          return row.expiration_date.getTime() <= lookaheadHorizon;
-        })
-        .map((row) => {
-          const expiry = row.expiration_date as Date;
-          const expired = expiry.getTime() < now;
-          const urgency = timeBasedUrgency(expiry, now);
-          const daysLeft = Math.max(0, Math.round((expiry.getTime() - now) / 86_400_000));
-          const key = `expiration-${row.fileID}`;
-          const state = stateMap.get(key);
-          return {
-            id: key,
-            type: "expiration" as const,
-            urgency,
-            createdAt: expiry,
-            fileID: row.fileID,
-            fileName: row.filename ?? row.fileID,
-            message: expired
-              ? "Document expired — follow up with the owner."
-              : daysLeft <= 7
-                ? `Expires in ${daysLeft === 0 ? "less than a day" : `${daysLeft} day${daysLeft === 1 ? "" : "s"}`} — act soon.`
-                : daysLeft <= 15
-                  ? `Expires in ${daysLeft} days — coming up.`
-                  : `Expires in ${daysLeft} days.`,
-            actorName: null,
-            isRead: state?.readAt != null,
-            isPinned: state?.pinnedAt != null,
-            isDeleted: state?.deletedAt != null,
-          };
-        }),
 
       // Ownership change events
       ...ownershipEventsFiltered.map((event) => {
@@ -399,12 +278,195 @@ export const notificationsRouter = router({
   }),
 
   // -------------------------------------------------------------------------
+  // calendarEvents — review dates + expirations within a date range, scoped
+  // to the user's owned content ("mine") or their job role ("role").
+  // -------------------------------------------------------------------------
+  calendarEvents: protectedProcedure
+    .input(
+      z.object({
+        scope: z.enum(["mine", "role"]),
+        start: z.coerce.date(),
+        end: z.coerce.date(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const profile = await ctx.prisma.userProfile.findUnique({
+        where: { id: ctx.user.id },
+        select: { role: true },
+      });
+      const isAdmin = profile?.role === "admin";
+
+      const ownedClause = { owner_id: ctx.user.id };
+      const roleClause: Record<string, unknown> = isAdmin
+        ? {}
+        : { OR: [{ job_position: null }, { job_position: { in: roleVariants(profile?.role) } }] };
+
+      const where: Record<string, unknown> =
+        input.scope === "mine"
+          ? ownedClause
+          : isAdmin
+            ? {}
+            : { OR: [ownedClause, roleClause] };
+
+      const content = (await ctx.prisma.contentManagement.findMany({
+        where,
+        select: {
+          fileID: true,
+          filename: true,
+          owner_id: true,
+          job_position: true,
+          expiration_date: true,
+          next_review_date: true,
+        },
+        orderBy: { fileID: "asc" },
+      })) as Array<{
+        fileID: string;
+        filename: string | null;
+        owner_id: string | null;
+        job_position: string | null;
+        expiration_date: Date | null;
+        next_review_date: Date | null;
+      }>;
+
+      const startMs = input.start.getTime();
+      const endMs = input.end.getTime();
+      const now = Date.now();
+
+      type CalendarEvent = {
+        id: string;
+        kind: "review" | "expiration";
+        date: Date;
+        fileID: string;
+        fileName: string;
+        ownership: "mine" | "role";
+        urgency: "critical" | "high" | "warning" | "info";
+      };
+
+      const events: CalendarEvent[] = [];
+
+      for (const row of content) {
+        const isMine = row.owner_id === ctx.user.id;
+        const ownership = isMine ? "mine" : "role";
+        const fileName = row.filename ?? row.fileID;
+
+        if (
+          row.next_review_date &&
+          row.next_review_date.getTime() >= startMs &&
+          row.next_review_date.getTime() <= endMs
+        ) {
+          events.push({
+            id: `review-${row.fileID}`,
+            kind: "review",
+            date: row.next_review_date,
+            fileID: row.fileID,
+            fileName,
+            ownership,
+            urgency: timeBasedUrgency(row.next_review_date, now),
+          });
+        }
+
+        if (
+          row.expiration_date &&
+          row.expiration_date.getTime() >= startMs &&
+          row.expiration_date.getTime() <= endMs
+        ) {
+          events.push({
+            id: `expiration-${row.fileID}`,
+            kind: "expiration",
+            date: row.expiration_date,
+            fileID: row.fileID,
+            fileName,
+            ownership,
+            urgency: timeBasedUrgency(row.expiration_date, now),
+          });
+        }
+      }
+
+      events.sort((a, b) => a.date.getTime() - b.date.getTime());
+      return events;
+    }),
+
+  // -------------------------------------------------------------------------
+  // listAnnouncements — announcements visible to the current user, with
+  // per-user read state. Splits into active (non-expired) and archived.
+  // -------------------------------------------------------------------------
+  listAnnouncements: protectedProcedure.query(async ({ ctx }) => {
+    const profile = await ctx.prisma.userProfile.findUnique({
+      where: { id: ctx.user.id },
+      select: { role: true },
+    });
+
+    const announcementsRaw = (await ctx.prisma.announcement.findMany({
+      where: {
+        OR: [{ audience: "all" }, { audience: "roles" }],
+      },
+      select: {
+        id: true,
+        title: true,
+        body: true,
+        urgency: true,
+        audience: true,
+        targetRoles: true,
+        publishedAt: true,
+        expiresAt: true,
+        author: { select: { name: true } },
+      },
+      orderBy: { publishedAt: "desc" },
+    })) as (AnnouncementRow & { audience: string; targetRoles: string[] })[];
+
+    const userRole = profile?.role ?? "";
+    const visible = announcementsRaw.filter((a) => {
+      if (a.audience === "all") return true;
+      if (a.audience === "roles") {
+        return roleVariants(userRole).some((v) => a.targetRoles.includes(v));
+      }
+      return false;
+    });
+
+    const stateRows = await ctx.prisma.notificationState.findMany({
+      where: { userId: ctx.user.id },
+      select: { notificationKey: true, readAt: true },
+    });
+    const stateMap = new Map(stateRows.map((s) => [s.notificationKey, s]));
+
+    const now = Date.now();
+    const items = visible.map((a) => {
+      const key = `announcement-${a.id}`;
+      const state = stateMap.get(key);
+      const isExpired = a.expiresAt != null && a.expiresAt.getTime() <= now;
+      return {
+        id: key,
+        announcementId: a.id,
+        title: a.title,
+        body: a.body,
+        urgency: toUrgency(a.urgency),
+        audience: a.audience,
+        targetRoles: a.targetRoles,
+        publishedAt: a.publishedAt,
+        expiresAt: a.expiresAt,
+        authorName: a.author?.name ?? null,
+        isRead: state?.readAt != null,
+        isExpired,
+      };
+    });
+
+    const active = items.filter((i) => !i.isExpired);
+    const archive = items.filter((i) => i.isExpired);
+
+    return {
+      active,
+      archive,
+      unreadCount: active.filter((i) => !i.isRead).length,
+    };
+  }),
+
+  // -------------------------------------------------------------------------
   // setRead — mark keys as read or unread
   // -------------------------------------------------------------------------
   setRead: protectedProcedure
     .input(
       z.object({
-        keys: z.array(z.string().min(1)).min(1).max(100),
+        keys: z.array(z.string().min(1)).min(1).max(500),
         read: z.boolean(),
       }),
     )
@@ -424,18 +486,6 @@ export const notificationsRouter = router({
         ),
       );
 
-      // Preserve audit trail for notification-view events
-      if (input.read) {
-        await ctx.prisma.auditEvent.createMany({
-          data: input.keys.map((key) => ({
-            userId: ctx.user.id,
-            action: "notification-view",
-            metadata: { notificationId: key },
-          })),
-          skipDuplicates: true,
-        });
-      }
-
       return { success: true };
     }),
 
@@ -445,7 +495,7 @@ export const notificationsRouter = router({
   setPinned: protectedProcedure
     .input(
       z.object({
-        keys: z.array(z.string().min(1)).min(1).max(100),
+        keys: z.array(z.string().min(1)).min(1).max(500),
         pinned: z.boolean(),
       }),
     )
@@ -471,7 +521,7 @@ export const notificationsRouter = router({
   // delete — soft-delete notifications
   // -------------------------------------------------------------------------
   delete: protectedProcedure
-    .input(z.object({ keys: z.array(z.string().min(1)).min(1).max(100) }))
+    .input(z.object({ keys: z.array(z.string().min(1)).min(1).max(500) }))
     .mutation(async ({ ctx, input }) => {
       const now = new Date();
       await Promise.all(
@@ -484,45 +534,6 @@ export const notificationsRouter = router({
         ),
       );
       return { success: true };
-    }),
-
-  // -------------------------------------------------------------------------
-  // markViewed — kept for backwards compat (used by App.tsx metrics)
-  // -------------------------------------------------------------------------
-  markViewed: protectedProcedure
-    .input(
-      z.object({
-        notifications: z
-          .array(
-            z.object({
-              id: z.string().min(1),
-              type: z.string().min(1),
-              fileID: z.string().optional(),
-              fileName: z.string().optional(),
-              createdAt: z.coerce.date(),
-            }),
-          )
-          .max(100),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      if (input.notifications.length === 0) return { success: true, count: 0 };
-
-      await ctx.prisma.auditEvent.createMany({
-        data: input.notifications.map((n) => ({
-          userId: ctx.user.id,
-          action: "notification-view",
-          documentId: n.fileID || null,
-          fileName: n.fileName || null,
-          metadata: {
-            notificationId: n.id,
-            notificationType: n.type,
-            notificationCreatedAt: n.createdAt.toISOString(),
-          },
-        })),
-      });
-
-      return { success: true, count: input.notifications.length };
     }),
 
   // -------------------------------------------------------------------------
