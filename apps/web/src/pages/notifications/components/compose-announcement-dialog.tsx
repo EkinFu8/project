@@ -80,10 +80,11 @@ export function ComposeAnnouncementDialog({ open, onClose }: ComposeAnnouncement
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
 
-  // Focus trap
+  // Focus trap — focus the first interactive element when the dialog opens
   useEffect(() => {
     if (open) {
-      dialogRef.current?.querySelector("input, textarea, button")?.focus?.();
+      const first = dialogRef.current?.querySelector<HTMLElement>("input, textarea, button");
+      first?.focus();
     }
   }, [open]);
 
