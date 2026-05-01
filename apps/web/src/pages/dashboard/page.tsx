@@ -951,6 +951,10 @@ function DashboardPage() {
             <div className="animate-fade-in">
               <TagsPage />
             </div>
+          ) : activeTab === "tags" ? (
+            <div className="animate-fade-in">
+              <TagsPage />
+            </div>
           ) : activeTab === "notifications" ? (
             <div className="animate-fade-in">
               <NotificationsView />
