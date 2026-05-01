@@ -1,6 +1,6 @@
 import { cn } from "@myapp/ui/lib/utils";
-import { addDays, dayKey, isSameDay, startOfWeek, WEEKDAY_LABELS_SHORT } from "../utils";
 import type { CalendarEvent } from "../types";
+import { addDays, dayKey, isSameDay, startOfWeek, WEEKDAY_LABELS_SHORT } from "../utils";
 import { EventPill } from "./EventPill";
 
 interface Props {

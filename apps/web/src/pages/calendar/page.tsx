@@ -53,11 +53,10 @@ function CalendarPage() {
     return map;
   }, [eventsQuery.data]);
 
-  const selectedDayEvents = selectedDay
-    ? (eventsByDay.get(dayKey(selectedDay)) ?? [])
-    : [];
+  const selectedDayEvents = selectedDay ? (eventsByDay.get(dayKey(selectedDay)) ?? []) : [];
 
-  const rangeLabel = view === "month" ? formatMonthYear(anchor) : formatRange(range.start, range.end);
+  const rangeLabel =
+    view === "month" ? formatMonthYear(anchor) : formatRange(range.start, range.end);
 
   function handlePrev() {
     setAnchor((current) => (view === "month" ? addMonths(current, -1) : addDays(current, -14)));
@@ -148,12 +147,10 @@ function CalendarPage() {
                   Overdue
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-full bg-[#EA580C]" />
-                  ≤ 7d
+                  <span className="inline-block h-2 w-2 rounded-full bg-[#EA580C]" />≤ 7d
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="inline-block h-2 w-2 rounded-full bg-[#C9A84C]" />
-                  ≤ 15d
+                  <span className="inline-block h-2 w-2 rounded-full bg-[#C9A84C]" />≤ 15d
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="inline-block h-2 w-2 rounded-full bg-hanover-green" />

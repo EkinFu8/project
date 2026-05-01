@@ -22,7 +22,9 @@ import AboutPage from "@/pages/about/page.tsx";
 import AccountPage from "@/pages/account/page.tsx";
 import UsersPage from "@/pages/admin/users/page.tsx";
 import UserFormPage from "@/pages/admin/users/user-form.tsx";
+import AnnouncementsPage from "@/pages/announcements/page.tsx";
 import BusinessAnalystPage from "@/pages/business-analyst/page.tsx";
+import CalendarPage from "@/pages/calendar/page.tsx";
 import ContentFormPage from "@/pages/content/content-form.tsx";
 import ContentPage from "@/pages/content/page.tsx";
 import CreditsPage from "@/pages/credits/page.tsx";
@@ -33,8 +35,6 @@ import HelpPage from "@/pages/help/page.tsx";
 import HeroLayout from "@/pages/hero/layout.tsx";
 import LoginFormPage from "@/pages/login.tsx";
 import ActivityPage from "@/pages/notifications/page.tsx";
-import AnnouncementsPage from "@/pages/announcements/page.tsx";
-import CalendarPage from "@/pages/calendar/page.tsx";
 import UnderwriterPage from "@/pages/underwriter/page.tsx";
 import { useAppPreferences } from "@/store/app-preferences";
 

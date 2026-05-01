@@ -5,13 +5,6 @@ import { adminPortalProcedure, protectedProcedure, router } from "../lib/trpc";
 // Local types (Prisma loses row types when `where` is Record<string, unknown>)
 // ---------------------------------------------------------------------------
 
-type ContentSummaryRow = {
-  fileID: string;
-  filename: string | null;
-  expiration_date: Date | null;
-  next_review_date: Date | null;
-};
-
 type AuditChangeEventRow = {
   id: string;
   action: string;
@@ -83,7 +76,6 @@ function timeBasedUrgency(target: Date, now: number): "critical" | "high" | "war
   return "info";
 }
 
-const LOOKAHEAD_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const COALESCE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 // ---------------------------------------------------------------------------
@@ -302,11 +294,7 @@ export const notificationsRouter = router({
         : { OR: [{ job_position: null }, { job_position: { in: roleVariants(profile?.role) } }] };
 
       const where: Record<string, unknown> =
-        input.scope === "mine"
-          ? ownedClause
-          : isAdmin
-            ? {}
-            : { OR: [ownedClause, roleClause] };
+        input.scope === "mine" ? ownedClause : isAdmin ? {} : { OR: [ownedClause, roleClause] };
 
       const content = (await ctx.prisma.contentManagement.findMany({
         where,

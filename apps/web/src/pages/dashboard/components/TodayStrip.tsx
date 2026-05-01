@@ -1,11 +1,5 @@
 import { cn } from "@myapp/ui/lib/utils";
-import {
-  AlertCircle,
-  CalendarClock,
-  Clock,
-  type LucideIcon,
-  Megaphone,
-} from "lucide-react";
+import { AlertCircle, CalendarClock, Clock, type LucideIcon, Megaphone } from "lucide-react";
 import { Link } from "react-router";
 
 interface TodayItem {
@@ -74,7 +68,7 @@ export function TodayStrip({
   if (items.length === 0) return null;
 
   return (
-    <div
+    <section
       aria-label="Today"
       className="mb-6 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-sm"
     >
@@ -100,6 +94,6 @@ export function TodayStrip({
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }

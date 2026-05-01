@@ -1,8 +1,8 @@
 import { cn } from "@myapp/ui/lib/utils";
 import { Clock3, FileX2, X } from "lucide-react";
 import { Link } from "react-router";
-import { formatLongDate } from "../utils";
 import type { CalendarEvent } from "../types";
+import { formatLongDate } from "../utils";
 
 interface Props {
   date: Date | null;
@@ -45,9 +45,7 @@ export function DayPanel({ date, events, onClose }: Props) {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {events.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-muted-foreground">
-            Nothing scheduled for this day.
-          </p>
+          <p className="px-4 py-6 text-sm text-muted-foreground">Nothing scheduled for this day.</p>
         ) : (
           <ul className="divide-y divide-border">
             {events.map((event) => {

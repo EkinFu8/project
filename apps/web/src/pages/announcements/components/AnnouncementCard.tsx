@@ -2,7 +2,8 @@ import { cn } from "@myapp/ui/lib/utils";
 import { Megaphone, TriangleAlert } from "lucide-react";
 import type { RouterOutputs } from "@/lib/trpc";
 
-export type AnnouncementItem = RouterOutputs["notifications"]["listAnnouncements"]["active"][number];
+export type AnnouncementItem =
+  RouterOutputs["notifications"]["listAnnouncements"]["active"][number];
 
 interface Props {
   item: AnnouncementItem;
