@@ -55,7 +55,7 @@ function buildCounts(items: NotificationItem[]): Record<FilterKey, number> {
 // Page
 // ---------------------------------------------------------------------------
 
-function NotificationsPage() {
+export function NotificationsView() {
   const { session } = useSession();
   const accessQuery = trpc.user.myAccess.useQuery();
   const isAdmin = accessQuery.data?.role === "admin";
@@ -243,7 +243,7 @@ function NotificationsPage() {
 
   if (listQuery.isLoading) {
     return (
-      <div className="flex min-h-[calc(100vh-2.75rem)] items-center justify-center bg-muted">
+      <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-hanover-green" />
       </div>
     );
@@ -468,4 +468,4 @@ function NotificationsPage() {
   );
 }
 
-export default NotificationsPage;
+export default NotificationsView;

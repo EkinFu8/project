@@ -99,6 +99,26 @@
     outline: none;
   }
 
+  /* Recharts: suppress all focus outlines globally on charts and chart elements. */
+  .recharts-wrapper,
+  .recharts-wrapper *,
+  .recharts-surface,
+  .recharts-surface * {
+    outline: none !important;
+  }
+
+  .recharts-wrapper:focus,
+  .recharts-wrapper:focus-visible,
+  .recharts-wrapper *:focus,
+  .recharts-wrapper *:focus-visible,
+  .recharts-surface:focus,
+  .recharts-surface:focus-visible,
+  .recharts-surface *:focus,
+  .recharts-surface *:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   /* Honor reduced-motion preference for any motion utilities below */
   @media (prefers-reduced-motion: reduce) {
     *,
