@@ -440,8 +440,7 @@ function ProtectedLayout() {
   const isContentPage = location.pathname === "/hero" || location.pathname === "/hero/content";
   const isUsersPage = location.pathname === "/users";
   const isUsersRoute = location.pathname.startsWith("/users/");
-  const isDashboardTagsTab =
-    location.pathname === "/dashboard" && dashboardTab === "tags";
+  const isDashboardTagsTab = location.pathname === "/dashboard" && dashboardTab === "tags";
 
   const focusCurrentSearch = useCallback(() => {
     if (isUsersPage) {

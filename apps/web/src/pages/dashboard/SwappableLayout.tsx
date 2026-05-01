@@ -36,8 +36,11 @@ export function SwappableLayout({ items, order, onSwap, className }: Props) {
         const isOver = dragOverId === id && draggingId !== null && draggingId !== id;
 
         return (
+          // biome-ignore lint/a11y/useSemanticElements: draggable container, not a button
           <div
             key={id}
+            role="button"
+            tabIndex={0}
             draggable
             onDragStart={(e) => {
               setDraggingId(id);
@@ -72,9 +75,7 @@ export function SwappableLayout({ items, order, onSwap, className }: Props) {
             className={`group/swap relative transition-all duration-150 ${
               isDragging ? "opacity-40 scale-[0.99]" : ""
             } ${
-              isOver
-                ? "ring-2 ring-hanover-green ring-offset-2 ring-offset-muted rounded-lg"
-                : ""
+              isOver ? "ring-2 ring-hanover-green ring-offset-2 ring-offset-muted rounded-lg" : ""
             }`}
           >
             <div

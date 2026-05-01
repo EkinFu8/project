@@ -32,9 +32,9 @@ import { useSession } from "@/auth/session-context";
 import type { RouterOutputs } from "@/lib/trpc.ts";
 import { trpc } from "@/lib/trpc.ts";
 import { DashboardReports, MetricsView } from "@/pages/admin/metrics/page.tsx";
+import { SwappableLayout } from "@/pages/dashboard/SwappableLayout";
 import { NotificationsView } from "@/pages/notifications/page.tsx";
 import TagsPage from "@/pages/tags/TagsPage";
-import { SwappableLayout } from "@/pages/dashboard/SwappableLayout";
 import { type DashboardTab, useAppPreferences } from "@/store/app-preferences";
 import { formatStatus } from "@/utils/status";
 import { renderTag } from "@/utils/tag";
@@ -301,14 +301,16 @@ function DashboardLoaded({
             <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground group-hover:text-hanover-green">
               <span>{stat.label}</span>
               <span className="opacity-0 transition-opacity group-hover:opacity-100">→</span>
-              <span className="absolute right-3 top-3 z-10"
+              <button
+                type="button"
+                className="absolute right-3 top-3 z-10"
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
                 }}
               >
                 <InfoPopover title={stat.label}>{stat.info}</InfoPopover>
-              </span>
+              </button>
             </div>
           </Link>
         ))}
@@ -374,9 +376,7 @@ function CoworkersWidget({
       });
 
   const title = isAdmin ? "Employees" : `${formatRoleLabel(userRole)} Coworkers`;
-  const emptyText = isAdmin
-    ? "No employees yet."
-    : "No other coworkers share your role yet.";
+  const emptyText = isAdmin ? "No employees yet." : "No other coworkers share your role yet.";
   const description = isAdmin
     ? "All employees in the system."
     : `Other employees who share the ${formatRoleLabel(userRole)} role with you.`;
@@ -461,20 +461,20 @@ function MyContentReports({ allContent }: { allContent: ContentRow[] }) {
 
   const finalizedCount = myContent.filter((c) => c.document_status === "Finalized").length;
 
-  const summary: { label: string; value: number; tone: "alert" | "warn" | "ok"; icon: LucideIcon }[] =
-    [
-      { label: "Total Owned", value: myContent.length, tone: "ok", icon: Briefcase },
-      { label: "Expired", value: expiredCount, tone: "alert", icon: AlertTriangle },
-      { label: "Reviews Overdue", value: reviewOverdueCount, tone: "warn", icon: CalendarClock },
-      { label: "Finalized", value: finalizedCount, tone: "ok", icon: CheckCircle2 },
-    ];
+  const summary: {
+    label: string;
+    value: number;
+    tone: "alert" | "warn" | "ok";
+    icon: LucideIcon;
+  }[] = [
+    { label: "Total Owned", value: myContent.length, tone: "ok", icon: Briefcase },
+    { label: "Expired", value: expiredCount, tone: "alert", icon: AlertTriangle },
+    { label: "Reviews Overdue", value: reviewOverdueCount, tone: "warn", icon: CalendarClock },
+    { label: "Finalized", value: finalizedCount, tone: "ok", icon: CheckCircle2 },
+  ];
 
   const toneClass = (tone: "alert" | "warn" | "ok") =>
-    tone === "alert"
-      ? "text-red-600"
-      : tone === "warn"
-        ? "text-[#C9A84C]"
-        : "text-hanover-green";
+    tone === "alert" ? "text-red-600" : tone === "warn" ? "text-[#C9A84C]" : "text-hanover-green";
 
   if (!userId) return null;
 
