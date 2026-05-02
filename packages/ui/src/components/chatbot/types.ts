@@ -85,6 +85,7 @@ export interface CMSChatbotProps {
     role: ChatRole;
     content: string;
   }) => ChatMessage | undefined | Promise<ChatMessage | undefined>;
+  onBeforeRespond?: () => Promise<void> | void;
   mode?: "launcher" | "page";
   onSubmitQuestion?: (question: string) => void;
 }

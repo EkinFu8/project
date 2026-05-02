@@ -1,6 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import { styles } from "./styles";
 import type { AssistantAction, ChatMessage } from "./types";
 
@@ -255,20 +255,31 @@ export function ChatMessages({
   onNavigate,
 }: ChatMessagesProps) {
   const messagesRef = useRef<HTMLDivElement>(null);
+  // Tracks whether the user is pinned to the bottom of the transcript. While
+  // they are, every render auto-scrolls; if they scroll up to read, we leave
+  // them alone until they scroll back down.
+  const isAtBottomRef = useRef(true);
 
-  useEffect(() => {
-    const element = messagesRef.current;
-    if (!element) return;
+  const handleScroll = useCallback(() => {
+    const container = messagesRef.current;
+    if (!container) return;
+    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+    isAtBottomRef.current = distance < 80;
+  }, []);
 
-    const frame = window.requestAnimationFrame(() => {
-      element.scrollTop = element.scrollHeight;
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-  });
+  // useLayoutEffect (not useEffect) so the scroll commits in the same frame
+  // as the new content paints — eliminates the visible flash where a new
+  // token grows the bubble below the viewport before rAF scrolls down.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: messages and isTyping are intentional triggers — the effect re-reads scrollHeight from the DOM rather than the array contents
+  useLayoutEffect(() => {
+    if (!isAtBottomRef.current) return;
+    const container = messagesRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, [messages, isTyping]);
 
   return (
-    <div ref={messagesRef} style={styles.pageMessages}>
+    <div ref={messagesRef} style={styles.pageMessages} onScroll={handleScroll}>
       {messages.map((message) => {
         const parsed =
           message.role === "assistant"

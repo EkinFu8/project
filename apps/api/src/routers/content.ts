@@ -339,13 +339,11 @@ export const contentRouter = router({
 
   myCheckouts: protectedProcedure.query(async ({ ctx }) => {
     return ctx.prisma.contentManagement.findMany({
-      where: {
-        checked_out_by: ctx.user.id,
-        is_checked_out: true,
-      },
+      where: { checked_out_by: ctx.user.id },
       select: {
         fileID: true,
         filename: true,
+        is_checked_out: true,
         checked_out_at: true,
         expiration_date: true,
         next_review_date: true,
