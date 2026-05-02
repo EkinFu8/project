@@ -415,6 +415,22 @@ export const styles = {
     borderRadius: "50%",
     background: "#a8b3ac",
   },
+  suggestionsRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    padding: "10px 16px 0",
+    background: "var(--color-card)",
+  },
+  suggestionLabel: {
+    width: "100%",
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: 0.4,
+    textTransform: "uppercase" as const,
+    color: "var(--color-muted-foreground)",
+    margin: 0,
+  },
   pageInputRow: {
     padding: "14px 16px",
     borderTop: "1px solid var(--color-border)",
