@@ -396,9 +396,7 @@ export function NotificationsView() {
                         ? "You're all caught up."
                         : activeFilter === "pinned"
                           ? "No pinned notifications yet."
-                          : activeFilter === "announcements"
-                            ? "No announcements yet."
-                            : "Nothing to show right now."}
+                          : "Nothing to show right now."}
                   </p>
                 </div>
               ) : (
