@@ -171,7 +171,7 @@ export default function CMSChatbot({
   // Reset the prompt-sent flag whenever the conversation changes.
   useEffect(() => {
     initialPromptSentRef.current = false;
-  }, [activeConversationId]);
+  }, []);
 
   // Set messages once initialMessages resolves for the active conversation.
   // Shows the greeting for brand-new empty conversations.
@@ -190,7 +190,7 @@ export default function CMSChatbot({
             },
           ],
     );
-  }, [activeConversationId, initialMessages]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [context, initialMessages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync persisted messages within the same conversation (e.g. optimistic
   // local IDs replaced by server IDs after a save). Only grows the list so
