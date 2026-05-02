@@ -217,19 +217,29 @@ View and edit document metadata, ownership, lifecycle status, dates, and tags.
 
 At-a-glance content health: total employees, total content, finalized count, in-progress count, content-by-status donut, and top roles by content volume.
 
-![Dashboard Overview](docs/screenshots/dashboard-overview.png)
+![Dashboard Overview — top](docs/screenshots/dashboard-overview-top.png)
+
+Scrolling down reveals the employee directory snapshot, recent content table, and content health stat cards (current, stale, expired, review due).
+
+![Dashboard Overview — bottom](docs/screenshots/dashboard-overview-bottom.png)
 
 #### Metrics
 
-System-level metrics: API request volume, error rate, active users, document activity by action type, and top active users.
+System-level metrics: API request volume, error rate, active users, document activity by action type (uploads, views, downloads, edits, deletes), and top active users.
 
-![Dashboard Metrics](docs/screenshots/dashboard-metrics.png)
+![Dashboard Metrics — charts](docs/screenshots/dashboard-metrics-top.png)
 
-#### Reports
+Transactions and content currency broken down by owner and role.
 
-Detailed breakdowns: transactions by owner and role, content currency, and expiration/review dates with urgency highlighting.
+![Dashboard Metrics — tables](docs/screenshots/dashboard-metrics-tables.png)
 
-![Dashboard Reports](docs/screenshots/dashboard-reports.png)
+Expiration and review-date status per owner, with overdue counts highlighted in red.
+
+![Dashboard Metrics — expiration](docs/screenshots/dashboard-metrics-expiration.png)
+
+Recent user activity log and live system performance table showing route-level query durations.
+
+![Dashboard Metrics — activity & performance](docs/screenshots/dashboard-metrics-activity.png)
 
 ---
 
