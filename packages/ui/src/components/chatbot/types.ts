@@ -32,6 +32,11 @@ export interface ChatHistoryItem {
   updatedAt?: string | Date;
 }
 
+export interface ChatSuggestion {
+  label: string;
+  prompt: string;
+}
+
 export interface CMSContext {
   user: {
     name: string;
@@ -71,6 +76,7 @@ export interface CMSChatbotProps {
   initialPrompt?: string;
   initialMessages?: ChatMessage[];
   history?: ChatHistoryItem[];
+  suggestions?: ChatSuggestion[];
   activeConversationId?: string | null;
   onNewConversation?: () => void;
   onSelectConversation?: (id: string) => void;

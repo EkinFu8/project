@@ -136,6 +136,7 @@ export default function CMSChatbot({
   initialPrompt,
   initialMessages,
   history = [],
+  suggestions = [],
   activeConversationId,
   mode = "launcher",
   // DEFAULT_MODEL should now be a Groq model ID, e.g. "llama-3.3-70b-versatile"
@@ -362,6 +363,27 @@ export default function CMSChatbot({
             messages={messages}
             onNavigate={onNavigate}
           />
+
+          {suggestions.length > 0 && !messages.some((m) => m.role === "user") && !isTyping ? (
+            <div style={styles.suggestionsRow}>
+              <p style={styles.suggestionLabel}>Try one of these</p>
+              {suggestions.map((s) => (
+                <button
+                  key={s.label}
+                  type="button"
+                  onClick={() => void sendMessage(s.prompt)}
+                  disabled={isDisabled}
+                  style={{
+                    ...styles.actionButton,
+                    ...styles.primaryActionButton,
+                    opacity: isDisabled ? 0.4 : 1,
+                  }}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           <div style={styles.pageInputRow}>
             <textarea

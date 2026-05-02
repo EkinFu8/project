@@ -71,12 +71,28 @@ function describePage(pathname: string) {
         "Viewing or editing one document with checkout, download, upload, and metadata controls.",
     };
   }
-  if (pathname === "/notifications") {
+  if (pathname === "/activity") {
     return {
       path: pathname,
-      title: "Notifications",
+      title: "Activity",
       description:
-        "Reviewing document changes, ownership changes, review reminders, and expiration reminders.",
+        "Activity feed of edits and ownership transfers on documents in the user's role. Replaces the legacy /notifications page.",
+    };
+  }
+  if (pathname === "/announcements") {
+    return {
+      path: pathname,
+      title: "Announcements",
+      description:
+        "Admin-published announcements targeted at the user's role, with per-user read state and an archive of expired announcements.",
+    };
+  }
+  if (pathname === "/calendar") {
+    return {
+      path: pathname,
+      title: "Calendar",
+      description:
+        "Calendar view of review dates and expirations. Scope toggle switches between owned content (mine) and content assigned to the user's role.",
     };
   }
   if (pathname === "/users" || pathname.startsWith("/users/")) {
@@ -98,7 +114,7 @@ function describePage(pathname: string) {
       path: pathname,
       title: "Dashboard",
       description:
-        "Role-aware dashboard: admin metrics and content health for admins, personal content overview for everyone else.",
+        "Role-aware dashboard with Overview, Metrics, and Tags tabs (Metrics and Tags admin-only). Personal content overview for non-admins.",
     };
   }
   if (pathname === "/employees" || pathname.startsWith("/employees/")) {
@@ -140,6 +156,22 @@ type ProtectedOutletContext = {
   assistantContext: ComponentProps<typeof CMSChatbot>["context"];
 };
 
+const GOMPEI_SUGGESTIONS: NonNullable<ComponentProps<typeof CMSChatbot>["suggestions"]> = [
+  { label: "What needs my attention?", prompt: "What needs my attention right now?" },
+  {
+    label: "Check out all overdue files",
+    prompt: "Check out all of my overdue files for me.",
+  },
+  {
+    label: "Check all my files back in",
+    prompt: "Check all of my files back in for me.",
+  },
+  {
+    label: "How many files do I have checked out?",
+    prompt: "How many files do I currently have checked out?",
+  },
+];
+
 function GompeiPage() {
   const { assistantContext } = useOutletContext<ProtectedOutletContext>();
   const [searchParams] = useSearchParams();
@@ -147,16 +179,22 @@ function GompeiPage() {
   const utils = trpc.useUtils();
   const activeConversationId = searchParams.get("chat");
   const initialPrompt = searchParams.get("q") ?? undefined;
+  const fromPath = searchParams.get("from") ?? undefined;
+  const chatContext = useMemo(
+    () => (fromPath ? { ...assistantContext, page: describePage(fromPath) } : assistantContext),
+    [assistantContext, fromPath],
+  );
   const conversations = trpc.chat.list.useQuery();
   const activeConversation = trpc.chat.get.useQuery(
     { conversationId: activeConversationId ?? "" },
     { enabled: Boolean(activeConversationId) },
   );
-  const createConversation = trpc.chat.create.useMutation();
+  const { mutate: createConversationMutate } = trpc.chat.create.useMutation();
   const addMessage = trpc.chat.addMessage.useMutation();
-  const markRead = trpc.chat.markRead.useMutation();
+  const { mutate: markReadMutate } = trpc.chat.markRead.useMutation();
   const deleteConversation = trpc.chat.delete.useMutation();
   const checkoutOverdue = trpc.content.checkoutOverdue.useMutation();
+  const checkinMine = trpc.content.checkinMine.useMutation();
   const promptCreateKeyRef = useRef<string | null>(null);
   const emptyCreateRequestedRef = useRef(false);
   const newConversationPendingRef = useRef(false);
@@ -170,7 +208,7 @@ function GompeiPage() {
 
     promptCreateKeyRef.current = initialPrompt;
     newConversationPendingRef.current = true;
-    createConversation.mutate(
+    createConversationMutate(
       { title: initialPrompt },
       {
         onSuccess: (conversation) => {
@@ -184,7 +222,7 @@ function GompeiPage() {
         },
       },
     );
-  }, [activeConversationId, createConversation, initialPrompt, navigate]);
+  }, [activeConversationId, createConversationMutate, initialPrompt, navigate]);
 
   useEffect(() => {
     if (activeConversationId || initialPrompt) {
@@ -208,7 +246,7 @@ function GompeiPage() {
     }
 
     emptyCreateRequestedRef.current = true;
-    createConversation.mutate(undefined, {
+    createConversationMutate(undefined, {
       onSuccess: (conversation) => navigate(`/gompei?chat=${conversation.id}`, { replace: true }),
       onError: () => {
         emptyCreateRequestedRef.current = false;
@@ -218,15 +256,15 @@ function GompeiPage() {
     activeConversationId,
     conversations.data,
     conversations.isSuccess,
-    createConversation,
+    createConversationMutate,
     initialPrompt,
     navigate,
   ]);
 
   useEffect(() => {
     if (!activeConversationId) return;
-    markRead.mutate({ conversationId: activeConversationId });
-  }, [activeConversationId, markRead]);
+    markReadMutate({ conversationId: activeConversationId });
+  }, [activeConversationId, markReadMutate]);
 
   const history =
     conversations.data?.map((conversation) => {
@@ -257,11 +295,12 @@ function GompeiPage() {
     <CMSChatbot
       apiKey={import.meta.env.VITE_GROQ_API_KEY}
       activeConversationId={activeConversationId}
-      context={assistantContext}
+      context={chatContext}
       history={history}
       initialMessages={initialMessages}
       initialPrompt={activeConversationId ? initialPrompt : undefined}
       mode="page"
+      suggestions={GOMPEI_SUGGESTIONS}
       onDeleteConversation={(conversationId) => {
         deleteConversation.mutate(
           { conversationId },
@@ -275,7 +314,7 @@ function GompeiPage() {
       }}
       onNavigate={(to) => navigate(to)}
       onNewConversation={() => {
-        createConversation.mutate(undefined, {
+        createConversationMutate(undefined, {
           onSuccess: async (conversation) => {
             await utils.chat.list.invalidate();
             navigate(`/gompei?chat=${conversation.id}`);
@@ -302,6 +341,35 @@ function GompeiPage() {
       }}
       onRunSiteAction={async ({ prompt }) => {
         const normalizedPrompt = prompt.toLowerCase();
+
+        const wantsCheckin =
+          /\bcheck\s*-?\s*in\b/.test(normalizedPrompt) ||
+          /\bback\s+in\b/.test(normalizedPrompt) ||
+          /\brelease\b/.test(normalizedPrompt);
+
+        if (wantsCheckin) {
+          const result = await checkinMine.mutateAsync();
+          await utils.content.list.invalidate();
+          await utils.content.myCheckouts.invalidate();
+          await utils.notifications.myList.invalidate();
+
+          if (result.totalReleased === 0) {
+            return "You don't have any files checked out right now.\n\nACTION: /hero/content | Open content";
+          }
+
+          const fileLines = result.checkedIn
+            .slice(0, 5)
+            .map(
+              (item) =>
+                `ACTION: /hero/content/${item.fileID}/edit | Open ${item.filename ?? "file"}`,
+            )
+            .join("\n");
+          const moreText =
+            result.totalReleased > 5 ? `\n…and ${result.totalReleased - 5} more.` : "";
+
+          return `Done. I checked in ${result.totalReleased} file${result.totalReleased === 1 ? "" : "s"}.\n${fileLines}${moreText}`;
+        }
+
         const wantsCheckout =
           /\bcheck\s*out\b/.test(normalizedPrompt) || /\bcheckout\b/.test(normalizedPrompt);
         const wantsOverdue =
@@ -440,12 +508,16 @@ function ProtectedLayout() {
       enabled: Boolean(session?.user.id) && Boolean(accessQuery.data),
     },
   );
+  const myCheckoutsQuery = trpc.content.myCheckouts.useQuery(undefined, {
+    enabled: Boolean(session?.user.id) && Boolean(accessQuery.data),
+  });
   const createConversation = trpc.chat.create.useMutation();
 
   const activityUnread = notificationsQuery.data?.unreadCount ?? 0;
   const announcementUnread = announcementsQuery.data?.unreadCount ?? 0;
   const unreadCount = activityUnread + announcementUnread;
   const unreadRows = notificationsQuery.data?.items.filter((r) => !r.isRead) ?? [];
+  const unreadAnnouncements = announcementsQuery.data?.active.filter((a) => !a.isRead) ?? [];
 
   const dashboardTab = useAppPreferences((state) => state.dashboardTab);
   const isContentPage = location.pathname === "/hero" || location.pathname === "/hero/content";
@@ -457,6 +529,7 @@ function ProtectedLayout() {
   const isAdmin = role === "admin";
   const username = me?.name;
   const submittedDocuments = submittedContentQuery.data ?? [];
+  const myCheckouts = myCheckoutsQuery.data ?? [];
   const now = Date.now();
   const notificationItems = notificationsQuery.data?.items ?? [];
   const dueSoon = notificationItems.filter((row) => {
@@ -467,9 +540,7 @@ function ProtectedLayout() {
     const message = row.message.toLowerCase();
     return message.includes("passed") || message.includes("expired");
   }).length;
-  const checkedOutByUser = submittedDocuments.filter(
-    (document) => document.checked_out_by === session?.user.id,
-  ).length;
+  const checkedOutByUser = myCheckouts.length;
 
   const assistantContext = useMemo(
     () => ({
@@ -500,7 +571,21 @@ function ProtectedLayout() {
           id: row.id,
           label: row.fileName,
           detail: row.message,
-          to: row.fileID ? `/hero/content/${row.fileID}/edit` : "/notifications",
+          to: row.fileID ? `/hero/content/${row.fileID}/edit` : "/activity",
+          tone: "attention" as const,
+        })),
+        ...unreadAnnouncements.slice(0, 2).map((a) => ({
+          id: a.id,
+          label: a.title,
+          detail: `Announcement${a.authorName ? ` from ${a.authorName}` : ""}`,
+          to: "/announcements",
+          tone: "attention" as const,
+        })),
+        ...myCheckouts.slice(0, 5).map((file) => ({
+          id: `checkout-${file.fileID}`,
+          label: file.filename ?? file.fileID,
+          detail: "Checked out by you",
+          to: `/hero/content/${file.fileID}/edit`,
           tone: "attention" as const,
         })),
         ...submittedDocuments.slice(0, 3).map((document) => {
@@ -523,10 +608,25 @@ function ProtectedLayout() {
       ],
       actions: [
         {
-          label: unreadCount > 0 ? `Open notifications (${unreadCount})` : "Open notifications",
-          to: "/notifications",
-          description: "Review document changes and due-date reminders.",
-          tone: unreadCount > 0 ? ("primary" as const) : ("neutral" as const),
+          label: activityUnread > 0 ? `Open activity (${activityUnread})` : "Open activity",
+          to: "/activity",
+          description: "Activity feed of edits and ownership changes on your role's documents.",
+          tone: activityUnread > 0 ? ("primary" as const) : ("neutral" as const),
+        },
+        {
+          label:
+            announcementUnread > 0
+              ? `Open announcements (${announcementUnread})`
+              : "Open announcements",
+          to: "/announcements",
+          description: "Admin announcements targeted at your role.",
+          tone: announcementUnread > 0 ? ("primary" as const) : ("neutral" as const),
+        },
+        {
+          label: "Open calendar",
+          to: "/calendar",
+          description: "Calendar of review dates and expirations for your content.",
+          tone: "neutral" as const,
         },
         {
           label: "Open content",
@@ -589,11 +689,15 @@ function ProtectedLayout() {
       location.pathname,
       isAdmin,
       unreadCount,
+      activityUnread,
+      announcementUnread,
       submittedDocuments,
+      myCheckouts,
       dueSoon,
       overdue,
       checkedOutByUser,
       unreadRows,
+      unreadAnnouncements,
       now,
     ],
   );
@@ -677,7 +781,10 @@ function ProtectedLayout() {
           mode="launcher"
           onSubmitQuestion={async (question) => {
             const conversation = await createConversation.mutateAsync({ title: question });
-            navigate(`/gompei?chat=${conversation.id}&q=${encodeURIComponent(question)}`);
+            const fromParam = `&from=${encodeURIComponent(location.pathname)}`;
+            navigate(
+              `/gompei?chat=${conversation.id}&q=${encodeURIComponent(question)}${fromParam}`,
+            );
           }}
         />
       ) : null}

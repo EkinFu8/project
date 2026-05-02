@@ -337,6 +337,54 @@ export const contentRouter = router({
     return { success: true };
   }),
 
+  myCheckouts: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.contentManagement.findMany({
+      where: {
+        checked_out_by: ctx.user.id,
+        is_checked_out: true,
+      },
+      select: {
+        fileID: true,
+        filename: true,
+        checked_out_at: true,
+        expiration_date: true,
+        next_review_date: true,
+        job_position: true,
+        owner_id: true,
+      },
+      orderBy: { checked_out_at: "desc" },
+    });
+  }),
+
+  checkinMine: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.user.id;
+
+    const checkedOutFiles = await ctx.prisma.contentManagement.findMany({
+      where: { checked_out_by: userId, is_checked_out: true },
+      select: { fileID: true, filename: true },
+      orderBy: { fileID: "asc" },
+    });
+
+    if (checkedOutFiles.length === 0) {
+      return { success: true, checkedIn: [], totalReleased: 0 };
+    }
+
+    const result = await ctx.prisma.contentManagement.updateMany({
+      where: { checked_out_by: userId, is_checked_out: true },
+      data: {
+        is_checked_out: false,
+        checked_out_by: null,
+        checked_out_at: null,
+      },
+    });
+
+    return {
+      success: true,
+      checkedIn: checkedOutFiles,
+      totalReleased: result.count,
+    };
+  }),
+
   list: protectedProcedure.input(contentListQuerySchema).query(async ({ ctx, input }) => {
     const where: Record<string, unknown> = {};
     const userId = ctx.user.id;

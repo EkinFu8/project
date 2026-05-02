@@ -10,6 +10,11 @@ type MessageBlock =
 
 const ACTION_PATTERN = /^ACTION:\s*(\/[^\s|]*)\s*\|\s*(.+)$/i;
 const LOOSE_ACTION_PATTERN = /^[-*]?\s*Action:\s*`?\s*(\/[^`|]+?)\s*\|\s*([^`]+?)\s*`?\.?$/i;
+// Matches an ACTION fragment embedded inside a sentence — e.g.
+// "To view it, ACTION: /dashboard | Open dashboard. The next step…".
+// We strip these from the rendered prose and surface them as buttons at
+// the end of the message instead, so users never see the raw ACTION text.
+const INLINE_ACTION_PATTERN = /ACTION:\s*(\/[^\s|]+)\s*\|\s*([^.\n|]+?)(?=[.\n]|$)/gi;
 
 function parseActionLine(line: string): AssistantAction | null {
   const trimmed = line.trim();
@@ -20,10 +25,21 @@ function parseActionLine(line: string): AssistantAction | null {
   return { to, label, tone: "primary" };
 }
 
+function extractInlineActions(line: string): { cleaned: string; actions: AssistantAction[] } {
+  const actions: AssistantAction[] = [];
+  const cleaned = line.replace(INLINE_ACTION_PATTERN, (_match, to: string, label: string) => {
+    actions.push({ to: to.trim(), label: label.trim(), tone: "primary" });
+    return "";
+  });
+  // Collapse whitespace left behind by the removal (e.g. "To view it,  . Next…").
+  return { cleaned: cleaned.replace(/\s{2,}/g, " ").replace(/\s+([.,;:!?])/g, "$1"), actions };
+}
+
 function parseAssistantMessage(content: string) {
   const blocks: MessageBlock[] = [];
   const lines = content.split("\n");
   const textLines: string[] = [];
+  const trailingActions: AssistantAction[] = [];
 
   function flushText() {
     const content = textLines.join("\n").trim();
@@ -43,10 +59,18 @@ function parseAssistantMessage(content: string) {
       blocks.push({ type: "actions", actions: [action] });
       continue;
     }
-    textLines.push(line);
+
+    const { cleaned, actions: inline } = extractInlineActions(line);
+    trailingActions.push(...inline);
+    textLines.push(cleaned);
   }
 
   flushText();
+
+  if (trailingActions.length > 0) {
+    blocks.push({ type: "actions", actions: trailingActions });
+  }
+
   return { blocks };
 }
 
@@ -67,8 +91,10 @@ function actionKey(action: AssistantAction) {
 function inferActionsFromText(text: string, availableActions: AssistantAction[]) {
   const lower = text.toLowerCase();
   const keywordByRoute: Record<string, string[]> = {
-    "/dashboard": ["dashboard", "metrics", "audit"],
-    "/notifications": ["notifications", "notification", "reminders"],
+    "/dashboard": ["dashboard", "metrics", "audit", "overview"],
+    "/activity": ["activity feed", "activity", "recent edits", "ownership change"],
+    "/announcements": ["announcement", "announcements", "broadcast"],
+    "/calendar": ["calendar", "review date", "expiration date", "expires", "due"],
     "/hero/content": ["content library", "content", "documents", "search"],
     "/hero/content/new": ["new content", "create content", "upload"],
     "/users": ["users", "user management", "accounts"],
