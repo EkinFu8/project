@@ -1,6 +1,6 @@
 import type { AssistantToolManifest } from "./types";
 
-export const DEFAULT_MODEL = "Phi-3.5-mini-instruct-q4f16_1-MLC";
+export const DEFAULT_MODEL = "llama-3.3-70b-versatile";
 
 export const ASSISTANT_TOOLS: AssistantToolManifest[] = [
   {

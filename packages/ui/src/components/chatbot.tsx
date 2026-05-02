@@ -1,5 +1,4 @@
-import type * as webllm from "@mlc-ai/web-llm";
-import { Bot, Send, Sparkles } from "lucide-react";
+import { Bot, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatHistory } from "./chatbot/history";
 import { ASSISTANT_TOOLS, DEFAULT_MODEL } from "./chatbot/knowledge";
@@ -8,7 +7,6 @@ import { buildGreeting, buildSystemPrompt } from "./chatbot/prompt";
 import { styles } from "./chatbot/styles";
 import { ChatTitle } from "./chatbot/title";
 import type { ChatMessage, ChatRole, CMSChatbotProps } from "./chatbot/types";
-import { useWebLlmAssistant } from "./chatbot/use-web-llm-assistant";
 
 function resizeTextarea(textarea: HTMLTextAreaElement) {
   textarea.style.height = "auto";
@@ -52,6 +50,87 @@ function Launcher({ onSubmitQuestion }: { onSubmitQuestion?: (question: string) 
   );
 }
 
+// ---------------------------------------------------------------------------
+// Groq streaming helper (OpenAI-compatible)
+// Calls /openai/v1/chat/completions with stream=true and invokes onToken with
+// the accumulated text as each server-sent event arrives.
+// Sign up for a free API key at console.groq.com
+// Recommended model: "llama-3.3-70b-versatile"
+// ---------------------------------------------------------------------------
+async function streamGroqMessage({
+  apiKey,
+  modelId,
+  systemPrompt,
+  messages,
+  onToken,
+}: {
+  apiKey: string;
+  modelId: string;
+  systemPrompt: string;
+  messages: { role: ChatRole; content: string }[];
+  onToken: (accumulated: string) => void;
+}): Promise<string> {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: modelId,
+      max_tokens: 1024,
+      stream: true,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Groq API error ${response.status}: ${error}`);
+  }
+
+  if (!response.body) throw new Error("No response body");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let accumulated = "";
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (data === "[DONE]") break;
+
+      try {
+        const parsed = JSON.parse(data);
+        const delta = parsed.choices?.[0]?.delta?.content;
+        if (delta) {
+          accumulated += delta;
+          onToken(accumulated);
+        }
+      } catch {
+        // Ignore malformed SSE lines
+      }
+    }
+  }
+
+  return accumulated;
+}
+
+// ---------------------------------------------------------------------------
+// Main chatbot component
+// ---------------------------------------------------------------------------
 export default function CMSChatbot({
   context,
   initialPrompt,
@@ -59,7 +138,9 @@ export default function CMSChatbot({
   history = [],
   activeConversationId,
   mode = "launcher",
+  // DEFAULT_MODEL should now be a Groq model ID, e.g. "llama-3.3-70b-versatile"
   modelId = DEFAULT_MODEL,
+  apiKey = "", // <-- pass your Groq API key via this prop (console.groq.com)
   onDeleteConversation,
   onNavigate,
   onNewConversation,
@@ -67,21 +148,60 @@ export default function CMSChatbot({
   onRunSiteAction,
   onSelectConversation,
   onSubmitQuestion,
-}: CMSChatbotProps) {
+}: CMSChatbotProps & { apiKey?: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => initialMessages ?? []);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const initialPromptSentRef = useRef(false);
-  const lastConversationIdRef = useRef(activeConversationId);
   const nextId = useRef(0);
 
-  const availableActions = useMemo(() => context.actions ?? [], [context.actions]);
   const systemPrompt = useMemo(
     () => buildSystemPrompt({ context, tools: ASSISTANT_TOOLS }),
     [context],
   );
+
+  // Mark the component as ready on mount.
+  useEffect(() => {
+    setIsReady(true);
+  }, []);
+
+  // Reset the prompt-sent flag whenever the conversation changes.
+  useEffect(() => {
+    initialPromptSentRef.current = false;
+  }, [activeConversationId]);
+
+  // Set messages once initialMessages resolves for the active conversation.
+  // Shows the greeting for brand-new empty conversations.
+  // Depends on both activeConversationId and initialMessages so it re-runs
+  // when the query resolves after a conversation switch.
+  useEffect(() => {
+    if (initialMessages === undefined) return; // query still loading — wait
+    setMessages(
+      initialMessages.length > 0
+        ? initialMessages
+        : [
+            {
+              id: `local-${nextId.current++}`,
+              role: "assistant" as ChatRole,
+              content: buildGreeting(context),
+            },
+          ],
+    );
+  }, [activeConversationId, initialMessages]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync persisted messages within the same conversation (e.g. optimistic
+  // local IDs replaced by server IDs after a save). Only grows the list so
+  // it never clobbers a mid-conversation state.
+  useEffect(() => {
+    if (!initialMessages) return;
+    setMessages((current) => {
+      if (current.length > initialMessages.length) return current;
+      return initialMessages;
+    });
+  }, [initialMessages]);
 
   const appendMessage = useCallback((role: ChatRole, content: string) => {
     const message: ChatMessage = { id: `local-${nextId.current}`, role, content };
@@ -110,47 +230,10 @@ export default function CMSChatbot({
     [onPersistMessage],
   );
 
-  const handleReady = useCallback(() => {
-    setMessages((current) => {
-      if (current.length > 0 || initialPrompt?.trim()) {
-        return current;
-      }
-
-      const greeting: ChatMessage = {
-        id: `local-${nextId.current}`,
-        role: "assistant",
-        content: buildGreeting(context),
-      };
-      nextId.current += 1;
-      return [greeting];
-    });
-  }, [context, initialPrompt]);
-
-  const { complete, hasGpu, progress, status } = useWebLlmAssistant({
-    enabled: mode === "page",
-    modelId,
-    onReady: handleReady,
-  });
-
-  useEffect(() => {
-    if (lastConversationIdRef.current === activeConversationId) return;
-    lastConversationIdRef.current = activeConversationId;
-    initialPromptSentRef.current = false;
-    setMessages(initialMessages ?? []);
-  }, [activeConversationId, initialMessages]);
-
-  useEffect(() => {
-    if (!initialMessages) return;
-    setMessages((current) => {
-      if (current.length > initialMessages.length) return current;
-      return initialMessages;
-    });
-  }, [initialMessages]);
-
   const sendMessage = useCallback(
     async (overrideText?: string) => {
       const text = (overrideText ?? input).trim();
-      if (!text || status !== "ready") return;
+      if (!text || !isReady) return;
 
       setInput("");
       if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -179,22 +262,23 @@ export default function CMSChatbot({
         return;
       }
 
-      const chatMessages: webllm.ChatCompletionMessageParam[] = [
-        { role: "system", content: systemPrompt },
-        ...messages.map((message) => ({ role: message.role, content: message.content })),
-        { role: "user", content: userMessage.content },
-      ];
-
       try {
         let finalContent = "";
-        await complete({
-          messages: chatMessages,
-          onToken: (content) => {
-            finalContent = content;
+        await streamGroqMessage({
+          apiKey,
+          modelId,
+          systemPrompt,
+          messages: [
+            ...messages.map((m) => ({ role: m.role, content: m.content })),
+            { role: "user", content: userMessage.content },
+          ],
+          onToken: (accumulated) => {
+            finalContent = accumulated;
             setIsTyping(false);
-            updateMessage(assistantMessage.id, content);
+            updateMessage(assistantMessage.id, accumulated);
           },
         });
+
         if (finalContent.trim()) {
           await persistUserMessage;
           const persistedMessage = await persistMessage({
@@ -214,26 +298,29 @@ export default function CMSChatbot({
       }
     },
     [
+      apiKey,
       appendMessage,
-      complete,
       input,
+      isReady,
       messages,
+      modelId,
       onRunSiteAction,
       persistMessage,
       replaceMessage,
-      status,
       systemPrompt,
       updateMessage,
     ],
   );
 
+  // Fire the initial prompt once the component is ready and the conversation
+  // query has resolved — prevents sending before messages are initialised.
   useEffect(() => {
     const question = initialPrompt?.trim();
-    if (!question || status !== "ready" || initialPromptSentRef.current) return;
-
+    if (!question || !isReady || initialPromptSentRef.current) return;
+    if (initialMessages === undefined) return; // wait for query to resolve
     initialPromptSentRef.current = true;
     void sendMessage(question);
-  }, [initialPrompt, sendMessage, status]);
+  }, [initialPrompt, initialMessages, isReady, sendMessage]);
 
   function handleTextareaChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
     setInput(event.target.value);
@@ -251,11 +338,12 @@ export default function CMSChatbot({
     return <Launcher onSubmitQuestion={onSubmitQuestion} />;
   }
 
-  const isDisabled = status !== "ready";
+  const isDisabled = !isReady || isTyping;
 
   return (
     <section style={styles.pageRoot}>
-      <ChatTitle progress={progress} status={status} />
+      {/* status/progress bar is no longer needed — model loads instantly */}
+      <ChatTitle progress={100} status="ready" />
 
       <div style={styles.pageWorkspace}>
         <ChatHistory
@@ -267,35 +355,8 @@ export default function CMSChatbot({
         />
 
         <main style={styles.chatPanel}>
-          {!hasGpu ? (
-            <div style={styles.gpuWarning}>
-              Gompei needs WebGPU locally. Use Chrome 113+ or Edge 113+ for chat.
-            </div>
-          ) : null}
-
-          {status === "loading" ? (
-            <div style={styles.loadPane}>
-              <div style={styles.loadHeader}>
-                <Sparkles size={15} aria-hidden="true" />
-                <span>Preparing Gompei</span>
-              </div>
-              <div style={styles.progressTrack}>
-                <div
-                  style={{
-                    height: "100%",
-                    width: `${progress}%`,
-                    background: "#164734",
-                    borderRadius: 999,
-                    transition: "width 0.3s",
-                  }}
-                />
-              </div>
-              <div style={styles.progressLabel}>{progress}%</div>
-            </div>
-          ) : null}
-
           <ChatMessages
-            availableActions={availableActions}
+            availableActions={context.actions ?? []}
             contextUserName={context.user.name}
             isTyping={isTyping}
             messages={messages}
