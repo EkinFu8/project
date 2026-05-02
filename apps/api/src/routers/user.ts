@@ -125,7 +125,29 @@ export const userRouter = router({
   }),
 
   adminGetById: adminPortalProcedure.input(userIdSchema).query(async ({ ctx, input }) => {
-    return ctx.prisma.userProfile.findUniqueOrThrow({ where: { id: input.id } });
+    return ctx.prisma.userProfile.findUniqueOrThrow({
+      where: { id: input.id },
+      include: {
+        owned_content: {
+          select: {
+            fileID: true,
+            filename: true,
+            document_status: true,
+            last_modified: true,
+          },
+          orderBy: { last_modified: "desc" },
+        },
+        checkedOutContent: {
+          select: {
+            fileID: true,
+            filename: true,
+            document_status: true,
+            last_modified: true,
+          },
+          orderBy: { last_modified: "desc" },
+        },
+      },
+    });
   }),
 
   adminCreate: adminPortalProcedure
