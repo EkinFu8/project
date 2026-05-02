@@ -40,6 +40,7 @@ interface TopNavProps {
     photoUrl?: string | null;
     notificationsTo?: string;
     unreadNotificationCount?: number;
+    announcementUnreadCount?: number;
     gompeiUnreadCount?: number;
   };
 }
@@ -66,6 +67,9 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const hasUnreadNotifications = Boolean(
     accountMenu?.unreadNotificationCount && accountMenu.unreadNotificationCount > 0,
+  );
+  const hasUnreadAnnouncements = Boolean(
+    accountMenu?.announcementUnreadCount && accountMenu.announcementUnreadCount > 0,
   );
   const hasUnreadGompei = Boolean(
     accountMenu?.gompeiUnreadCount && accountMenu.gompeiUnreadCount > 0,
@@ -179,18 +183,21 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
                         />
                       </span>
                     )}
-                    {hasUnreadNotifications || hasUnreadGompei ? (
+                    {hasUnreadNotifications || hasUnreadAnnouncements || hasUnreadGompei ? (
                       <span
                         className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-hanover-green ring-2 ring-hanover-deepblue"
                         aria-hidden
                       />
                     ) : null}
                   </span>
-                  {hasUnreadNotifications || hasUnreadGompei ? (
+                  {hasUnreadNotifications || hasUnreadAnnouncements || hasUnreadGompei ? (
                     <span className="sr-only">
                       {[
                         hasUnreadNotifications
                           ? `${accountMenu.unreadNotificationCount} unread notifications`
+                          : null,
+                        hasUnreadAnnouncements
+                          ? `${accountMenu.announcementUnreadCount} unread announcements`
                           : null,
                         hasUnreadGompei
                           ? `${accountMenu.gompeiUnreadCount} unread Gompei chats`
@@ -258,7 +265,15 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
                           ) : item.label === "Calendar" ? (
                             <CalendarDays className="size-4" aria-hidden strokeWidth={2} />
                           ) : item.label === "Announcements" ? (
-                            <Megaphone className="size-4" aria-hidden strokeWidth={2} />
+                            <span className="relative inline-flex">
+                              <Megaphone className="size-4" aria-hidden strokeWidth={2} />
+                              {hasUnreadAnnouncements ? (
+                                <span
+                                  className="absolute -right-1 -top-1 size-2 rounded-full bg-hanover-green"
+                                  aria-hidden
+                                />
+                              ) : null}
+                            </span>
                           ) : item.label === "Activity" ? (
                             <Inbox className="size-4" aria-hidden strokeWidth={2} />
                           ) : (

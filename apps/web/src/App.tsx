@@ -630,7 +630,8 @@ function ProtectedLayout() {
         brandTo="/hero"
         accountMenu={{
           notificationsTo: "/activity",
-          unreadNotificationCount: unreadCount,
+          unreadNotificationCount: activityUnread,
+          announcementUnreadCount: announcementUnread,
           gompeiUnreadCount: gompeiUnreadQuery.data ?? 0,
           settingsTo: "/account",
           links: [
