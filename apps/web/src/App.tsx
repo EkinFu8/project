@@ -435,20 +435,18 @@ function ProtectedLayout() {
     enabled: Boolean(session) && Boolean(accessQuery.data),
   });
   const submittedContentQuery = trpc.content.list.useQuery(
-    { owner_id: session?.user.id ?? "" },
-    {
-      enabled: Boolean(session?.user.id) && Boolean(accessQuery.data),
-    },
+      { owner_id: session?.user.id ?? "" },
+      {
+        enabled: Boolean(session?.user.id) && Boolean(accessQuery.data),
+      },
   );
-  const { unreadCount, unreadRows } = useNotificationReadState(
-    notificationsQuery.data,
-    session?.user.id,
-  );
+  const createConversation = trpc.chat.create.useMutation();
 
   const activityUnread = notificationsQuery.data?.unreadCount ?? 0;
   const announcementUnread = announcementsQuery.data?.unreadCount ?? 0;
   const unreadCount = activityUnread + announcementUnread;
   const unreadRows = notificationsQuery.data?.items.filter((r) => !r.isRead) ?? [];
+
   const dashboardTab = useAppPreferences((state) => state.dashboardTab);
   const isContentPage = location.pathname === "/hero" || location.pathname === "/hero/content";
   const isUsersPage = location.pathname === "/users";
@@ -460,143 +458,144 @@ function ProtectedLayout() {
   const username = me?.name;
   const submittedDocuments = submittedContentQuery.data ?? [];
   const now = Date.now();
-  const dueSoon = (notificationsQuery.data ?? []).filter((row) => {
+  const notificationItems = notificationsQuery.data?.items ?? [];
+  const dueSoon = notificationItems.filter((row) => {
     const message = row.message.toLowerCase();
     return message.includes("due") || message.includes("expires");
   }).length;
-  const overdue = (notificationsQuery.data ?? []).filter((row) => {
+  const overdue = notificationItems.filter((row) => {
     const message = row.message.toLowerCase();
     return message.includes("passed") || message.includes("expired");
   }).length;
   const checkedOutByUser = submittedDocuments.filter(
-    (document) => document.checked_out_by === session?.user.id,
+      (document) => document.checked_out_by === session?.user.id,
   ).length;
 
   const assistantContext = useMemo(
-    () => ({
-      user: {
-        name: username ? username : "User",
-        email: me?.email ?? session?.user.email ?? undefined,
-        role: role ? role : "Unknown",
-        portal: accessQuery.data?.portal ?? undefined,
-      },
-      page: describePage(location.pathname),
-      permissions: {
+      () => ({
+        user: {
+          name: username ? username : "User",
+          email: me?.email ?? session?.user.email ?? undefined,
+          role: role ? role : "Unknown",
+          portal: accessQuery.data?.portal ?? undefined,
+        },
+        page: describePage(location.pathname),
+        permissions: {
+          isAdmin,
+          canCreateContent: true,
+          canManageUsers: isAdmin,
+          canManageTags: isAdmin,
+          canViewDashboard: isAdmin,
+          canViewCoworkers: !isAdmin,
+        },
+        workload: {
+          unreadNotifications: unreadCount,
+          submittedDocuments: submittedDocuments.length,
+          dueSoon,
+          overdue,
+          checkedOutByUser,
+        },
+        highlights: [
+          ...unreadRows.slice(0, 3).map((row) => ({
+            id: row.id,
+            label: row.fileName,
+            detail: row.message,
+            to: row.fileID ? `/hero/content/${row.fileID}/edit` : "/notifications",
+            tone: "attention" as const,
+          })),
+          ...submittedDocuments.slice(0, 3).map((document) => {
+            const reviewTime = toTime(document.next_review_date);
+            const expirationTime = toTime(document.expiration_date);
+            const needsReview = reviewTime !== null && reviewTime <= now + 30 * 24 * 60 * 60 * 1000;
+            const expired = expirationTime !== null && expirationTime < now;
+            return {
+              id: document.fileID,
+              label: document.filename ?? document.fileID,
+              detail: expired
+                  ? "Expired"
+                  : needsReview
+                      ? "Review due soon"
+                      : (document.document_status ?? "Submitted document"),
+              to: `/hero/content/${document.fileID}/edit`,
+              tone: expired || needsReview ? ("attention" as const) : ("muted" as const),
+            };
+          }),
+        ],
+        actions: [
+          {
+            label: unreadCount > 0 ? `Open notifications (${unreadCount})` : "Open notifications",
+            to: "/notifications",
+            description: "Review document changes and due-date reminders.",
+            tone: unreadCount > 0 ? ("primary" as const) : ("neutral" as const),
+          },
+          {
+            label: "Open content",
+            to: "/hero/content",
+            description: "Search and filter documents available to your role.",
+            tone: "neutral" as const,
+          },
+          {
+            label: "New content",
+            to: "/hero/content/new",
+            description: "Create a document record for your allowed role.",
+            tone: "neutral" as const,
+          },
+          ...(isAdmin
+              ? [
+                {
+                  label: "Open dashboard",
+                  to: "/dashboard",
+                  description: "Review metrics, audits, and content health.",
+                  adminOnly: true,
+                  tone: "neutral" as const,
+                },
+                {
+                  label: "Open users",
+                  to: "/users",
+                  description: "Manage accounts, roles, and portal access.",
+                  adminOnly: true,
+                  tone: "neutral" as const,
+                },
+                {
+                  label: "Open tags",
+                  to: "/tags",
+                  description: "Manage global meta tags.",
+                  adminOnly: true,
+                  tone: "neutral" as const,
+                },
+              ]
+              : [
+                {
+                  label: "Open coworkers",
+                  to: "/employees",
+                  description: "Find coworkers and profile context.",
+                  tone: "neutral" as const,
+                },
+              ]),
+          {
+            label: "Open help",
+            to: "/help",
+            description: "View workflow help.",
+            tone: "neutral" as const,
+          },
+        ],
+      }),
+      [
+        username,
+        me?.email,
+        session?.user.email,
+        role,
+        accessQuery.data?.portal,
+        location.pathname,
         isAdmin,
-        canCreateContent: true,
-        canManageUsers: isAdmin,
-        canManageTags: isAdmin,
-        canViewDashboard: isAdmin,
-        canViewCoworkers: !isAdmin,
-      },
-      workload: {
-        unreadNotifications: unreadCount,
-        submittedDocuments: submittedDocuments.length,
+        unreadCount,
+        submittedDocuments,
         dueSoon,
         overdue,
         checkedOutByUser,
-      },
-      highlights: [
-        ...unreadRows.slice(0, 3).map((row) => ({
-          id: row.id,
-          label: row.fileName,
-          detail: row.message,
-          to: row.fileID ? `/hero/content/${row.fileID}/edit` : "/notifications",
-          tone: "attention" as const,
-        })),
-        ...submittedDocuments.slice(0, 3).map((document) => {
-          const reviewTime = toTime(document.next_review_date);
-          const expirationTime = toTime(document.expiration_date);
-          const needsReview = reviewTime !== null && reviewTime <= now + 30 * 24 * 60 * 60 * 1000;
-          const expired = expirationTime !== null && expirationTime < now;
-          return {
-            id: document.fileID,
-            label: document.filename ?? document.fileID,
-            detail: expired
-              ? "Expired"
-              : needsReview
-                ? "Review due soon"
-                : (document.document_status ?? "Submitted document"),
-            to: `/hero/content/${document.fileID}/edit`,
-            tone: expired || needsReview ? ("attention" as const) : ("muted" as const),
-          };
-        }),
+        unreadRows,
+        now,
       ],
-      actions: [
-        {
-          label: unreadCount > 0 ? `Open notifications (${unreadCount})` : "Open notifications",
-          to: "/notifications",
-          description: "Review document changes and due-date reminders.",
-          tone: unreadCount > 0 ? ("primary" as const) : ("neutral" as const),
-        },
-        {
-          label: "Open content",
-          to: "/hero/content",
-          description: "Search and filter documents available to your role.",
-          tone: "neutral" as const,
-        },
-        {
-          label: "New content",
-          to: "/hero/content/new",
-          description: "Create a document record for your allowed role.",
-          tone: "neutral" as const,
-        },
-        ...(isAdmin
-          ? [
-              {
-                label: "Open dashboard",
-                to: "/dashboard",
-                description: "Review metrics, audits, and content health.",
-                adminOnly: true,
-                tone: "neutral" as const,
-              },
-              {
-                label: "Open users",
-                to: "/users",
-                description: "Manage accounts, roles, and portal access.",
-                adminOnly: true,
-                tone: "neutral" as const,
-              },
-              {
-                label: "Open tags",
-                to: "/tags",
-                description: "Manage global meta tags.",
-                adminOnly: true,
-                tone: "neutral" as const,
-              },
-            ]
-          : [
-              {
-                label: "Open coworkers",
-                to: "/employees",
-                description: "Find coworkers and profile context.",
-                tone: "neutral" as const,
-              },
-            ]),
-        {
-          label: "Open help",
-          to: "/help",
-          description: "View workflow help.",
-          tone: "neutral" as const,
-        },
-      ],
-    }),
-    [
-      username,
-      me?.email,
-      session?.user.email,
-      role,
-      accessQuery.data?.portal,
-      location.pathname,
-      isAdmin,
-      unreadCount,
-      submittedDocuments,
-      dueSoon,
-      overdue,
-      checkedOutByUser,
-      unreadRows,
-      now,
-    ],
   );
 
   const focusCurrentSearch = useCallback(() => {
@@ -608,7 +607,7 @@ function ProtectedLayout() {
       navigate("/users", { state: { focusUsersSearch: true } });
       return;
     }
-    if (isTagsPage) {
+    if (isDashboardTagsTab) {
       window.dispatchEvent(new Event(TAGS_SEARCH_FOCUS_EVENT));
       return;
     }
@@ -642,130 +641,6 @@ function ProtectedLayout() {
   if (accessQuery.isLoading) return <AuthSplash />;
 
   const navItems = isAdmin ? adminNavItems() : employeeNavItems();
-  const username = me?.name;
-  const submittedDocuments = submittedContentQuery.data ?? [];
-  const now = Date.now();
-  const notificationItems = notificationsQuery.data?.items ?? [];
-  const dueSoon = notificationItems.filter((row) => {
-    const message = row.message.toLowerCase();
-    return message.includes("due") || message.includes("expires");
-  }).length;
-  const overdue = notificationItems.filter((row) => {
-    const message = row.message.toLowerCase();
-    return message.includes("passed") || message.includes("expired");
-  }).length;
-  const checkedOutByUser = submittedDocuments.filter(
-    (document) => document.checked_out_by === session.user.id,
-  ).length;
-  const assistantContext = {
-    user: {
-      name: username ? username : "User",
-      email: me?.email ?? session.user.email ?? undefined,
-      role: role ? role : "Unknown",
-      portal: accessQuery.data?.portal ?? undefined,
-    },
-    page: describePage(location.pathname),
-    permissions: {
-      isAdmin,
-      canCreateContent: true,
-      canManageUsers: isAdmin,
-      canManageTags: isAdmin,
-      canViewDashboard: isAdmin,
-      canViewCoworkers: !isAdmin,
-    },
-    workload: {
-      unreadNotifications: unreadCount,
-      submittedDocuments: submittedDocuments.length,
-      dueSoon,
-      overdue,
-      checkedOutByUser,
-    },
-    highlights: [
-      ...unreadRows.slice(0, 3).map((row) => ({
-        id: row.id,
-        label: row.fileName,
-        detail: row.message,
-        to: row.fileID ? `/hero/content/${row.fileID}/edit` : "/notifications",
-        tone: "attention" as const,
-      })),
-      ...submittedDocuments.slice(0, 3).map((document) => {
-        const reviewTime = toTime(document.next_review_date);
-        const expirationTime = toTime(document.expiration_date);
-        const needsReview = reviewTime !== null && reviewTime <= now + 30 * 24 * 60 * 60 * 1000;
-        const expired = expirationTime !== null && expirationTime < now;
-
-        return {
-          id: document.fileID,
-          label: document.filename ?? document.fileID,
-          detail: expired
-            ? "Expired"
-            : needsReview
-              ? "Review due soon"
-              : (document.document_status ?? "Submitted document"),
-          to: `/hero/content/${document.fileID}/edit`,
-          tone: expired || needsReview ? ("attention" as const) : ("muted" as const),
-        };
-      }),
-    ],
-    actions: [
-      {
-        label: unreadCount > 0 ? `Open notifications (${unreadCount})` : "Open notifications",
-        to: "/notifications",
-        description: "Review document changes and due-date reminders.",
-        tone: unreadCount > 0 ? ("primary" as const) : ("neutral" as const),
-      },
-      {
-        label: "Open content",
-        to: "/hero/content",
-        description: "Search and filter documents available to your role.",
-        tone: "neutral" as const,
-      },
-      {
-        label: "New content",
-        to: "/hero/content/new",
-        description: "Create a document record for your allowed role.",
-        tone: "neutral" as const,
-      },
-      ...(isAdmin
-        ? [
-            {
-              label: "Open dashboard",
-              to: "/dashboard",
-              description: "Review metrics, audits, and content health.",
-              adminOnly: true,
-              tone: "neutral" as const,
-            },
-            {
-              label: "Open users",
-              to: "/users",
-              description: "Manage accounts, roles, and portal access.",
-              adminOnly: true,
-              tone: "neutral" as const,
-            },
-            {
-              label: "Open tags",
-              to: "/tags",
-              description: "Manage global meta tags.",
-              adminOnly: true,
-              tone: "neutral" as const,
-            },
-          ]
-        : [
-            {
-              label: "Open coworkers",
-              to: "/employees",
-              description: "Find coworkers and profile context.",
-              tone: "neutral" as const,
-            },
-          ]),
-      {
-        label: "Open help",
-        to: "/help",
-        description: "View workflow help.",
-        tone: "neutral" as const,
-      },
-    ],
-  };
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -773,41 +648,41 @@ function ProtectedLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TopNav
-        items={navItems}
-        brandTo="/hero"
-        accountMenu={{
-          notificationsTo: "/activity",
-          unreadNotificationCount: activityUnread,
-          announcementUnreadCount: announcementUnread,
-          gompeiUnreadCount: gompeiUnreadQuery.data ?? 0,
-          settingsTo: "/account",
-          links: [
-            { label: "Calendar", to: "/calendar" },
-            { label: "Announcements", to: "/announcements" },
-            { label: "Gompei", to: "/gompei" },
-            { label: "Help", to: "/help" },
-            { label: "About", to: "/about" },
-            { label: "Credits", to: "/credits" },
-          ],
-          onSignOut: handleSignOut,
-          photoUrl: accessQuery.data?.photo_url,
-        }}
-      />
-      {location.pathname !== "/gompei" ? (
-        <CMSChatbot
-          apiKey={import.meta.env.VITE_GROQ_API_KEY}
-          context={assistantContext}
-          mode="launcher"
-          onSubmitQuestion={async (question) => {
-            const conversation = await createConversation.mutateAsync({ title: question });
-            navigate(`/gompei?chat=${conversation.id}&q=${encodeURIComponent(question)}`);
-          }}
+      <div className="min-h-screen bg-background text-foreground">
+        <TopNav
+            items={navItems}
+            brandTo="/hero"
+            accountMenu={{
+              notificationsTo: "/activity",
+              unreadNotificationCount: activityUnread,
+              announcementUnreadCount: announcementUnread,
+              gompeiUnreadCount: gompeiUnreadQuery.data ?? 0,
+              settingsTo: "/account",
+              links: [
+                { label: "Calendar", to: "/calendar" },
+                { label: "Announcements", to: "/announcements" },
+                { label: "Gompei", to: "/gompei" },
+                { label: "Help", to: "/help" },
+                { label: "About", to: "/about" },
+                { label: "Credits", to: "/credits" },
+              ],
+              onSignOut: handleSignOut,
+              photoUrl: accessQuery.data?.photo_url,
+            }}
         />
-      ) : null}
-      <Outlet context={{ assistantContext } satisfies ProtectedOutletContext} />
-    </div>
+        {location.pathname !== "/gompei" ? (
+            <CMSChatbot
+                apiKey={import.meta.env.VITE_GROQ_API_KEY}
+                context={assistantContext}
+                mode="launcher"
+                onSubmitQuestion={async (question) => {
+                  const conversation = await createConversation.mutateAsync({ title: question });
+                  navigate(`/gompei?chat=${conversation.id}&q=${encodeURIComponent(question)}`);
+                }}
+            />
+        ) : null}
+        <Outlet context={{ assistantContext } satisfies ProtectedOutletContext} />
+      </div>
   );
 }
 
