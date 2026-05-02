@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type DashboardTab = "overview" | "metrics" | "tags" | "notifications";
+export type DashboardTab = "overview" | "metrics" | "tags";
 
 type AppPreferencesState = {
   coworkerSearch: string;

@@ -1,11 +1,13 @@
 import {
-  Bell,
   Bot,
   Boxes,
+  CalendarDays,
   CircleHelp,
   FileText,
+  Inbox,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Settings,
   Tags,
   UserRound,
@@ -213,14 +215,16 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
                           className={cn(menuItemClass, "justify-between gap-4 no-underline")}
                         >
                           <span className="flex items-center gap-2">
-                            <Bell className="size-4" aria-hidden strokeWidth={2} />
-                            Notifications
+                            <Inbox className="size-4" aria-hidden strokeWidth={2} />
+                            Activity
                           </span>
                           {hasUnreadNotifications ? (
                             <>
-                              <span className="size-2 rounded-full bg-hanover-green" aria-hidden />
+                              <span className="rounded-full bg-hanover-green px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                {accountMenu.unreadNotificationCount}
+                              </span>
                               <span className="sr-only">
-                                {accountMenu.unreadNotificationCount} unread notifications
+                                {accountMenu.unreadNotificationCount} unread items
                               </span>
                             </>
                           ) : null}
@@ -251,6 +255,12 @@ function TopNav({ items, brandTo, accountMenu }: TopNavProps) {
                                 />
                               ) : null}
                             </span>
+                          ) : item.label === "Calendar" ? (
+                            <CalendarDays className="size-4" aria-hidden strokeWidth={2} />
+                          ) : item.label === "Announcements" ? (
+                            <Megaphone className="size-4" aria-hidden strokeWidth={2} />
+                          ) : item.label === "Activity" ? (
+                            <Inbox className="size-4" aria-hidden strokeWidth={2} />
                           ) : (
                             <CircleHelp className="size-4" aria-hidden strokeWidth={2} />
                           )}
