@@ -30,40 +30,42 @@ export function TodayStrip({
   staleCheckouts,
   unreadAnnouncements,
 }: Props) {
-  const items: TodayItem[] = [
-    {
-      key: "overdue",
-      count: overdueReviews,
-      label: overdueReviews === 1 ? "review overdue" : "reviews overdue",
-      to: "/calendar",
-      icon: AlertCircle,
-      tone: "critical",
-    },
-    {
-      key: "expired",
-      count: expiredDocs,
-      label: expiredDocs === 1 ? "document expired" : "documents expired",
-      to: "/calendar",
-      icon: CalendarClock,
-      tone: "critical",
-    },
-    {
-      key: "stale-checkouts",
-      count: staleCheckouts,
-      label: staleCheckouts === 1 ? "stale checkout" : "stale checkouts",
-      to: "/hero/content",
-      icon: Clock,
-      tone: "warn",
-    },
-    {
-      key: "announcements",
-      count: unreadAnnouncements,
-      label: unreadAnnouncements === 1 ? "new announcement" : "new announcements",
-      to: "/announcements",
-      icon: Megaphone,
-      tone: "info",
-    },
-  ].filter((item) => item.count > 0);
+  const items: TodayItem[] = (
+    [
+      {
+        key: "overdue",
+        count: overdueReviews,
+        label: overdueReviews === 1 ? "review overdue" : "reviews overdue",
+        to: "/calendar",
+        icon: AlertCircle,
+        tone: "critical",
+      },
+      {
+        key: "expired",
+        count: expiredDocs,
+        label: expiredDocs === 1 ? "document expired" : "documents expired",
+        to: "/calendar",
+        icon: CalendarClock,
+        tone: "critical",
+      },
+      {
+        key: "stale-checkouts",
+        count: staleCheckouts,
+        label: staleCheckouts === 1 ? "stale checkout" : "stale checkouts",
+        to: "/hero/content",
+        icon: Clock,
+        tone: "warn",
+      },
+      {
+        key: "announcements",
+        count: unreadAnnouncements,
+        label: unreadAnnouncements === 1 ? "new announcement" : "new announcements",
+        to: "/announcements",
+        icon: Megaphone,
+        tone: "info",
+      },
+    ] satisfies TodayItem[]
+  ).filter((item) => item.count > 0);
 
   if (items.length === 0) return null;
 

@@ -62,15 +62,19 @@ export function NotificationsView() {
   // ---------------------------------------------------------------------
 
   type ListData = NonNullable<RouterOutputs["notifications"]["myList"]>;
+  type ApiItem = ListData["items"][number];
 
   function patchCache(
     update: (items: NotificationItem[]) => NotificationItem[],
   ): ListData | undefined {
     const prev = utils.notifications.myList.getData();
     if (!prev) return undefined;
-    const items = update(prev.items);
+    const items = update(prev.items as NotificationItem[]);
     const unreadCount = items.filter((i) => !i.isRead).length;
-    utils.notifications.myList.setData(undefined, { items, unreadCount });
+    utils.notifications.myList.setData(undefined, {
+      items: items as unknown as ApiItem[],
+      unreadCount,
+    });
     return prev;
   }
 
