@@ -1,5 +1,5 @@
 import { Bot, Send } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatHistory } from "./chatbot/history";
 import { ASSISTANT_TOOLS, DEFAULT_MODEL } from "./chatbot/knowledge";
 import { ChatMessages } from "./chatbot/messages";
@@ -142,6 +142,7 @@ export default function CMSChatbot({
   // DEFAULT_MODEL should now be a Groq model ID, e.g. "llama-3.3-70b-versatile"
   modelId = DEFAULT_MODEL,
   apiKey = "", // <-- pass your Groq API key via this prop (console.groq.com)
+  onBeforeRespond,
   onDeleteConversation,
   onNavigate,
   onNewConversation,
@@ -159,10 +160,11 @@ export default function CMSChatbot({
   const initialPromptSentRef = useRef(false);
   const nextId = useRef(0);
 
-  const systemPrompt = useMemo(
-    () => buildSystemPrompt({ context, tools: ASSISTANT_TOOLS }),
-    [context],
-  );
+  // The system prompt is rebuilt fresh inside sendMessage from contextRef so
+  // it reflects any snapshot updates that landed during onBeforeRespond.
+  // sendMessage's closure would otherwise capture a stale systemPrompt.
+  const contextRef = useRef(context);
+  contextRef.current = context;
 
   // Mark the component as ready on mount.
   useEffect(() => {
@@ -264,11 +266,26 @@ export default function CMSChatbot({
       }
 
       try {
+        // Refresh the parent's snapshot queries so the system prompt the
+        // model sees reflects whatever the user just did (in this chat or
+        // anywhere else in the app). Then rebuild the prompt from the
+        // up-to-date context — sendMessage's closure has the stale one.
+        if (onBeforeRespond) {
+          await onBeforeRespond();
+          // Yield one frame so React commits the re-render triggered by
+          // any query invalidations before we read contextRef.
+          await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+        }
+        const freshSystemPrompt = buildSystemPrompt({
+          context: contextRef.current,
+          tools: ASSISTANT_TOOLS,
+        });
+
         let finalContent = "";
         await streamGroqMessage({
           apiKey,
           modelId,
-          systemPrompt,
+          systemPrompt: freshSystemPrompt,
           messages: [
             ...messages.map((m) => ({ role: m.role, content: m.content })),
             { role: "user", content: userMessage.content },
@@ -305,10 +322,10 @@ export default function CMSChatbot({
       isReady,
       messages,
       modelId,
+      onBeforeRespond,
       onRunSiteAction,
       persistMessage,
       replaceMessage,
-      systemPrompt,
       updateMessage,
     ],
   );
@@ -412,6 +429,10 @@ export default function CMSChatbot({
       <style>{`
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.42} }
         @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
+        @keyframes chatMessageEnter {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
     </section>
   );

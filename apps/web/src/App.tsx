@@ -301,6 +301,17 @@ function GompeiPage() {
       initialPrompt={activeConversationId ? initialPrompt : undefined}
       mode="page"
       suggestions={GOMPEI_SUGGESTIONS}
+      onBeforeRespond={async () => {
+        // Refresh the workload snapshot before every LLM call so questions
+        // like "how many do I have checked out?" always reflect current state,
+        // including changes the user just made elsewhere in the app.
+        await Promise.all([
+          utils.content.myCheckouts.invalidate(),
+          utils.content.list.invalidate(),
+          utils.notifications.myList.invalidate(),
+          utils.notifications.listAnnouncements.invalidate(),
+        ]);
+      }}
       onDeleteConversation={(conversationId) => {
         deleteConversation.mutate(
           { conversationId },
@@ -384,6 +395,7 @@ function GompeiPage() {
 
         const result = await checkoutOverdue.mutateAsync();
         await utils.content.list.invalidate();
+        await utils.content.myCheckouts.invalidate();
         await utils.notifications.myList.invalidate();
 
         if (result.checkedOut.length === 0) {
