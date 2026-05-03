@@ -1,7 +1,6 @@
 import { HelpPopover } from "@myapp/ui/components/help-popover";
 import {
   ChevronDown,
-  ChevronRight,
   Command,
   ExternalLink,
   FileText,
@@ -350,11 +349,9 @@ function RoleGroup({
         className="mb-2 flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3.5 py-2.5 text-left shadow-sm transition-colors hover:bg-muted/40"
       >
         <span className="flex items-center gap-3 min-w-0">
-          {open ? (
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-          )}
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 ${open ? "rotate-0" : "-rotate-90"}`}
+          />
           <span aria-hidden className={`h-5 w-1 shrink-0 rounded-full ${accent}`} />
           <span className="truncate text-sm font-semibold text-foreground">{label}</span>
         </span>
@@ -363,8 +360,13 @@ function RoleGroup({
         </span>
       </button>
 
-      {open && (
-        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      <div
+        className={`grid transition-all duration-300 ease-in-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      >
+        <div
+          className="overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+          style={{ minHeight: 0 }}
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/80">
@@ -464,7 +466,7 @@ function RoleGroup({
             </tbody>
           </table>
         </div>
-      )}
+      </div>
     </section>
   );
 }
