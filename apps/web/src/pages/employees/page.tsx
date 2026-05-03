@@ -1,6 +1,6 @@
 // apps/web/src/pages/employees/page.tsx
 
-import { ChevronDown, Loader2, Mail, Search, User, Users, X } from "lucide-react";
+import { ChevronDown, Loader2, Mail, Search, User, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { trpc } from "@/lib/trpc.ts";
@@ -275,7 +275,7 @@ function RoleGroup({
                   className="border-b border-border transition-colors duration-150 last:border-b-0 hover:bg-muted/60 cursor-pointer"
                   onClick={() => onSelectCoworker(emp.id)}
                 >
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-3">
                     {emp.photo_url ? (
                       <img
                         src={emp.photo_url}
@@ -326,24 +326,34 @@ function EmployeesPage() {
   const setSearch = useAppPreferences((state) => state.setCoworkerSearch);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [selectedCoworkerId, setSelectedCoworkerId] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState("all");
 
   const coworkers = trpc.employee.list.useQuery({ search, coworkersOnly: true });
 
   const allCoworkers = coworkers.data ?? [];
 
+  const roleOptions = ALL_KNOWN_ROLES.filter((role) =>
+    allCoworkers.some((coworker) => coworker.role === role),
+  );
+
+  const filteredCoworkers =
+    selectedRole === "all"
+      ? allCoworkers
+      : allCoworkers.filter((coworker) => coworker.role === selectedRole);
+
   // Group by role in defined order; unknown roles fall into "other"
   const grouped = ALL_KNOWN_ROLES.reduce<Record<string, CoworkerRow[]>>(
     (acc, r) => {
-      const items = allCoworkers.filter((c) => c.role === r);
+      const items = filteredCoworkers.filter((c) => c.role === r);
       if (items.length) acc[r] = items;
       return acc;
     },
     {} as Record<string, CoworkerRow[]>,
   );
-  const unknownRoleUsers = allCoworkers.filter(
+  const unknownRoleUsers = filteredCoworkers.filter(
     (c) => !(ALL_KNOWN_ROLES as string[]).includes(c.role),
   );
-  if (unknownRoleUsers.length) grouped["other"] = unknownRoleUsers;
+  if (unknownRoleUsers.length) grouped.other = unknownRoleUsers;
 
   const focusSearchInput = useCallback(() => {
     window.requestAnimationFrame(() => {
@@ -380,32 +390,32 @@ function EmployeesPage() {
 
       <div className="animate-fade-in border-t border-border/60 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-6 sm:mb-8">
-            <h1 className="flex flex-wrap items-center gap-3 text-3xl font-bold tracking-tight text-foreground">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-hanover-green/10">
-                <Users className="h-6 w-6 text-hanover-green" />
-              </span>
-              Coworkers
-            </h1>
-            <p className="mt-1 text-muted-foreground">
-              People on the employee portal — click a row to view their profile.
-            </p>
-          </div>
-
           {/* Search */}
-          <div className="mb-6">
-            <div className="group relative">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+            <div className="group relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors duration-200 group-focus-within:text-hanover-green" />
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Search by name, email, or employee code..."
+                placeholder="Search by name, email, or employee code."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-md border border-border bg-background py-2 pl-10 pr-4 text-sm transition-all duration-200 hover:border-foreground/30 focus:border-hanover-green focus:outline-none focus:ring-2 focus:ring-hanover-green/30"
               />
             </div>
+
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm transition-all duration-200 hover:border-foreground/30 focus:border-hanover-green focus:outline-none focus:ring-2 focus:ring-hanover-green/30"
+            >
+              <option value="all">All roles</option>
+              {roleOptions.map((role) => (
+                <option key={role} value={role}>
+                  {ROLE_LABELS[role]}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Content */}
@@ -423,7 +433,7 @@ function EmployeesPage() {
                   : String(coworkers.error)}
               </p>
             </div>
-          ) : allCoworkers.length === 0 ? (
+          ) : filteredCoworkers.length === 0 ? (
             <div className="rounded-lg border border-border bg-card py-16 text-center text-muted-foreground shadow-sm">
               No coworkers match your search.
             </div>

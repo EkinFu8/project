@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Tag as TagIcon,
   UserCircle2,
+  Users,
 } from "lucide-react";
 import { Link } from "react-router";
 import {
@@ -34,8 +35,10 @@ import { useSession } from "@/auth/session-context";
 import type { RouterOutputs } from "@/lib/trpc.ts";
 import { trpc } from "@/lib/trpc.ts";
 import { DashboardReports, MetricsView } from "@/pages/admin/metrics/page.tsx";
+import UsersPage from "@/pages/admin/users/page.tsx";
 import { TodayStrip } from "@/pages/dashboard/components/TodayStrip";
 import { SwappableLayout } from "@/pages/dashboard/SwappableLayout";
+import EmployeesPage from "@/pages/employees/page.tsx";
 import TagsPage from "@/pages/tags/TagsPage";
 import { type DashboardTab, useAppPreferences } from "@/store/app-preferences";
 import { formatStatus } from "@/utils/status";
@@ -365,11 +368,9 @@ function DashboardLoaded({
         contentByStatus={contentByStatus}
         contentByRole={contentByRole}
         pieColors={pieColors}
-        employees={roleEmployees}
         dashboardContent={dashboardContent}
         isAdmin={isAdmin}
         roleKey={roleKey}
-        userRole={userRole}
       />
 
       {isAdmin ? (
@@ -395,85 +396,6 @@ function formatDateLabel(value: string | Date) {
     day: "numeric",
     year: "numeric",
   }).format(value instanceof Date ? value : new Date(value));
-}
-
-function CoworkersWidget({
-  employees,
-  isAdmin,
-  userRole,
-}: {
-  employees: EmployeeRow[];
-  isAdmin: boolean;
-  userRole?: string | null;
-}) {
-  const { session } = useSession();
-  const userId = session?.user.id;
-  const userEmail = session?.user.email?.toLowerCase();
-  const userName = session?.user.user_metadata?.name?.toLowerCase();
-
-  const list = isAdmin
-    ? employees
-    : employees.filter((emp) => {
-        // Exclude self by id, then by email/name fallbacks.
-        if (userId && emp.id === userId) return false;
-        if (userEmail && emp.email && emp.email.toLowerCase() === userEmail) return false;
-        return !(userName && emp.name && emp.name.toLowerCase() === userName);
-      });
-
-  const title = isAdmin ? "Employees" : `${formatRoleLabel(userRole)} Coworkers`;
-  const emptyText = isAdmin ? "No employees yet." : "No other coworkers share your role yet.";
-  const description = isAdmin
-    ? "All employees in the system."
-    : `Other employees who share the ${formatRoleLabel(userRole)} role with you.`;
-
-  return (
-    <div className="h-full overflow-x-auto rounded-lg border border-border bg-card p-6 shadow-sm hover:shadow-md">
-      <div className="mb-4 flex items-center gap-2">
-        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-        <InfoPopover title={title}>{description}</InfoPopover>
-      </div>
-      {list.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">{emptyText}</p>
-      ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="px-2 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Code
-              </th>
-              <th className="px-2 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Name
-              </th>
-              <th className="px-2 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Job
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.slice(0, 6).map((emp) => (
-              <tr
-                key={emp.id}
-                className="border-b border-border transition-colors duration-150 last:border-b-0 hover:bg-muted/50"
-              >
-                <td className="px-2 py-3 font-mono text-xs text-muted-foreground">
-                  {emp.employee_code ?? "—"}
-                </td>
-                <td className="px-2 py-3">
-                  <Link
-                    to={`/employees/${emp.id}`}
-                    className="font-medium text-hanover-green transition-colors duration-150 hover:text-hanover-green/80 hover:underline underline-offset-2"
-                  >
-                    {emp.name}
-                  </Link>
-                </td>
-                <td className="px-2 py-3 text-muted-foreground">{emp.job_desc ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
 }
 
 function MyContentReports({ allContent }: { allContent: ContentRow[] }) {
@@ -715,22 +637,18 @@ type DashboardWidgetGridProps = {
   contentByStatus: { name: string; value: number }[];
   contentByRole: { name: string; value: number }[];
   pieColors: string[];
-  employees: EmployeeRow[];
   dashboardContent: ContentRow[];
   isAdmin: boolean;
   roleKey: string;
-  userRole?: string | null;
 };
 
 function DashboardWidgetGrid({
   contentByStatus,
   contentByRole,
   pieColors,
-  employees,
   dashboardContent,
   isAdmin,
   roleKey,
-  userRole,
 }: DashboardWidgetGridProps) {
   const order = useAppPreferences((state) => state.dashboardWidgetOrder);
   const swap = useAppPreferences((state) => state.swapDashboardWidgets);
@@ -812,10 +730,6 @@ function DashboardWidgetGrid({
     </div>
   ) : (
     <QuickLinksCard role={roleKey} />
-  );
-
-  const employeesWidget = (
-    <CoworkersWidget employees={employees} isAdmin={isAdmin} userRole={userRole} />
   );
 
   const recentContentWidget = (
@@ -904,7 +818,6 @@ function DashboardWidgetGrid({
       items={[
         { id: "content-by-status", node: contentByStatusWidget },
         { id: "side-panel", node: sidePanelWidget },
-        { id: "employees", node: employeesWidget },
         { id: "recent-content", node: recentContentWidget },
       ]}
     />
@@ -919,7 +832,11 @@ function DashboardPage() {
   const access = trpc.user.myAccess.useQuery();
   const isAdmin = access.data?.role === "admin";
   const activeTab: DashboardTab =
-    (tab === "metrics" || tab === "tags") && !isAdmin ? "overview" : tab;
+    (tab === "metrics" || tab === "tags" || tab === "users") && !isAdmin
+      ? "overview"
+      : tab === "coworkers" && isAdmin
+        ? "overview"
+        : tab;
 
   const announcementsQuery = trpc.notifications.listAnnouncements.useQuery(undefined, {
     enabled: activeTab === "overview" && Boolean(session),
@@ -941,9 +858,10 @@ function DashboardPage() {
     ...(isAdmin
       ? [
           { key: "metrics" as const, label: "Metrics", icon: Activity },
+          { key: "users" as const, label: "Users", icon: Users },
           { key: "tags" as const, label: "Tags", icon: TagIcon },
         ]
-      : []),
+      : [{ key: "coworkers" as const, label: "Coworkers", icon: Users }]),
   ];
 
   return (
@@ -962,7 +880,11 @@ function DashboardPage() {
                 ? "System and document activity metrics"
                 : activeTab === "tags"
                   ? "Manage global meta tags used across content."
-                  : "Overview of employees, content, and activity trends"}
+                  : activeTab === "users"
+                    ? "Manage application users."
+                    : activeTab === "coworkers"
+                      ? "View your coworkers."
+                      : "Overview of content and activity trends"}
             </p>
           </div>
 
@@ -997,6 +919,14 @@ function DashboardPage() {
           ) : activeTab === "tags" ? (
             <div className="animate-fade-in">
               <TagsPage />
+            </div>
+          ) : activeTab === "users" ? (
+            <div className="animate-fade-in">
+              <UsersPage />
+            </div>
+          ) : activeTab === "coworkers" ? (
+            <div className="animate-fade-in">
+              <EmployeesPage />
             </div>
           ) : isLoading ? (
             <div className="flex animate-fade-in items-center justify-center py-16">

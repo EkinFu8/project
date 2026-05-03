@@ -20,7 +20,6 @@ import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
 import AboutPage from "@/pages/about/page.tsx";
 import AccountPage from "@/pages/account/page.tsx";
-import UsersPage from "@/pages/admin/users/page.tsx";
 import UserFormPage from "@/pages/admin/users/user-form.tsx";
 import AnnouncementsPage from "@/pages/announcements/page.tsx";
 import BusinessAnalystPage from "@/pages/business-analyst/page.tsx";
@@ -30,7 +29,6 @@ import ContentPage from "@/pages/content/page.tsx";
 import CreditsPage from "@/pages/credits/page.tsx";
 import DashboardPage from "@/pages/dashboard/page.tsx";
 import EmployeeDetailPage from "@/pages/employees/employee-detail.tsx";
-import EmployeesPage from "@/pages/employees/page.tsx";
 import HelpPage from "@/pages/help/page.tsx";
 import HeroLayout from "@/pages/hero/layout.tsx";
 import LoginFormPage from "@/pages/login.tsx";
@@ -468,13 +466,22 @@ function adminNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
     { label: "Dashboard", to: "/dashboard" },
-    { label: "Users", to: "/users" },
   ];
 }
 
 /** Redirect that selects the Tags tab in the dashboard before navigating. */
 function TagsRedirect() {
   useAppPreferences.getState().setDashboardTab("tags");
+  return <Navigate to="/dashboard" replace />;
+}
+
+function UsersRedirect() {
+  useAppPreferences.getState().setDashboardTab("users");
+  return <Navigate to="/dashboard" replace />;
+}
+
+function CoworkersRedirect() {
+  useAppPreferences.getState().setDashboardTab("coworkers");
   return <Navigate to="/dashboard" replace />;
 }
 
@@ -490,7 +497,6 @@ function employeeNavItems() {
   return [
     { label: "Content", to: "/hero/content" },
     { label: "Dashboard", to: "/dashboard" },
-    { label: "Coworkers", to: "/employees" },
   ];
 }
 
@@ -836,12 +842,12 @@ function App() {
           {/* Employee role pages */}
           <Route path="/underwriter" element={<UnderwriterPage />} />
           <Route path="/business-analyst" element={<BusinessAnalystPage />} />
-          <Route path="/employees" element={<EmployeesPage />} />
+          <Route path="/employees" element={<CoworkersRedirect />} />
           <Route path="/employees/:id" element={<EmployeeDetailPage />} />
 
           {/* Admin-only: user management */}
           <Route element={<AdminOnly />}>
-            <Route path="/users" element={<UsersPage />} />
+            <Route path="/users" element={<UsersRedirect />} />
             <Route path="/users/new" element={<UserFormPage />} />
             <Route path="/users/:id" element={<UserFormPage />} />
             <Route path="/tags" element={<TagsRedirect />} />

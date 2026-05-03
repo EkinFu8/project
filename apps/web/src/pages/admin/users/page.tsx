@@ -10,7 +10,6 @@ import {
   Search,
   Trash2,
   User,
-  Users,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -398,7 +397,7 @@ function RoleGroup({
                   className="border-b border-border transition-colors duration-150 last:border-b-0 hover:bg-muted/60 cursor-pointer"
                   onClick={() => onSelectUser(user.id)}
                 >
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-3">
                     {user.photo_url ? (
                       <img
                         src={user.photo_url}
@@ -418,10 +417,11 @@ function RoleGroup({
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                     {user.employee_code ?? "—"}
                   </td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <Link
                         to={`/users/${user.id}`}
+                        onClick={(e) => e.stopPropagation()}
                         className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-hanover-green transition-all duration-150 hover:bg-hanover-green/10 active:scale-95"
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -429,7 +429,10 @@ function RoleGroup({
                       </Link>
                       <button
                         type="button"
-                        onClick={() => onDeleteRequest(user.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteRequest(user.id);
+                        }}
                         className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 transition-all duration-150 hover:bg-red-50 active:scale-95 dark:hover:bg-red-950/40"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -480,6 +483,7 @@ function UsersPage() {
   const setSearch = useAppPreferences((state) => state.setUsersSearch);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState("all");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
 
@@ -492,18 +496,24 @@ function UsersPage() {
   });
 
   const allUsers = users.data ?? [];
+  const roleOptions = ALL_KNOWN_ROLES.filter((role) => allUsers.some((user) => user.role === role));
+
+  const filteredUsers =
+    selectedRole === "all" ? allUsers : allUsers.filter((user) => user.role === selectedRole);
 
   // Group by role in defined order; unknown roles fall into "other"
   const grouped = ALL_KNOWN_ROLES.reduce<Record<string, UserRow[]>>(
     (acc, r) => {
-      const items = allUsers.filter((u) => u.role === r);
+      const items = filteredUsers.filter((u) => u.role === r);
       if (items.length) acc[r] = items;
       return acc;
     },
     {} as Record<string, UserRow[]>,
   );
-  const unknownRoleUsers = allUsers.filter((u) => !(ALL_KNOWN_ROLES as string[]).includes(u.role));
-  if (unknownRoleUsers.length) grouped["other"] = unknownRoleUsers;
+  const unknownRoleUsers = filteredUsers.filter(
+    (u) => !(ALL_KNOWN_ROLES as string[]).includes(u.role),
+  );
+  if (unknownRoleUsers.length) grouped.other = unknownRoleUsers;
 
   const focusSearchInput = useCallback(() => {
     window.requestAnimationFrame(() => {
@@ -537,41 +547,14 @@ function UsersPage() {
 
       <div className="animate-fade-in border-t border-border/60 py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="flex flex-wrap items-center gap-3 text-3xl font-bold tracking-tight text-foreground">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-hanover-green/10">
-                  <Users className="h-6 w-6 text-hanover-green" />
-                </span>
-                User Management
-                <HelpPopover title="User management" side="right" align="center">
-                  Admins can create, edit, and remove application users. Users are grouped by role —
-                  click a group header to collapse it, or click any row to view that user's profile
-                  and content.
-                </HelpPopover>
-              </h1>
-              <p className="mt-1 text-muted-foreground">
-                Supabase accounts grouped by role — click a row to inspect
-              </p>
-            </div>
-            <Link
-              to="/users/new"
-              className="group flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-hanover-green/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-hanover-green/90 hover:shadow-md hover:shadow-hanover-green/30 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hanover-green/40 focus-visible:ring-offset-2"
-            >
-              <Plus className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90" />
-              Add User
-            </Link>
-          </div>
-
           {/* Search */}
-          <div className="mb-6">
-            <div className="group relative">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+            <div className="group relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors duration-200 group-focus-within:text-hanover-green" />
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Search by email, name, role, or employee code..."
+                placeholder="Search by email, name, role, or employee code."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-md border border-border bg-background py-2 pl-10 pr-24 text-sm transition-all duration-200 hover:border-foreground/30 focus:border-hanover-green focus:outline-none focus:ring-2 focus:ring-hanover-green/30"
@@ -589,6 +572,27 @@ function UsersPage() {
                 Search by email, display name, assigned role, or employee code.
               </HelpPopover>
             </div>
+
+            <Link
+              to="/users/new"
+              className="group flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-hanover-green/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-hanover-green/90 hover:shadow-md hover:shadow-hanover-green/30 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hanover-green/40 focus-visible:ring-offset-2"
+            >
+              <Plus className="h-4 w-4 transition-transform duration-200 group-hover:rotate-90" />
+              Add User
+            </Link>
+
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm transition-all duration-200 hover:border-foreground/30 focus:border-hanover-green focus:outline-none focus:ring-2 focus:ring-hanover-green/30"
+            >
+              <option value="all">All roles</option>
+              {roleOptions.map((role) => (
+                <option key={role} value={role}>
+                  {ROLE_LABELS[role]}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Content */}
@@ -604,7 +608,7 @@ function UsersPage() {
                 {users.error instanceof Error ? users.error.message : String(users.error)}
               </p>
             </div>
-          ) : allUsers.length === 0 ? (
+          ) : filteredUsers.length === 0 ? (
             <div className="rounded-lg border border-border bg-card py-16 text-center text-muted-foreground shadow-sm">
               No users found.
             </div>

@@ -149,30 +149,48 @@ export default function TagsPage() {
     <div className="min-h-full py-8">
       <div className="mx-auto max-w-4xl px-4 sm:px-6">
         {/* ── Header ── */}
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="flex items-center gap-2.5 text-3xl font-bold text-foreground">
-              <Tag className="h-7 w-7 text-hanover-green" />
-              Tag Management
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {allTags.length} tag{allTags.length !== 1 ? "s" : ""} total
-            </p>
+
+        {/* ── Search + Actions Bar ── */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Tag className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search tags..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-md border border-border bg-background py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
+            />
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setAdd({ name: "", color: "#15803d" });
-              setEdit(null);
-              setAddError("");
-            }}
-            disabled={add !== null}
-            className="flex shrink-0 items-center gap-2 rounded-md bg-hanover-green px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-hanover-green/90 disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-            Add Tag
-          </button>
+          <div className="flex shrink-0 items-center gap-3">
+            {selectedIds.size > 0 && (
+              <span className="text-xs text-muted-foreground">{selectedIds.size} selected</span>
+            )}
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              disabled={selectedIds.size === 0}
+              className="flex items-center gap-1.5 rounded-md bg-red-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-600 disabled:pointer-events-none disabled:opacity-40"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Selected
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAdd({ name: "", color: "#15803d" });
+                setEdit(null);
+                setAddError("");
+              }}
+              disabled={add !== null}
+              className="flex shrink-0 items-center justify-center gap-2 rounded-md bg-hanover-green px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-hanover-green/90 disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              Add Tag
+            </button>
+          </div>
         </div>
 
         {/* ── Add Tag Form ── */}
@@ -237,35 +255,6 @@ export default function TagsPage() {
             {addError && <p className="mt-2 text-xs text-red-500">{addError}</p>}
           </div>
         )}
-
-        {/* ── Search + Bulk Bar ── */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative flex-1">
-            <Tag className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search tags..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-md border border-border bg-background py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-hanover-green"
-            />
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            {selectedIds.size > 0 && (
-              <span className="text-xs text-muted-foreground">{selectedIds.size} selected</span>
-            )}
-            <button
-              type="button"
-              onClick={handleBulkDelete}
-              disabled={selectedIds.size === 0}
-              className="flex items-center gap-1.5 rounded-md bg-red-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-600 disabled:pointer-events-none disabled:opacity-40"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete Selected
-            </button>
-          </div>
-        </div>
 
         {/* ── Tag Table ── */}
         <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
