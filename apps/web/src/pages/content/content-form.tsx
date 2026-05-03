@@ -1251,24 +1251,22 @@ function ContentFormPage() {
   return (
     <>
       {showReminder && (
-        <div className="fixed bottom-2 right-2 gap-2 rounded-lg border border-destructive/40 bg-destructive/10 py-5 pl-10 pr-8 text-sm font-medium text-destructive">
-          <div className="absolute right-1 top-1">
-            <button
-              type="button"
-              className="hover:bg-destructive/30 rounded-md"
-              onClick={() => setShowReminder(false)}
-            >
-              <X className="size-4" />
-            </button>
+        <div className="fixed bottom-[88px] right-6 z-50 flex w-80 items-start gap-3 rounded-xl border border-destructive/20 bg-background px-4 py-3.5 shadow-lg shadow-destructive/10 ring-1 ring-destructive/10 animate-in slide-in-from-bottom-2 fade-in duration-300">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
           </div>
-          <div className="flex flex-row">
-            <div className="absolute left-1">
-              <AlertTriangle />
-            </div>
-            <div>
-              <p className="text-lg">{reminderText}</p>
-            </div>
+          <div className="flex-1 pt-0.5">
+            <p className="text-sm font-semibold text-foreground">Document Notice</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{reminderText}</p>
           </div>
+          <button
+            type="button"
+            className="ml-auto shrink-0 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 hover:bg-muted"
+            onClick={() => setShowReminder(false)}
+            aria-label="Dismiss"
+          >
+            <X className="size-3.5" />
+          </button>
         </div>
       )}
       {isEditing && (
