@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type DashboardTab = "overview" | "metrics" | "tags";
+export type DashboardTab = "overview" | "metrics" | "tags" | "users" | "coworkers";
 
 type AppPreferencesState = {
   coworkerSearch: string;
@@ -24,12 +24,7 @@ type AppPreferencesActions = {
 
 type AppPreferences = AppPreferencesState & AppPreferencesActions;
 
-export const DEFAULT_DASHBOARD_WIDGET_ORDER = [
-  "content-by-status",
-  "side-panel",
-  "employees",
-  "recent-content",
-];
+export const DEFAULT_DASHBOARD_WIDGET_ORDER = ["content-by-status", "side-panel", "recent-content"];
 
 const DEFAULT_PREFERENCES: AppPreferencesState = {
   coworkerSearch: "",
