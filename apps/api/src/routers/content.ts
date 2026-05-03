@@ -623,6 +623,9 @@ export const contentRouter = router({
 
       const file = await ctx.prisma.contentManagement.findUnique({
         where: { fileID },
+        include: {
+          content_tags: { include: { tag: { select: { id: true, name: true } } } },
+        },
       });
 
       if (!file) throw new Error("File not found");
@@ -674,12 +677,75 @@ export const contentRouter = router({
               },
             });
 
+      type ChangeEntry = { field: string; oldValue: string | null; newValue: string | null };
+      const changes: ChangeEntry[] = [];
+
+      const trackString = (
+        field: string,
+        oldVal: string | null | undefined,
+        newVal: string | null | undefined,
+      ) => {
+        if (newVal === undefined) return;
+        const o = oldVal ?? null;
+        const n = newVal ?? null;
+        if (o !== n) changes.push({ field, oldValue: o, newValue: n });
+      };
+
+      const trackDate = (
+        field: string,
+        oldVal: Date | null | undefined,
+        newVal: Date | null | undefined,
+      ) => {
+        if (newVal === undefined) return;
+        const o = oldVal ? oldVal.toISOString() : null;
+        const n = newVal ? newVal.toISOString() : null;
+        if (o !== n) changes.push({ field, oldValue: o, newValue: n });
+      };
+
+      trackString("filename", file.filename, input.filename);
+      trackString("document_status", file.document_status, input.document_status);
+      trackString("content_type", file.content_type, input.content_type);
+      trackString("job_position", file.job_position, input.job_position);
+      trackDate("expiration_date", file.expiration_date, input.expiration_date);
+      trackDate("next_review_date", file.next_review_date, input.next_review_date);
+
+      if (urlChanged) {
+        changes.push({ field: "file", oldValue: null, newValue: "replaced" });
+      }
+
+      if (tagIds !== undefined) {
+        const oldTagIds = file.content_tags.map((ct) => ct.tag.id).sort((a, b) => a - b);
+        const newTagIds = [...tagIds].sort((a, b) => a - b);
+        const tagsChanged =
+          oldTagIds.length !== newTagIds.length || oldTagIds.some((id, i) => id !== newTagIds[i]);
+        if (tagsChanged) {
+          const oldNames = file.content_tags
+            .map((ct) => ct.tag.name)
+            .sort()
+            .join(", ");
+          const newTagsLookup = await ctx.prisma.tag.findMany({
+            where: { id: { in: newTagIds } },
+            select: { name: true },
+          });
+          const newNames = newTagsLookup
+            .map((t) => t.name)
+            .sort()
+            .join(", ");
+          changes.push({
+            field: "tags",
+            oldValue: oldNames || null,
+            newValue: newNames || null,
+          });
+        }
+      }
+
       await ctx.prisma.auditEvent.create({
         data: {
           userId,
           action: "edit",
           documentId: fileID,
           fileName: result.filename,
+          metadata: changes.length > 0 ? { changes } : undefined,
         },
       });
 

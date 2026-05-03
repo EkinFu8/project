@@ -7,4 +7,4 @@ export type NotificationItem = Omit<ApiNotificationItem, "type" | "urgency"> & {
   urgency: "info" | "warning" | "high" | "critical";
 };
 
-export type FilterKey = "all" | "unread" | "pinned" | "changes" | "ownership";
+export type FilterKey = "all" | "unread" | "pinned" | "ownership";

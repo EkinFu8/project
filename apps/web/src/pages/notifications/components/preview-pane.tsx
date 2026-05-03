@@ -76,6 +76,40 @@ function typeLabel(type: NotificationItem["type"]) {
   }
 }
 
+function changeFieldLabel(field: string): string {
+  switch (field) {
+    case "filename":
+      return "Name";
+    case "expiration_date":
+      return "Expiration date";
+    case "next_review_date":
+      return "Next review date";
+    case "document_status":
+      return "Status";
+    case "content_type":
+      return "Content type";
+    case "job_position":
+      return "Department / role";
+    case "file":
+      return "File";
+    case "tags":
+      return "Tags";
+    default:
+      return field;
+  }
+}
+
+function formatChangeValue(field: string, value: string | null): string {
+  if (value == null || value === "") return "—";
+  if (field === "expiration_date" || field === "next_review_date") {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) {
+      return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d);
+    }
+  }
+  return value;
+}
+
 export function PreviewPane({ item, onClose, onPin, onDelete }: PreviewPaneProps) {
   if (!item) {
     return (
@@ -176,6 +210,39 @@ export function PreviewPane({ item, onClose, onPin, onDelete }: PreviewPaneProps
         >
           {item.message}
         </div>
+
+        {/* What changed (for document updates) */}
+        {item.type === "document-change" && item.changes.length > 0 && (
+          <div className="mt-5 rounded-lg border border-border bg-muted/30 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              What changed
+            </p>
+            <ul className="space-y-2.5 text-sm">
+              {item.changes.map((change) => (
+                <li key={change.field} className="flex flex-col gap-0.5">
+                  <span className="font-medium text-foreground">
+                    {changeFieldLabel(change.field)}
+                  </span>
+                  {change.field === "file" ? (
+                    <span className="text-muted-foreground">
+                      A new file was uploaded for this document.
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      <span className="line-through">
+                        {formatChangeValue(change.field, change.oldValue)}
+                      </span>
+                      <span className="mx-2">→</span>
+                      <span className="text-foreground">
+                        {formatChangeValue(change.field, change.newValue)}
+                      </span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Document link (for non-announcements) */}
         {item.fileID && (

@@ -12,8 +12,11 @@ type AuditChangeEventRow = {
   fileName: string | null;
   documentId: string | null;
   userId: string;
+  metadata: unknown;
   user: { name: string } | null;
 };
+
+type ChangeEntry = { field: string; oldValue: string | null; newValue: string | null };
 
 type AuditOwnershipEventRow = {
   id: string;
@@ -161,6 +164,7 @@ export const notificationsRouter = router({
             fileName: true,
             documentId: true,
             userId: true,
+            metadata: true,
             user: { select: { name: true } },
           },
           orderBy: { createdAt: "desc" },
@@ -215,6 +219,8 @@ export const notificationsRouter = router({
         const fallbackName = docId ? byFileId.get(docId)?.filename : undefined;
         const key = `change-${event.id}`;
         const state = stateMap.get(key);
+        const meta = (event.metadata ?? {}) as { changes?: ChangeEntry[] };
+        const changes = Array.isArray(meta.changes) ? meta.changes : [];
         return {
           id: key,
           type: "document-change" as const,
@@ -224,6 +230,7 @@ export const notificationsRouter = router({
           fileName: event.fileName ?? fallbackName ?? (docId || "Unknown document"),
           message: event.action === "upload" ? "New content was added." : "This item was updated.",
           actorName: event.user?.name ?? null,
+          changes,
           isRead: state?.readAt != null,
           isPinned: state?.pinnedAt != null,
           isDeleted: state?.deletedAt != null,
@@ -249,6 +256,7 @@ export const notificationsRouter = router({
           fileName: event.fileName ?? event.documentId ?? "Unknown document",
           message: `Owner changed (${from} → ${to}).`,
           actorName: event.user?.name ?? null,
+          changes: [] as ChangeEntry[],
           isRead: state?.readAt != null,
           isPinned: state?.pinnedAt != null,
           isDeleted: state?.deletedAt != null,

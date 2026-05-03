@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/auth/session-context";
 import type { RouterOutputs } from "@/lib/trpc";
 import { trpc } from "@/lib/trpc";
-import { FilterRail } from "./components/filter-rail";
+import { FilterTabs } from "./components/filter-tabs";
 import { NotificationRow } from "./components/notification-row";
 import { PreviewPane } from "./components/preview-pane";
 import { SelectionToolbar } from "./components/selection-toolbar";
@@ -23,8 +23,6 @@ function matchesFilter(item: NotificationItem, filter: FilterKey): boolean {
       return !item.isRead;
     case "pinned":
       return item.isPinned;
-    case "changes":
-      return item.type === "document-change";
     case "ownership":
       return item.type === "ownership-update";
     default:
@@ -37,7 +35,6 @@ function buildCounts(items: NotificationItem[]): Record<FilterKey, number> {
     all: items.length,
     unread: items.filter((i) => !i.isRead).length,
     pinned: items.filter((i) => i.isPinned).length,
-    changes: items.filter((i) => i.type === "document-change").length,
     ownership: items.filter((i) => i.type === "ownership-update").length,
   };
 }
@@ -291,152 +288,149 @@ export function NotificationsView() {
         </div>
       </div>
 
-      {/* Three-pane layout */}
-      <div className="mx-auto flex min-h-0 w-full max-w-screen-xl flex-1 flex-col overflow-hidden lg:flex-row">
-        {/* Filter rail */}
-        <FilterRail
-          activeFilter={activeFilter}
-          onFilter={(key) => {
-            setActiveFilter(key);
-            clearAll();
-          }}
-          counts={counts}
-        />
+      {/* List + preview */}
+      <div className="mx-auto flex min-h-0 w-full max-w-screen-xl flex-1 overflow-hidden">
+        {/* List pane */}
+        <div
+          className={cn(
+            "flex min-h-0 flex-col border-r border-border bg-card",
+            "w-full lg:w-[420px] lg:shrink-0",
+            // On mobile: hide list when preview is open
+            showPreviewMobile && activeItem ? "hidden lg:flex" : "flex",
+          )}
+        >
+          {/* Filter tabs */}
+          <FilterTabs
+            activeFilter={activeFilter}
+            onFilter={(key) => {
+              setActiveFilter(key);
+              clearAll();
+            }}
+            counts={counts}
+          />
 
-        {/* List + preview */}
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          {/* List pane */}
-          <div
-            className={cn(
-              "flex min-h-0 flex-col border-r border-border bg-card",
-              "w-full lg:w-[420px] lg:shrink-0",
-              // On mobile: hide list when preview is open
-              showPreviewMobile && activeItem ? "hidden lg:flex" : "flex",
-            )}
-          >
-            {/* Search bar — sticky at top of pane */}
-            <div className="shrink-0 border-b border-border bg-card px-3 py-2">
-              <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5">
-                <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <input
-                  ref={searchRef}
-                  type="text"
-                  placeholder="Search notifications… (/)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Selection toolbar */}
-            {hasSelection && (
-              <div className="shrink-0">
-                <SelectionToolbar
-                  count={count}
-                  totalCount={filteredIds.length}
-                  allRead={allSelectedRead}
-                  allPinned={allSelectedPinned}
-                  onMarkRead={handleBulkMarkRead}
-                  onMarkUnread={handleBulkMarkUnread}
-                  onPin={handleBulkPin}
-                  onUnpin={handleBulkUnpin}
-                  onDelete={handleBulkDelete}
-                  onClear={clearAll}
-                  onSelectAll={selectAll}
-                  isLoading={isMutating}
-                />
-              </div>
-            )}
-
-            {/* Row count hint */}
-            {!hasSelection && filteredItems.length > 0 && (
-              <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-4 py-2">
-                <p className="text-xs text-muted-foreground">
-                  {filteredItems.length} notification{filteredItems.length !== 1 ? "s" : ""}
-                  {searchQuery && ` matching "${searchQuery}"`}
-                </p>
-                {counts.unread > 0 && (activeFilter === "all" || activeFilter === "unread") && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setReadMutation.mutate({
-                        keys: allItems.filter((i) => !i.isRead).map((i) => i.id),
-                        read: true,
-                      });
-                    }}
-                    className="ml-auto text-xs text-hanover-green underline-offset-2 hover:underline"
-                  >
-                    Mark all read
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* List — the only scrollable region */}
-            <div
-              className="notif-scroll min-h-0 flex-1 overflow-y-auto"
-              role="listbox"
-              aria-label="Notifications"
-            >
-              {filteredItems.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                    <Bell className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {searchQuery
-                      ? "No results for your search."
-                      : activeFilter === "unread"
-                        ? "You're all caught up."
-                        : activeFilter === "pinned"
-                          ? "No pinned notifications yet."
-                          : "Nothing to show right now."}
-                  </p>
-                </div>
-              ) : (
-                filteredItems.map((item) => (
-                  <NotificationRow
-                    key={item.id}
-                    item={item}
-                    isSelected={isSelected(item.id)}
-                    isActive={activeItem?.id === item.id}
-                    onSelect={toggle}
-                    onOpen={openPreview}
-                    onPin={handlePin}
-                  />
-                ))
+          {/* Search bar */}
+          <div className="shrink-0 border-b border-border bg-card px-3 py-2">
+            <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5">
+              <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <input
+                ref={searchRef}
+                type="text"
+                placeholder="Search notifications… (/)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  ×
+                </button>
               )}
             </div>
           </div>
 
-          {/* Preview pane */}
+          {/* Selection toolbar */}
+          {hasSelection && (
+            <div className="shrink-0">
+              <SelectionToolbar
+                count={count}
+                totalCount={filteredIds.length}
+                allRead={allSelectedRead}
+                allPinned={allSelectedPinned}
+                onMarkRead={handleBulkMarkRead}
+                onMarkUnread={handleBulkMarkUnread}
+                onPin={handleBulkPin}
+                onUnpin={handleBulkUnpin}
+                onDelete={handleBulkDelete}
+                onClear={clearAll}
+                onSelectAll={selectAll}
+                isLoading={isMutating}
+              />
+            </div>
+          )}
+
+          {/* Row count hint */}
+          {!hasSelection && filteredItems.length > 0 && (
+            <div className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-4 py-2">
+              <p className="text-xs text-muted-foreground">
+                {filteredItems.length} notification{filteredItems.length !== 1 ? "s" : ""}
+                {searchQuery && ` matching "${searchQuery}"`}
+              </p>
+              {counts.unread > 0 && (activeFilter === "all" || activeFilter === "unread") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReadMutation.mutate({
+                      keys: allItems.filter((i) => !i.isRead).map((i) => i.id),
+                      read: true,
+                    });
+                  }}
+                  className="ml-auto text-xs text-hanover-green underline-offset-2 hover:underline"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* List — the only scrollable region */}
           <div
-            className={cn(
-              "min-h-0 flex-1 overflow-hidden",
-              // Mobile: full screen when open
-              showPreviewMobile && activeItem ? "flex flex-col" : "hidden lg:flex lg:flex-col",
-            )}
+            className="notif-scroll min-h-0 flex-1 overflow-y-auto"
+            role="listbox"
+            aria-label="Notifications"
           >
-            <PreviewPane
-              item={activeItem}
-              onClose={() => {
-                setActiveItemId(null);
-                setShowPreviewMobile(false);
-              }}
-              onPin={handlePin}
-              onDelete={handleDelete}
-            />
+            {filteredItems.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                  <Bell className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  {searchQuery
+                    ? "No results for your search."
+                    : activeFilter === "unread"
+                      ? "You're all caught up."
+                      : activeFilter === "pinned"
+                        ? "No pinned notifications yet."
+                        : "Nothing to show right now."}
+                </p>
+              </div>
+            ) : (
+              filteredItems.map((item) => (
+                <NotificationRow
+                  key={item.id}
+                  item={item}
+                  isSelected={isSelected(item.id)}
+                  isActive={activeItem?.id === item.id}
+                  onSelect={toggle}
+                  onOpen={openPreview}
+                  onPin={handlePin}
+                />
+              ))
+            )}
           </div>
+        </div>
+
+        {/* Preview pane */}
+        <div
+          className={cn(
+            "min-h-0 flex-1 overflow-hidden",
+            // Mobile: full screen when open
+            showPreviewMobile && activeItem ? "flex flex-col" : "hidden lg:flex lg:flex-col",
+          )}
+        >
+          <PreviewPane
+            item={activeItem}
+            onClose={() => {
+              setActiveItemId(null);
+              setShowPreviewMobile(false);
+            }}
+            onPin={handlePin}
+            onDelete={handleDelete}
+          />
         </div>
       </div>
     </div>
