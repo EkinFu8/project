@@ -13,7 +13,6 @@ import {
   Loader2,
   type LucideIcon,
   Megaphone,
-  ShieldCheck,
   Tag as TagIcon,
   UserCircle2,
   Users,
@@ -34,7 +33,7 @@ import {
 import { useSession } from "@/auth/session-context";
 import type { RouterOutputs } from "@/lib/trpc.ts";
 import { trpc } from "@/lib/trpc.ts";
-import { DashboardReports, MetricsView } from "@/pages/admin/metrics/page.tsx";
+import { MetricsView } from "@/pages/admin/metrics/page.tsx";
 import UsersPage from "@/pages/admin/users/page.tsx";
 import { TodayStrip } from "@/pages/dashboard/components/TodayStrip";
 import { SwappableLayout } from "@/pages/dashboard/SwappableLayout";
@@ -134,24 +133,7 @@ const COMMON_QUICK_LINKS: QuickLink[] = [
   },
 ];
 
-const ROLE_QUICK_LINKS: Record<string, QuickLink[]> = {
-  "business-analyst": [
-    {
-      label: "BA Workspace",
-      to: "/business-analyst",
-      icon: ShieldCheck,
-      description: "Your business analyst tools.",
-    },
-  ],
-  underwriter: [
-    {
-      label: "Underwriter Workspace",
-      to: "/underwriter",
-      icon: ShieldCheck,
-      description: "Your underwriter tools.",
-    },
-  ],
-};
+const ROLE_QUICK_LINKS: Record<string, QuickLink[]> = {};
 
 function QuickLinksCard({ role }: { role: string }) {
   const roleSpecific = ROLE_QUICK_LINKS[role] ?? [];
@@ -193,7 +175,6 @@ function QuickLinksCard({ role }: { role: string }) {
 function DashboardLoaded({
   employees,
   allContent,
-  auditEvents,
   isAdmin,
   userRole,
   userId,
@@ -373,11 +354,7 @@ function DashboardLoaded({
         roleKey={roleKey}
       />
 
-      {isAdmin ? (
-        <DashboardReports content={dashboardContent} auditEvents={auditEvents} />
-      ) : (
-        <MyContentReports allContent={allContent} />
-      )}
+      {isAdmin ? null : <MyContentReports allContent={allContent} />}
     </>
   );
 }
