@@ -76,61 +76,65 @@ function AboutPage() {
       title: "Rafael Mirzoyan",
       subtitle: "Project Manager",
       image: RafealImage,
-      quote: "TODO: Add Rafael's favorite quote here.",
+      quote:
+        '"One of the penalties of refusing to participate in politics is that you end up being governed by your inferiors" - Plato',
     },
     {
       title: "Colin Cotton",
       subtitle: "Documentation Analyst",
       image: ColinImage,
-      quote: "TODO: Add Colin's favorite quote here.",
+      quote: '"Wherever law ends, tyranny begins" - John Locke',
     },
     {
       title: "Jacob Major",
       subtitle: "Full Time Software Engineer",
       image: JacobMajorImage,
-      quote: "TODO: Add Jacob Major's favorite quote here.",
+      quote:
+        '"Nature has placed mankind under the governance of two sovereign masters, pain and pleasure. It is for them alone to point out what we ought to do, as well as to determine what we shall do." - Jeremy Bentham',
     },
     {
       title: "Maxwell W.",
       subtitle: "Assistant Lead Software Engineer",
       image: MaxwellWImage,
-      quote: "TODO: Add Maxwell's favorite quote here.",
+      quote: '"We are not rich by what we possess but by what we can do without." - Immanuel Kant',
     },
     {
       title: "Max C.",
       subtitle: "Full Time Software Engineer",
       image: MaxCImage,
-      quote: "TODO: Add Max C.'s favorite quote here.",
+      quote: '"Educating the mind without educating the heart is no education at all" - Aristotle',
     },
     {
       title: "Jacob Molnia",
       subtitle: "Lead Software Engineer",
       image: JacobMolniaImage,
-      quote: "TODO: Add Jacob Molnia's favorite quote here.",
+      quote:
+        '"One must still have chaos in oneself to be able to give birth to a dancing star" - Friedrich Nietzsche',
     },
     {
       title: "Tobias G.",
       subtitle: "Assistant Lead Software Engineer",
       image: TobiasImage,
-      quote: "TODO: Add Tobias's favorite quote here.",
+      quote: '"The unexamined life is not worth living" - Socrates',
     },
     {
       title: "Ekin C.",
       subtitle: "Full Time Software Engineer",
       image: EkingsImage,
-      quote: "TODO: Add Ekin's favorite quote here.",
+      quote: '"Anxiety is the dizziness of freedom" - Søren Kierkegaard',
     },
     {
       title: "Russell H.",
       subtitle: "Scrum Master",
       image: RusselsImage,
-      quote: "TODO: Add Russell's favorite quote here.",
+      quote:
+        '"Fear of things invisible is the natural seed of that which everyone in himself calleth religion." - Thomas Hobbes',
     },
     {
       title: "Myantonomo G.",
       subtitle: "Product Owner",
       image: MyantonomoImage,
-      quote: "TODO: Add Myantonomo's favorite quote here.",
+      quote: '"Man is born free, and everywhere he is in chains." - Jean-Jacques Rousseau',
     },
   ];
 
