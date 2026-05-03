@@ -131,7 +131,7 @@ export default function CMSChatbot({
   mode = "launcher",
   // DEFAULT_MODEL should now be a Groq model ID, e.g. "llama-3.3-70b-versatile"
   modelId = DEFAULT_MODEL,
-  apiKey = "", // <-- pass your Groq API key via this prop (console.groq.com)
+  apiKey = "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",
   onBeforeRespond,
   onDeleteConversation,
   onNavigate,
