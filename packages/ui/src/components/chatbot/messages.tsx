@@ -1,6 +1,6 @@
 import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import { styles } from "./styles";
 import type { AssistantAction, ChatMessage } from "./types";
 
@@ -10,6 +10,11 @@ type MessageBlock =
 
 const ACTION_PATTERN = /^ACTION:\s*(\/[^\s|]*)\s*\|\s*(.+)$/i;
 const LOOSE_ACTION_PATTERN = /^[-*]?\s*Action:\s*`?\s*(\/[^`|]+?)\s*\|\s*([^`]+?)\s*`?\.?$/i;
+// Matches an ACTION fragment embedded inside a sentence — e.g.
+// "To view it, ACTION: /dashboard | Open dashboard. The next step…".
+// We strip these from the rendered prose and surface them as buttons at
+// the end of the message instead, so users never see the raw ACTION text.
+const INLINE_ACTION_PATTERN = /ACTION:\s*(\/[^\s|]+)\s*\|\s*([^.\n|]+?)(?=[.\n]|$)/gi;
 
 function parseActionLine(line: string): AssistantAction | null {
   const trimmed = line.trim();
@@ -20,10 +25,21 @@ function parseActionLine(line: string): AssistantAction | null {
   return { to, label, tone: "primary" };
 }
 
+function extractInlineActions(line: string): { cleaned: string; actions: AssistantAction[] } {
+  const actions: AssistantAction[] = [];
+  const cleaned = line.replace(INLINE_ACTION_PATTERN, (_match, to: string, label: string) => {
+    actions.push({ to: to.trim(), label: label.trim(), tone: "primary" });
+    return "";
+  });
+  // Collapse whitespace left behind by the removal (e.g. "To view it,  . Next…").
+  return { cleaned: cleaned.replace(/\s{2,}/g, " ").replace(/\s+([.,;:!?])/g, "$1"), actions };
+}
+
 function parseAssistantMessage(content: string) {
   const blocks: MessageBlock[] = [];
   const lines = content.split("\n");
   const textLines: string[] = [];
+  const trailingActions: AssistantAction[] = [];
 
   function flushText() {
     const content = textLines.join("\n").trim();
@@ -43,10 +59,18 @@ function parseAssistantMessage(content: string) {
       blocks.push({ type: "actions", actions: [action] });
       continue;
     }
-    textLines.push(line);
+
+    const { cleaned, actions: inline } = extractInlineActions(line);
+    trailingActions.push(...inline);
+    textLines.push(cleaned);
   }
 
   flushText();
+
+  if (trailingActions.length > 0) {
+    blocks.push({ type: "actions", actions: trailingActions });
+  }
+
   return { blocks };
 }
 
@@ -67,8 +91,10 @@ function actionKey(action: AssistantAction) {
 function inferActionsFromText(text: string, availableActions: AssistantAction[]) {
   const lower = text.toLowerCase();
   const keywordByRoute: Record<string, string[]> = {
-    "/dashboard": ["dashboard", "metrics", "audit"],
-    "/notifications": ["notifications", "notification", "reminders"],
+    "/dashboard": ["dashboard", "metrics", "audit", "overview"],
+    "/activity": ["activity feed", "activity", "recent edits", "ownership change"],
+    "/announcements": ["announcement", "announcements", "broadcast"],
+    "/calendar": ["calendar", "review date", "expiration date", "expires", "due"],
     "/hero/content": ["content library", "content", "documents", "search"],
     "/hero/content/new": ["new content", "create content", "upload"],
     "/users": ["users", "user management", "accounts"],
@@ -229,20 +255,31 @@ export function ChatMessages({
   onNavigate,
 }: ChatMessagesProps) {
   const messagesRef = useRef<HTMLDivElement>(null);
+  // Tracks whether the user is pinned to the bottom of the transcript. While
+  // they are, every render auto-scrolls; if they scroll up to read, we leave
+  // them alone until they scroll back down.
+  const isAtBottomRef = useRef(true);
 
-  useEffect(() => {
-    const element = messagesRef.current;
-    if (!element) return;
+  const handleScroll = useCallback(() => {
+    const container = messagesRef.current;
+    if (!container) return;
+    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+    isAtBottomRef.current = distance < 80;
+  }, []);
 
-    const frame = window.requestAnimationFrame(() => {
-      element.scrollTop = element.scrollHeight;
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-  });
+  // useLayoutEffect (not useEffect) so the scroll commits in the same frame
+  // as the new content paints — eliminates the visible flash where a new
+  // token grows the bubble below the viewport before rAF scrolls down.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: messages and isTyping are intentional triggers — the effect re-reads scrollHeight from the DOM rather than the array contents
+  useLayoutEffect(() => {
+    if (!isAtBottomRef.current) return;
+    const container = messagesRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, [messages, isTyping]);
 
   return (
-    <div ref={messagesRef} style={styles.pageMessages}>
+    <div ref={messagesRef} style={styles.pageMessages} onScroll={handleScroll}>
       {messages.map((message) => {
         const parsed =
           message.role === "assistant"

@@ -71,12 +71,28 @@ function describePage(pathname: string) {
         "Viewing or editing one document with checkout, download, upload, and metadata controls.",
     };
   }
-  if (pathname === "/notifications") {
+  if (pathname === "/activity") {
     return {
       path: pathname,
-      title: "Notifications",
+      title: "Activity",
       description:
-        "Reviewing document changes, ownership changes, review reminders, and expiration reminders.",
+        "Activity feed of edits and ownership transfers on documents in the user's role. Replaces the legacy /notifications page.",
+    };
+  }
+  if (pathname === "/announcements") {
+    return {
+      path: pathname,
+      title: "Announcements",
+      description:
+        "Admin-published announcements targeted at the user's role, with per-user read state and an archive of expired announcements.",
+    };
+  }
+  if (pathname === "/calendar") {
+    return {
+      path: pathname,
+      title: "Calendar",
+      description:
+        "Calendar view of review dates and expirations. Scope toggle switches between owned content (mine) and content assigned to the user's role.",
     };
   }
   if (pathname === "/users" || pathname.startsWith("/users/")) {
@@ -98,7 +114,7 @@ function describePage(pathname: string) {
       path: pathname,
       title: "Dashboard",
       description:
-        "Role-aware dashboard: admin metrics and content health for admins, personal content overview for everyone else.",
+        "Role-aware dashboard with Overview, Metrics, and Tags tabs (Metrics and Tags admin-only). Personal content overview for non-admins.",
     };
   }
   if (pathname === "/employees" || pathname.startsWith("/employees/")) {
@@ -140,6 +156,22 @@ type ProtectedOutletContext = {
   assistantContext: ComponentProps<typeof CMSChatbot>["context"];
 };
 
+const GOMPEI_SUGGESTIONS: NonNullable<ComponentProps<typeof CMSChatbot>["suggestions"]> = [
+  { label: "What needs my attention?", prompt: "What needs my attention right now?" },
+  {
+    label: "Check out all overdue files",
+    prompt: "Check out all of my overdue files for me.",
+  },
+  {
+    label: "Check all my files back in",
+    prompt: "Check all of my files back in for me.",
+  },
+  {
+    label: "How many files do I have checked out?",
+    prompt: "How many files do I currently have checked out?",
+  },
+];
+
 function GompeiPage() {
   const { assistantContext } = useOutletContext<ProtectedOutletContext>();
   const [searchParams] = useSearchParams();
@@ -147,18 +179,25 @@ function GompeiPage() {
   const utils = trpc.useUtils();
   const activeConversationId = searchParams.get("chat");
   const initialPrompt = searchParams.get("q") ?? undefined;
+  const fromPath = searchParams.get("from") ?? undefined;
+  const chatContext = useMemo(
+    () => (fromPath ? { ...assistantContext, page: describePage(fromPath) } : assistantContext),
+    [assistantContext, fromPath],
+  );
   const conversations = trpc.chat.list.useQuery();
   const activeConversation = trpc.chat.get.useQuery(
     { conversationId: activeConversationId ?? "" },
     { enabled: Boolean(activeConversationId) },
   );
-  const createConversation = trpc.chat.create.useMutation();
+  const { mutate: createConversationMutate } = trpc.chat.create.useMutation();
   const addMessage = trpc.chat.addMessage.useMutation();
-  const markRead = trpc.chat.markRead.useMutation();
+  const { mutate: markReadMutate } = trpc.chat.markRead.useMutation();
   const deleteConversation = trpc.chat.delete.useMutation();
   const checkoutOverdue = trpc.content.checkoutOverdue.useMutation();
+  const checkinMine = trpc.content.checkinMine.useMutation();
   const promptCreateKeyRef = useRef<string | null>(null);
   const emptyCreateRequestedRef = useRef(false);
+  const newConversationPendingRef = useRef(false);
 
   useEffect(() => {
     if (activeConversationId || !initialPrompt) {
@@ -168,7 +207,8 @@ function GompeiPage() {
     if (promptCreateKeyRef.current === initialPrompt) return;
 
     promptCreateKeyRef.current = initialPrompt;
-    createConversation.mutate(
+    newConversationPendingRef.current = true;
+    createConversationMutate(
       { title: initialPrompt },
       {
         onSuccess: (conversation) => {
@@ -178,10 +218,11 @@ function GompeiPage() {
         },
         onError: () => {
           promptCreateKeyRef.current = null;
+          newConversationPendingRef.current = false;
         },
       },
     );
-  }, [activeConversationId, createConversation, initialPrompt, navigate]);
+  }, [activeConversationId, createConversationMutate, initialPrompt, navigate]);
 
   useEffect(() => {
     if (activeConversationId || initialPrompt) {
@@ -192,7 +233,8 @@ function GompeiPage() {
       activeConversationId ||
       initialPrompt ||
       !conversations.isSuccess ||
-      emptyCreateRequestedRef.current
+      emptyCreateRequestedRef.current ||
+      newConversationPendingRef.current
     ) {
       return;
     }
@@ -204,7 +246,7 @@ function GompeiPage() {
     }
 
     emptyCreateRequestedRef.current = true;
-    createConversation.mutate(undefined, {
+    createConversationMutate(undefined, {
       onSuccess: (conversation) => navigate(`/gompei?chat=${conversation.id}`, { replace: true }),
       onError: () => {
         emptyCreateRequestedRef.current = false;
@@ -214,15 +256,15 @@ function GompeiPage() {
     activeConversationId,
     conversations.data,
     conversations.isSuccess,
-    createConversation,
+    createConversationMutate,
     initialPrompt,
     navigate,
   ]);
 
   useEffect(() => {
     if (!activeConversationId) return;
-    markRead.mutate({ conversationId: activeConversationId });
-  }, [activeConversationId, markRead]);
+    markReadMutate({ conversationId: activeConversationId });
+  }, [activeConversationId, markReadMutate]);
 
   const history =
     conversations.data?.map((conversation) => {
@@ -251,26 +293,39 @@ function GompeiPage() {
 
   return (
     <CMSChatbot
+      apiKey={import.meta.env.VITE_GROQ_API_KEY}
       activeConversationId={activeConversationId}
-      context={assistantContext}
+      context={chatContext}
       history={history}
       initialMessages={initialMessages}
       initialPrompt={activeConversationId ? initialPrompt : undefined}
       mode="page"
+      suggestions={GOMPEI_SUGGESTIONS}
+      onBeforeRespond={async () => {
+        // Refresh the workload snapshot before every LLM call so questions
+        // like "how many do I have checked out?" always reflect current state,
+        // including changes the user just made elsewhere in the app.
+        await Promise.all([
+          utils.content.myCheckouts.invalidate(),
+          utils.content.list.invalidate(),
+          utils.notifications.myList.invalidate(),
+          utils.notifications.listAnnouncements.invalidate(),
+        ]);
+      }}
       onDeleteConversation={(conversationId) => {
         deleteConversation.mutate(
           { conversationId },
           {
-            onSuccess: async () => {
-              await utils.chat.list.invalidate();
+            onSuccess: () => {
               if (conversationId === activeConversationId) navigate("/gompei", { replace: true });
+              void utils.chat.list.invalidate();
             },
           },
         );
       }}
       onNavigate={(to) => navigate(to)}
       onNewConversation={() => {
-        createConversation.mutate(undefined, {
+        createConversationMutate(undefined, {
           onSuccess: async (conversation) => {
             await utils.chat.list.invalidate();
             navigate(`/gompei?chat=${conversation.id}`);
@@ -283,11 +338,12 @@ function GompeiPage() {
           conversationId: activeConversationId,
           ...message,
         });
-        await utils.chat.list.invalidate();
+        const invalidations = [utils.chat.list.invalidate()];
         if (message.role === "assistant") {
-          await utils.chat.get.invalidate({ conversationId: activeConversationId });
+          invalidations.push(utils.chat.get.invalidate({ conversationId: activeConversationId }));
         }
-        await utils.chat.unreadCount.invalidate();
+        invalidations.push(utils.chat.unreadCount.invalidate());
+        await Promise.all(invalidations);
         return {
           id: persistedMessage.id,
           role: persistedMessage.role as "user" | "assistant",
@@ -296,6 +352,35 @@ function GompeiPage() {
       }}
       onRunSiteAction={async ({ prompt }) => {
         const normalizedPrompt = prompt.toLowerCase();
+
+        const wantsCheckin =
+          /\bcheck\s*-?\s*in\b/.test(normalizedPrompt) ||
+          /\bback\s+in\b/.test(normalizedPrompt) ||
+          /\brelease\b/.test(normalizedPrompt);
+
+        if (wantsCheckin) {
+          const result = await checkinMine.mutateAsync();
+          await utils.content.list.invalidate();
+          await utils.content.myCheckouts.invalidate();
+          await utils.notifications.myList.invalidate();
+
+          if (result.totalReleased === 0) {
+            return "You don't have any files checked out right now.\n\nACTION: /hero/content | Open content";
+          }
+
+          const fileLines = result.checkedIn
+            .slice(0, 5)
+            .map(
+              (item) =>
+                `ACTION: /hero/content/${item.fileID}/edit | Open ${item.filename ?? "file"}`,
+            )
+            .join("\n");
+          const moreText =
+            result.totalReleased > 5 ? `\n…and ${result.totalReleased - 5} more.` : "";
+
+          return `Done. I checked in ${result.totalReleased} file${result.totalReleased === 1 ? "" : "s"}.\n${fileLines}${moreText}`;
+        }
+
         const wantsCheckout =
           /\bcheck\s*out\b/.test(normalizedPrompt) || /\bcheckout\b/.test(normalizedPrompt);
         const wantsOverdue =
@@ -310,6 +395,7 @@ function GompeiPage() {
 
         const result = await checkoutOverdue.mutateAsync();
         await utils.content.list.invalidate();
+        await utils.content.myCheckouts.invalidate();
         await utils.notifications.myList.invalidate();
 
         if (result.checkedOut.length === 0) {
@@ -434,67 +520,28 @@ function ProtectedLayout() {
       enabled: Boolean(session?.user.id) && Boolean(accessQuery.data),
     },
   );
+  const myCheckoutsQuery = trpc.content.myCheckouts.useQuery(undefined, {
+    enabled: Boolean(session?.user.id) && Boolean(accessQuery.data),
+  });
+  const createConversation = trpc.chat.create.useMutation();
+
   const activityUnread = notificationsQuery.data?.unreadCount ?? 0;
   const announcementUnread = announcementsQuery.data?.unreadCount ?? 0;
   const unreadCount = activityUnread + announcementUnread;
   const unreadRows = notificationsQuery.data?.items.filter((r) => !r.isRead) ?? [];
+  const unreadAnnouncements = announcementsQuery.data?.active.filter((a) => !a.isRead) ?? [];
+
   const dashboardTab = useAppPreferences((state) => state.dashboardTab);
   const isContentPage = location.pathname === "/hero" || location.pathname === "/hero/content";
   const isUsersPage = location.pathname === "/users";
   const isUsersRoute = location.pathname.startsWith("/users/");
   const isDashboardTagsTab = location.pathname === "/dashboard" && dashboardTab === "tags";
 
-  const focusCurrentSearch = useCallback(() => {
-    if (isUsersPage) {
-      window.dispatchEvent(new Event(USERS_SEARCH_FOCUS_EVENT));
-      return;
-    }
-
-    if (isUsersRoute) {
-      navigate("/users", { state: { focusUsersSearch: true } });
-      return;
-    }
-
-    if (isDashboardTagsTab) {
-      window.dispatchEvent(new Event(TAGS_SEARCH_FOCUS_EVENT));
-      return;
-    }
-
-    if (isContentPage) {
-      window.dispatchEvent(new Event(CONTENT_SEARCH_FOCUS_EVENT));
-      return;
-    }
-
-    navigate("/hero/content", { state: { focusContentSearch: true } });
-  }, [isContentPage, isDashboardTagsTab, isUsersPage, isUsersRoute, navigate]);
-
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        focusCurrentSearch();
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [focusCurrentSearch]);
-
-  if (sessionLoading) return <AuthSplash />;
-  if (!session) {
-    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
-  }
-  if (accessQuery.isError) {
-    void supabase.auth.signOut();
-    return <Navigate to="/login" replace state={{ notice: SIGNED_OUT_NOTICE }} />;
-  }
-  if (accessQuery.isLoading) return <AuthSplash />;
-
   const role = accessQuery.data?.role;
   const isAdmin = role === "admin";
-  const navItems = isAdmin ? adminNavItems() : employeeNavItems();
   const username = me?.name;
   const submittedDocuments = submittedContentQuery.data ?? [];
+  const myCheckouts = myCheckoutsQuery.data ?? [];
   const now = Date.now();
   const notificationItems = notificationsQuery.data?.items ?? [];
   const dueSoon = notificationItems.filter((row) => {
@@ -505,118 +552,211 @@ function ProtectedLayout() {
     const message = row.message.toLowerCase();
     return message.includes("passed") || message.includes("expired");
   }).length;
-  const checkedOutByUser = submittedDocuments.filter(
-    (document) => document.checked_out_by === session.user.id,
-  ).length;
-  const assistantContext = {
-    user: {
-      name: username ? username : "User",
-      email: me?.email ?? session.user.email ?? undefined,
-      role: role ? role : "Unknown",
-      portal: accessQuery.data?.portal ?? undefined,
-    },
-    page: describePage(location.pathname),
-    permissions: {
+  const checkedOutByUser = myCheckouts.length;
+
+  const assistantContext = useMemo(
+    () => ({
+      user: {
+        name: username ? username : "User",
+        email: me?.email ?? session?.user.email ?? undefined,
+        role: role ? role : "Unknown",
+        portal: accessQuery.data?.portal ?? undefined,
+      },
+      page: describePage(location.pathname),
+      permissions: {
+        isAdmin,
+        canCreateContent: true,
+        canManageUsers: isAdmin,
+        canManageTags: isAdmin,
+        canViewDashboard: isAdmin,
+        canViewCoworkers: !isAdmin,
+      },
+      workload: {
+        unreadNotifications: unreadCount,
+        submittedDocuments: submittedDocuments.length,
+        dueSoon,
+        overdue,
+        checkedOutByUser,
+      },
+      highlights: [
+        ...unreadRows.slice(0, 3).map((row) => ({
+          id: row.id,
+          label: row.fileName,
+          detail: row.message,
+          to: row.fileID ? `/hero/content/${row.fileID}/edit` : "/activity",
+          tone: "attention" as const,
+        })),
+        ...unreadAnnouncements.slice(0, 2).map((a) => ({
+          id: a.id,
+          label: a.title,
+          detail: `Announcement${a.authorName ? ` from ${a.authorName}` : ""}`,
+          to: "/announcements",
+          tone: "attention" as const,
+        })),
+        ...myCheckouts.slice(0, 5).map((file) => ({
+          id: `checkout-${file.fileID}`,
+          label: file.filename ?? file.fileID,
+          detail: "Checked out by you",
+          to: `/hero/content/${file.fileID}/edit`,
+          tone: "attention" as const,
+        })),
+        ...submittedDocuments.slice(0, 3).map((document) => {
+          const reviewTime = toTime(document.next_review_date);
+          const expirationTime = toTime(document.expiration_date);
+          const needsReview = reviewTime !== null && reviewTime <= now + 30 * 24 * 60 * 60 * 1000;
+          const expired = expirationTime !== null && expirationTime < now;
+          return {
+            id: document.fileID,
+            label: document.filename ?? document.fileID,
+            detail: expired
+              ? "Expired"
+              : needsReview
+                ? "Review due soon"
+                : (document.document_status ?? "Submitted document"),
+            to: `/hero/content/${document.fileID}/edit`,
+            tone: expired || needsReview ? ("attention" as const) : ("muted" as const),
+          };
+        }),
+      ],
+      actions: [
+        {
+          label: activityUnread > 0 ? `Open activity (${activityUnread})` : "Open activity",
+          to: "/activity",
+          description: "Activity feed of edits and ownership changes on your role's documents.",
+          tone: activityUnread > 0 ? ("primary" as const) : ("neutral" as const),
+        },
+        {
+          label:
+            announcementUnread > 0
+              ? `Open announcements (${announcementUnread})`
+              : "Open announcements",
+          to: "/announcements",
+          description: "Admin announcements targeted at your role.",
+          tone: announcementUnread > 0 ? ("primary" as const) : ("neutral" as const),
+        },
+        {
+          label: "Open calendar",
+          to: "/calendar",
+          description: "Calendar of review dates and expirations for your content.",
+          tone: "neutral" as const,
+        },
+        {
+          label: "Open content",
+          to: "/hero/content",
+          description: "Search and filter documents available to your role.",
+          tone: "neutral" as const,
+        },
+        {
+          label: "New content",
+          to: "/hero/content/new",
+          description: "Create a document record for your allowed role.",
+          tone: "neutral" as const,
+        },
+        ...(isAdmin
+          ? [
+              {
+                label: "Open dashboard",
+                to: "/dashboard",
+                description: "Review metrics, audits, and content health.",
+                adminOnly: true,
+                tone: "neutral" as const,
+              },
+              {
+                label: "Open users",
+                to: "/users",
+                description: "Manage accounts, roles, and portal access.",
+                adminOnly: true,
+                tone: "neutral" as const,
+              },
+              {
+                label: "Open tags",
+                to: "/tags",
+                description: "Manage global meta tags.",
+                adminOnly: true,
+                tone: "neutral" as const,
+              },
+            ]
+          : [
+              {
+                label: "Open coworkers",
+                to: "/employees",
+                description: "Find coworkers and profile context.",
+                tone: "neutral" as const,
+              },
+            ]),
+        {
+          label: "Open help",
+          to: "/help",
+          description: "View workflow help.",
+          tone: "neutral" as const,
+        },
+      ],
+    }),
+    [
+      username,
+      me?.email,
+      session?.user.email,
+      role,
+      accessQuery.data?.portal,
+      location.pathname,
       isAdmin,
-      canCreateContent: true,
-      canManageUsers: isAdmin,
-      canManageTags: isAdmin,
-      canViewDashboard: isAdmin,
-      canViewCoworkers: !isAdmin,
-    },
-    workload: {
-      unreadNotifications: unreadCount,
-      submittedDocuments: submittedDocuments.length,
+      unreadCount,
+      activityUnread,
+      announcementUnread,
+      submittedDocuments,
+      myCheckouts,
       dueSoon,
       overdue,
       checkedOutByUser,
-    },
-    highlights: [
-      ...unreadRows.slice(0, 3).map((row) => ({
-        id: row.id,
-        label: row.fileName,
-        detail: row.message,
-        to: row.fileID ? `/hero/content/${row.fileID}/edit` : "/notifications",
-        tone: "attention" as const,
-      })),
-      ...submittedDocuments.slice(0, 3).map((document) => {
-        const reviewTime = toTime(document.next_review_date);
-        const expirationTime = toTime(document.expiration_date);
-        const needsReview = reviewTime !== null && reviewTime <= now + 30 * 24 * 60 * 60 * 1000;
-        const expired = expirationTime !== null && expirationTime < now;
+      unreadRows,
+      unreadAnnouncements,
+      now,
+    ],
+  );
 
-        return {
-          id: document.fileID,
-          label: document.filename ?? document.fileID,
-          detail: expired
-            ? "Expired"
-            : needsReview
-              ? "Review due soon"
-              : (document.document_status ?? "Submitted document"),
-          to: `/hero/content/${document.fileID}/edit`,
-          tone: expired || needsReview ? ("attention" as const) : ("muted" as const),
-        };
-      }),
-    ],
-    actions: [
-      {
-        label: unreadCount > 0 ? `Open notifications (${unreadCount})` : "Open notifications",
-        to: "/notifications",
-        description: "Review document changes and due-date reminders.",
-        tone: unreadCount > 0 ? ("primary" as const) : ("neutral" as const),
-      },
-      {
-        label: "Open content",
-        to: "/hero/content",
-        description: "Search and filter documents available to your role.",
-        tone: "neutral" as const,
-      },
-      {
-        label: "New content",
-        to: "/hero/content/new",
-        description: "Create a document record for your allowed role.",
-        tone: "neutral" as const,
-      },
-      ...(isAdmin
-        ? [
-            {
-              label: "Open dashboard",
-              to: "/dashboard",
-              description: "Review metrics, audits, and content health.",
-              adminOnly: true,
-              tone: "neutral" as const,
-            },
-            {
-              label: "Open users",
-              to: "/users",
-              description: "Manage accounts, roles, and portal access.",
-              adminOnly: true,
-              tone: "neutral" as const,
-            },
-            {
-              label: "Open tags",
-              to: "/tags",
-              description: "Manage global meta tags.",
-              adminOnly: true,
-              tone: "neutral" as const,
-            },
-          ]
-        : [
-            {
-              label: "Open coworkers",
-              to: "/employees",
-              description: "Find coworkers and profile context.",
-              tone: "neutral" as const,
-            },
-          ]),
-      {
-        label: "Open help",
-        to: "/help",
-        description: "View workflow help.",
-        tone: "neutral" as const,
-      },
-    ],
-  };
+  const focusCurrentSearch = useCallback(() => {
+    if (isUsersPage) {
+      window.dispatchEvent(new Event(USERS_SEARCH_FOCUS_EVENT));
+      return;
+    }
+    if (isUsersRoute) {
+      navigate("/users", { state: { focusUsersSearch: true } });
+      return;
+    }
+    if (isDashboardTagsTab) {
+      window.dispatchEvent(new Event(TAGS_SEARCH_FOCUS_EVENT));
+      return;
+    }
+    if (isContentPage) {
+      window.dispatchEvent(new Event(CONTENT_SEARCH_FOCUS_EVENT));
+      return;
+    }
+    navigate("/hero/content", { state: { focusContentSearch: true } });
+  }, [isContentPage, isDashboardTagsTab, isUsersPage, isUsersRoute, navigate]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        focusCurrentSearch();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [focusCurrentSearch]);
+
+  // Early returns after all hooks
+  if (sessionLoading) return <AuthSplash />;
+  if (!session) {
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+  }
+  if (accessQuery.isError) {
+    void supabase.auth.signOut();
+    return <Navigate to="/login" replace state={{ notice: SIGNED_OUT_NOTICE }} />;
+  }
+  if (accessQuery.isLoading) return <AuthSplash />;
+
+  const navItems = isAdmin ? adminNavItems() : employeeNavItems();
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -648,9 +788,16 @@ function ProtectedLayout() {
       />
       {location.pathname !== "/gompei" ? (
         <CMSChatbot
+          apiKey={import.meta.env.VITE_GROQ_API_KEY}
           context={assistantContext}
           mode="launcher"
-          onSubmitQuestion={(question) => navigate(`/gompei?q=${encodeURIComponent(question)}`)}
+          onSubmitQuestion={async (question) => {
+            const conversation = await createConversation.mutateAsync({ title: question });
+            const fromParam = `&from=${encodeURIComponent(location.pathname)}`;
+            navigate(
+              `/gompei?chat=${conversation.id}&q=${encodeURIComponent(question)}${fromParam}`,
+            );
+          }}
         />
       ) : null}
       <Outlet context={{ assistantContext } satisfies ProtectedOutletContext} />

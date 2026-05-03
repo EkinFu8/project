@@ -304,6 +304,10 @@ export const styles = {
     flex: 1,
     minHeight: 0,
     overflowY: "auto",
+    // Disable the browser's automatic scroll anchoring — we manage scroll
+    // ourselves via useLayoutEffect and the heuristic fights us during
+    // streaming, causing visible jumps.
+    overflowAnchor: "none" as const,
     padding: "20px 24px 24px",
     display: "flex",
     flexDirection: "column",
@@ -314,6 +318,7 @@ export const styles = {
     display: "flex",
     flexDirection: "column",
     maxWidth: "min(680px, 86%)",
+    animation: "chatMessageEnter 180ms ease-out",
   },
   messageAuthor: {
     fontSize: 11,
@@ -385,7 +390,9 @@ export const styles = {
     fontSize: "0.92em",
   },
   actionButton: {
-    border: "1px solid rgba(22,71,52,0.16)",
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "rgba(22,71,52,0.16)",
     background: "var(--color-card)",
     color: "#164734",
     borderRadius: 999,
@@ -414,6 +421,22 @@ export const styles = {
     height: 6,
     borderRadius: "50%",
     background: "#a8b3ac",
+  },
+  suggestionsRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    padding: "10px 16px 0",
+    background: "var(--color-card)",
+  },
+  suggestionLabel: {
+    width: "100%",
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: 0.4,
+    textTransform: "uppercase" as const,
+    color: "var(--color-muted-foreground)",
+    margin: 0,
   },
   pageInputRow: {
     padding: "14px 16px",
