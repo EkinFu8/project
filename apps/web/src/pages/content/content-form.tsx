@@ -1251,7 +1251,13 @@ function ContentFormPage() {
   return (
     <>
       {showReminder && (
-        <div className="fixed bottom-[88px] right-6 z-50 flex w-80 items-start gap-3 rounded-xl border border-destructive/20 bg-background px-4 py-3.5 shadow-lg shadow-destructive/10 ring-1 ring-destructive/10 animate-in slide-in-from-bottom-2 fade-in duration-300">
+        <div
+          className="fixed right-6 z-50 flex w-80 items-start gap-3 rounded-xl border border-destructive/20 bg-background px-4 py-3.5 shadow-lg shadow-destructive/10 ring-1 ring-destructive/10 animate-in slide-in-from-bottom-2 fade-in duration-300"
+          style={{
+            bottom: "calc(88px + var(--gompei-launcher-clearance, 0px))",
+            transition: "bottom 240ms cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-destructive/10">
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </div>

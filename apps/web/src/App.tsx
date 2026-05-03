@@ -2,7 +2,7 @@ import CMSChatbot from "@myapp/ui/components/chatbot";
 import { TopNav } from "@myapp/ui/components/top-nav";
 import { Loader2 } from "lucide-react";
 import type { ComponentProps } from "react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -530,6 +530,55 @@ function ProtectedLayout() {
     enabled: Boolean(session?.user.id) && Boolean(accessQuery.data),
   });
   const createConversation = trpc.chat.create.useMutation();
+  const addQuickChatMessage = trpc.chat.addMessage.useMutation();
+  const quickCheckoutOverdue = trpc.content.checkoutOverdue.useMutation();
+  const quickCheckinMine = trpc.content.checkinMine.useMutation();
+  const utils = trpc.useUtils();
+
+  const [quickChatConvoId, setQuickChatConvoId] = useState<string | null>(null);
+  const quickChatConvoIdRef = useRef<string | null>(null);
+  const quickChatCreationRef = useRef<Promise<string> | null>(null);
+  useEffect(() => {
+    quickChatConvoIdRef.current = quickChatConvoId;
+  }, [quickChatConvoId]);
+
+  const quickChatActiveConversation = trpc.chat.get.useQuery(
+    { conversationId: quickChatConvoId ?? "" },
+    { enabled: Boolean(quickChatConvoId) },
+  );
+  const quickChatInitialMessages = useMemo(
+    () =>
+      quickChatActiveConversation.data?.messages.map((message) => ({
+        id: message.id,
+        role: message.role as "user" | "assistant",
+        content: message.content,
+      })),
+    [quickChatActiveConversation.data?.messages],
+  );
+
+  const ensureQuickChatConvoId = useCallback(
+    (title: string): Promise<string> => {
+      if (quickChatConvoIdRef.current) {
+        return Promise.resolve(quickChatConvoIdRef.current);
+      }
+      if (quickChatCreationRef.current) {
+        return quickChatCreationRef.current;
+      }
+      const promise = createConversation
+        .mutateAsync({ title: title.slice(0, 80) })
+        .then((convo) => {
+          quickChatConvoIdRef.current = convo.id;
+          setQuickChatConvoId(convo.id);
+          return convo.id;
+        })
+        .finally(() => {
+          quickChatCreationRef.current = null;
+        });
+      quickChatCreationRef.current = promise;
+      return promise;
+    },
+    [createConversation],
+  );
 
   const activityUnread = notificationsQuery.data?.unreadCount ?? 0;
   const announcementUnread = announcementsQuery.data?.unreadCount ?? 0;
@@ -797,12 +846,110 @@ function ProtectedLayout() {
           apiKey={import.meta.env.VITE_GROQ_API_KEY}
           context={assistantContext}
           mode="launcher"
-          onSubmitQuestion={async (question) => {
-            const conversation = await createConversation.mutateAsync({ title: question });
-            const fromParam = `&from=${encodeURIComponent(location.pathname)}`;
-            navigate(
-              `/gompei?chat=${conversation.id}&q=${encodeURIComponent(question)}${fromParam}`,
-            );
+          activeConversationId={quickChatConvoId}
+          initialMessages={quickChatConvoId === null ? [] : quickChatInitialMessages}
+          suggestions={GOMPEI_SUGGESTIONS}
+          onNavigate={(to) => navigate(to)}
+          onBeforeRespond={async () => {
+            await Promise.all([
+              utils.content.myCheckouts.invalidate(),
+              utils.content.list.invalidate(),
+              utils.notifications.myList.invalidate(),
+              utils.notifications.listAnnouncements.invalidate(),
+            ]);
+          }}
+          onPersistMessage={async (message) => {
+            const convoId = await ensureQuickChatConvoId(message.content);
+            const persistedMessage = await addQuickChatMessage.mutateAsync({
+              conversationId: convoId,
+              ...message,
+            });
+            const invalidations = [utils.chat.list.invalidate()];
+            if (message.role === "assistant") {
+              invalidations.push(utils.chat.get.invalidate({ conversationId: convoId }));
+            }
+            invalidations.push(utils.chat.unreadCount.invalidate());
+            await Promise.all(invalidations);
+            return {
+              id: persistedMessage.id,
+              role: persistedMessage.role as "user" | "assistant",
+              content: persistedMessage.content,
+            };
+          }}
+          onRunSiteAction={async ({ prompt }) => {
+            const normalizedPrompt = prompt.toLowerCase();
+            const wantsCheckin =
+              /\bcheck\s*-?\s*in\b/.test(normalizedPrompt) ||
+              /\bback\s+in\b/.test(normalizedPrompt) ||
+              /\brelease\b/.test(normalizedPrompt);
+
+            if (wantsCheckin) {
+              const result = await quickCheckinMine.mutateAsync();
+              await Promise.all([
+                utils.content.list.invalidate(),
+                utils.content.myCheckouts.invalidate(),
+                utils.notifications.myList.invalidate(),
+              ]);
+
+              if (result.totalReleased === 0) {
+                return "You don't have any files checked out right now.\n\nACTION: /hero/content | Open content";
+              }
+
+              const fileLines = result.checkedIn
+                .slice(0, 5)
+                .map(
+                  (item) =>
+                    `ACTION: /hero/content/${item.fileID}/edit | Open ${item.filename ?? "file"}`,
+                )
+                .join("\n");
+              const moreText =
+                result.totalReleased > 5 ? `\n…and ${result.totalReleased - 5} more.` : "";
+
+              return `Done. I checked in ${result.totalReleased} file${result.totalReleased === 1 ? "" : "s"}.\n${fileLines}${moreText}`;
+            }
+
+            const wantsCheckout =
+              /\bcheck\s*out\b/.test(normalizedPrompt) || /\bcheckout\b/.test(normalizedPrompt);
+            const wantsOverdue =
+              normalizedPrompt.includes("overdue") || normalizedPrompt.includes("expired");
+            const wantsBatch =
+              normalizedPrompt.includes("all") ||
+              normalizedPrompt.includes("files") ||
+              normalizedPrompt.includes("documents") ||
+              normalizedPrompt.includes("items");
+
+            if (!(wantsCheckout && wantsOverdue && wantsBatch)) return null;
+
+            const result = await quickCheckoutOverdue.mutateAsync();
+            await Promise.all([
+              utils.content.list.invalidate(),
+              utils.content.myCheckouts.invalidate(),
+              utils.notifications.myList.invalidate(),
+            ]);
+
+            if (result.checkedOut.length === 0) {
+              const skipped = result.skipped.slice(0, 3);
+              const details =
+                skipped.length > 0
+                  ? ` ${skipped.map((item) => `${item.filename ?? item.fileID}: ${item.reason}`).join(" ")}`
+                  : "";
+
+              return `I could not check out any overdue files.${details}\nACTION: /hero/content | Open content`;
+            }
+
+            const fileLines = result.checkedOut
+              .slice(0, 5)
+              .map(
+                (item) =>
+                  `ACTION: /hero/content/${item.fileID}/edit | Open ${item.filename ?? "file"}`,
+              )
+              .join("\n");
+            const skippedText =
+              result.skipped.length > 0
+                ? ` ${result.skipped.length} overdue file${result.skipped.length === 1 ? " was" : "s were"} already checked out or unavailable.`
+                : "";
+
+            return `Done. I checked out ${result.checkedOut.length} overdue file${result.checkedOut.length === 1 ? "" : "s"} to you.${skippedText}\n${fileLines}`;
           }}
         />
       ) : null}
