@@ -1,4 +1,4 @@
-import { FileText, Minus, Plus, Shield, Users } from "lucide-react";
+import { FileText, Minus, Plus, Users } from "lucide-react";
 import { Link } from "react-router";
 import heroCampus from "@/assets/hero-campus.png";
 import { trpc } from "@/lib/trpc";
@@ -19,11 +19,6 @@ function HeroBanner() {
       ]
     : [
         { to: HERO_CONTENT_PATH, label: "Content", icon: FileText },
-        {
-          to: access?.role === "business-analyst" ? "/business-analyst" : "/underwriter",
-          label: access?.role === "business-analyst" ? "Business Analyst" : "Underwriter",
-          icon: Shield,
-        },
         { to: "/employees", label: "Coworkers", icon: Users },
       ];
 
