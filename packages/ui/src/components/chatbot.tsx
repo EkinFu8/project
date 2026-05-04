@@ -1,4 +1,4 @@
-import { Bot, Send } from "lucide-react";
+import { Bot, ExternalLink, Minus, Send, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatHistory } from "./chatbot/history";
 import { ASSISTANT_TOOLS, DEFAULT_MODEL } from "./chatbot/knowledge";
@@ -8,45 +8,35 @@ import { styles } from "./chatbot/styles";
 import { ChatTitle } from "./chatbot/title";
 import type { ChatMessage, ChatRole, CMSChatbotProps } from "./chatbot/types";
 
+type LauncherView = "collapsed" | "compact" | "expanded";
+
 function resizeTextarea(textarea: HTMLTextAreaElement) {
   textarea.style.height = "auto";
   textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
 }
 
-function Launcher({ onSubmitQuestion }: { onSubmitQuestion?: (question: string) => void }) {
-  const [value, setValue] = useState("");
-
-  function submit() {
-    const question = value.trim();
-    if (!question) return;
-    setValue("");
-    onSubmitQuestion?.(question);
-  }
-
+function LauncherKeyframes() {
   return (
-    <div style={styles.launcherRoot}>
-      <div style={styles.launcher}>
-        <div style={styles.launcherIcon}>
-          <Bot size={17} aria-hidden="true" />
-        </div>
-        <input
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              submit();
-            }
-          }}
-          placeholder="Ask Gompei..."
-          style={styles.launcherInput}
-          aria-label="Ask Gompei"
-        />
-        <button type="button" onClick={submit} style={styles.launcherButton} aria-label="Ask">
-          <Send size={15} aria-hidden="true" />
-        </button>
-      </div>
-    </div>
+    <style>{`
+      @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.42} }
+      @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
+      @keyframes chatMessageEnter {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes launcherBubbleEnter {
+        from { opacity: 0; transform: scale(0.6) translateY(8px); }
+        to   { opacity: 1; transform: scale(1) translateY(0); }
+      }
+      @keyframes launcherPillEnter {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes launcherPanelEnter {
+        from { opacity: 0; transform: translateY(12px) scale(0.96); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+    `}</style>
   );
 }
 
@@ -155,9 +145,12 @@ export default function CMSChatbot({
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [launcherView, setLauncherView] = useState<LauncherView>("compact");
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pillInputRef = useRef<HTMLInputElement>(null);
   const initialPromptSentRef = useRef(false);
+  const lastSyncedConvoIdRef = useRef(activeConversationId);
   const nextId = useRef(0);
 
   // The system prompt is rebuilt fresh inside sendMessage from contextRef so
@@ -171,19 +164,43 @@ export default function CMSChatbot({
     setIsReady(true);
   }, []);
 
-  // Reset the prompt-sent flag whenever the conversation changes.
+  // Broadcast how much extra vertical space the launcher needs above the
+  // pill's footprint so other floating UI (e.g. the document-review notice)
+  // can lift itself by exactly the same amount the launcher grows. This
+  // preserves the gap above the launcher across compact↔expanded so the
+  // movement looks natural rather than overshooting.
+  useEffect(() => {
+    if (mode !== "launcher") return;
+    const root = document.documentElement;
+    // Panel = 560px, pill ≈ 46px. Lift by the difference so the gap above
+    // the launcher stays constant.
+    const clearance = launcherView === "expanded" ? "514px" : "0px";
+    root.style.setProperty("--gompei-launcher-clearance", clearance);
+    return () => {
+      root.style.removeProperty("--gompei-launcher-clearance");
+    };
+  }, [launcherView, mode]);
+
+  // Reset the prompt-sent flag when the active conversation changes so a
+  // fresh quick-chat session can auto-send its initial prompt.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ref reset must run when activeConversationId switches
   useEffect(() => {
     initialPromptSentRef.current = false;
-  }, []);
+  }, [activeConversationId]);
 
-  // Set messages once initialMessages resolves for the active conversation.
-  // Shows the greeting for brand-new empty conversations.
-  // Depends on both activeConversationId and initialMessages so it re-runs
-  // when the query resolves after a conversation switch.
+  // Sync messages with the active conversation. Shows the greeting for
+  // brand-new empty conversations. Preserves local state when it has more
+  // messages than the server within the SAME conversation (mid-stream or
+  // pending persistence) so an in-flight refetch never clobbers an
+  // optimistic message. Force-replaces on conversation switches so the
+  // sidebar's pick always wins.
   useEffect(() => {
-    if (initialMessages === undefined) return; // query still loading — wait
-    setMessages(
-      initialMessages.length > 0
+    if (initialMessages === undefined) return;
+    const isConvoSwitch = lastSyncedConvoIdRef.current !== activeConversationId;
+    lastSyncedConvoIdRef.current = activeConversationId;
+    setMessages((current) => {
+      if (!isConvoSwitch && current.length > initialMessages.length) return current;
+      return initialMessages.length > 0
         ? initialMessages
         : [
             {
@@ -191,20 +208,9 @@ export default function CMSChatbot({
               role: "assistant" as ChatRole,
               content: buildGreeting(context),
             },
-          ],
-    );
-  }, [context, initialMessages]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Sync persisted messages within the same conversation (e.g. optimistic
-  // local IDs replaced by server IDs after a save). Only grows the list so
-  // it never clobbers a mid-conversation state.
-  useEffect(() => {
-    if (!initialMessages) return;
-    setMessages((current) => {
-      if (current.length > initialMessages.length) return current;
-      return initialMessages;
+          ];
     });
-  }, [initialMessages]);
+  }, [activeConversationId, context, initialMessages]);
 
   const appendMessage = useCallback((role: ChatRole, content: string) => {
     const message: ChatMessage = { id: `local-${nextId.current}`, role, content };
@@ -352,11 +358,271 @@ export default function CMSChatbot({
     }
   }
 
-  if (mode === "launcher") {
-    return <Launcher onSubmitQuestion={onSubmitQuestion} />;
-  }
-
   const isDisabled = !isReady || isTyping;
+
+  if (mode === "launcher") {
+    function handlePillSubmit() {
+      const question = input.trim();
+      if (!question) {
+        setLauncherView("expanded");
+        requestAnimationFrame(() => textareaRef.current?.focus());
+        return;
+      }
+      setLauncherView("expanded");
+      // sendMessage reads from `input`; pass the question explicitly and
+      // clear it inside sendMessage so the panel textarea opens empty.
+      void sendMessage(question);
+      onSubmitQuestion?.(question);
+    }
+
+    function expandToPanel() {
+      setLauncherView("expanded");
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    }
+
+    function collapseToBubble() {
+      setLauncherView("collapsed");
+    }
+
+    function minimizeToPill() {
+      setLauncherView("compact");
+      requestAnimationFrame(() => pillInputRef.current?.focus());
+    }
+
+    function openInFullPage() {
+      const target = activeConversationId ? `/gompei?chat=${activeConversationId}` : "/gompei";
+      onNavigate?.(target);
+    }
+
+    if (launcherView === "collapsed") {
+      return (
+        <div style={styles.launcherRoot}>
+          <button
+            type="button"
+            onClick={expandToPanel}
+            style={styles.launcherBubble}
+            aria-label="Open Gompei chat"
+            onMouseEnter={(event) => {
+              event.currentTarget.style.transform = "scale(1.06)";
+              event.currentTarget.style.boxShadow =
+                "0 22px 52px rgba(22,71,52,0.40), 0 6px 18px rgba(15,23,42,0.22)";
+            }}
+            onMouseLeave={(event) => {
+              event.currentTarget.style.transform = "scale(1)";
+              event.currentTarget.style.boxShadow =
+                "0 16px 40px rgba(22,71,52,0.32), 0 4px 14px rgba(15,23,42,0.18)";
+            }}
+          >
+            <Bot size={26} aria-hidden="true" />
+          </button>
+          <LauncherKeyframes />
+        </div>
+      );
+    }
+
+    const pill = (
+      <div style={styles.launcher}>
+        <button
+          type="button"
+          onClick={expandToPanel}
+          style={{ ...styles.launcherIcon, cursor: "pointer", border: 0 }}
+          aria-label="Expand Gompei chat"
+          title="Open chat panel"
+        >
+          <Bot size={17} aria-hidden="true" />
+        </button>
+        <input
+          ref={pillInputRef}
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              handlePillSubmit();
+            }
+          }}
+          placeholder="Ask Gompei..."
+          style={styles.launcherInput}
+          aria-label="Ask Gompei"
+        />
+        <button
+          type="button"
+          onClick={collapseToBubble}
+          style={styles.launcherPillControl}
+          aria-label="Hide Gompei"
+          title="Hide"
+          onMouseEnter={(event) => {
+            event.currentTarget.style.background = "var(--color-muted)";
+            event.currentTarget.style.color = "var(--color-foreground)";
+          }}
+          onMouseLeave={(event) => {
+            event.currentTarget.style.background = "transparent";
+            event.currentTarget.style.color = "var(--color-muted-foreground)";
+          }}
+        >
+          <X size={15} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          onClick={handlePillSubmit}
+          style={styles.launcherButton}
+          aria-label="Ask"
+        >
+          <Send size={15} aria-hidden="true" />
+        </button>
+      </div>
+    );
+
+    if (launcherView === "compact") {
+      return (
+        <div style={styles.launcherRoot}>
+          {pill}
+          <LauncherKeyframes />
+        </div>
+      );
+    }
+
+    // Expanded panel
+    const showSuggestions =
+      suggestions.length > 0 && !messages.some((m) => m.role === "user") && !isTyping;
+
+    return (
+      <div style={styles.launcherRoot}>
+        <div style={styles.launcherPanel}>
+          <header style={styles.launcherPanelHeader}>
+            <div style={styles.launcherPanelAvatar}>
+              <Bot size={18} aria-hidden="true" />
+            </div>
+            <div style={styles.launcherPanelTitleWrap}>
+              <h2 style={styles.launcherPanelTitle}>Gompei</h2>
+              <div style={styles.launcherPanelStatus}>
+                <span style={styles.launcherPanelStatusDot} />
+                <span>{isTyping ? "Thinking…" : "Online"}</span>
+              </div>
+            </div>
+            <div style={styles.launcherPanelControls}>
+              <button
+                type="button"
+                onClick={openInFullPage}
+                style={styles.launcherPanelControl}
+                aria-label="Open in full page"
+                title="Open in full page"
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.background = "var(--color-muted)";
+                  event.currentTarget.style.color = "var(--color-foreground)";
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.background = "transparent";
+                  event.currentTarget.style.color = "var(--color-muted-foreground)";
+                }}
+              >
+                <ExternalLink size={15} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={minimizeToPill}
+                style={styles.launcherPanelControl}
+                aria-label="Minimize to pill"
+                title="Minimize"
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.background = "var(--color-muted)";
+                  event.currentTarget.style.color = "var(--color-foreground)";
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.background = "transparent";
+                  event.currentTarget.style.color = "var(--color-muted-foreground)";
+                }}
+              >
+                <Minus size={16} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={collapseToBubble}
+                style={styles.launcherPanelControl}
+                aria-label="Close chat"
+                title="Close"
+                onMouseEnter={(event) => {
+                  event.currentTarget.style.background = "var(--color-muted)";
+                  event.currentTarget.style.color = "var(--color-foreground)";
+                }}
+                onMouseLeave={(event) => {
+                  event.currentTarget.style.background = "transparent";
+                  event.currentTarget.style.color = "var(--color-muted-foreground)";
+                }}
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+          </header>
+
+          <div style={styles.launcherPanelMessages}>
+            <ChatMessages
+              availableActions={context.actions ?? []}
+              contextUserName={context.user.name}
+              isTyping={isTyping}
+              messages={messages}
+              onNavigate={onNavigate}
+            />
+          </div>
+
+          {showSuggestions ? (
+            <div style={styles.launcherPanelSuggestions}>
+              <p style={styles.launcherPanelSuggestionLabel}>Try one of these</p>
+              {suggestions.slice(0, 3).map((s) => (
+                <button
+                  key={s.label}
+                  type="button"
+                  onClick={() => void sendMessage(s.prompt)}
+                  disabled={isDisabled}
+                  style={{
+                    ...styles.launcherPanelSuggestion,
+                    opacity: isDisabled ? 0.5 : 1,
+                  }}
+                  onMouseEnter={(event) => {
+                    if (isDisabled) return;
+                    event.currentTarget.style.background = "rgba(22,71,52,0.06)";
+                    event.currentTarget.style.borderColor = "rgba(22,71,52,0.30)";
+                  }}
+                  onMouseLeave={(event) => {
+                    event.currentTarget.style.background = "var(--color-card)";
+                    event.currentTarget.style.borderColor = "var(--color-border)";
+                  }}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          <div style={styles.launcherPanelInputRow}>
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={handleTextareaChange}
+              onKeyDown={handleKeyDown}
+              disabled={isDisabled}
+              placeholder="Ask Gompei anything…"
+              rows={1}
+              style={{ ...styles.launcherPanelTextarea, opacity: isDisabled ? 0.55 : 1 }}
+            />
+            <button
+              type="button"
+              onClick={() => void sendMessage()}
+              disabled={isDisabled || !input.trim()}
+              style={{
+                ...styles.launcherPanelSendButton,
+                opacity: isDisabled || !input.trim() ? 0.4 : 1,
+              }}
+              aria-label="Send message"
+            >
+              <Send size={15} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+        <LauncherKeyframes />
+      </div>
+    );
+  }
 
   return (
     <section style={styles.pageRoot}>
@@ -426,14 +692,7 @@ export default function CMSChatbot({
         </main>
       </div>
 
-      <style>{`
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.42} }
-        @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
-        @keyframes chatMessageEnter {
-          from { opacity: 0; transform: translateY(6px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+      <LauncherKeyframes />
     </section>
   );
 }
